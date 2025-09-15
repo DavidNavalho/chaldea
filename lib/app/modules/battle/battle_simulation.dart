@@ -24,6 +24,7 @@ import 'simulation/combat_action_selector.dart';
 import 'simulation/custom_skill_activator.dart';
 import 'simulation/recorder.dart';
 import 'simulation/auto_three_turn_solver.dart';
+import 'simulation/auto_three_turn_team_search.dart';
 import 'simulation/svt_detail.dart';
 
 class BattleSimulationPage extends StatefulWidget {
@@ -124,6 +125,30 @@ class _BattleSimulationPageState extends State<BattleSimulationPage> {
       if (mounted) setState(() {});
     }
     battleData.delegate = null;
+  }
+
+  Future<void> _openReplayWithPlan(BattleShareData plan) async {
+    // Build options and formation from the plan
+    final options2 = BattleOptions();
+    options2.fromShareData(plan.options);
+    final formation = plan.formation;
+    for (int i = 0; i < 3; i++) {
+      options2.formation.onFieldSvtDataList[i] = await PlayerSvtData.fromStoredData(formation.onFieldSvts.getOrNull(i));
+      options2.formation.backupSvtDataList[i] = await PlayerSvtData.fromStoredData(formation.backupSvts.getOrNull(i));
+    }
+    options2.formation.mysticCodeData.loadStoredData(formation.mysticCode);
+
+    final questCopy = QuestPhase.fromJson(questPhase.toJson());
+
+    router.push(
+      url: Routes.laplaceBattle,
+      child: BattleSimulationPage(
+        questPhase: questCopy,
+        region: widget.region,
+        options: options2,
+        replayActions: plan,
+      ),
+    );
   }
 
   Future<void> _replaySkill(BattleRecordData action) async {
@@ -851,6 +876,42 @@ class _BattleSimulationPageState extends State<BattleSimulationPage> {
                 },
           icon: const Icon(Icons.auto_mode),
           label: const Text('Auto 3T'),
+        ),
+        FilledButton.icon(
+          onPressed: battleData.isBattleWin
+              ? null
+              : () async {
+                  if (battleData.isRunning) {
+                    EasyLoading.showToast('Previous task is still running');
+                    return;
+                  }
+                  EasyLoading.show(status: 'Team Search 3T...');
+                  try {
+                    final teamSearch = AutoThreeTurnTeamSearch(
+                      quest: questPhase,
+                      region: widget.region,
+                      baseOptions: runtime.originalOptions,
+                    );
+                    final plan = await teamSearch.search();
+                    if (plan == null) {
+                      EasyLoading.dismiss();
+                      await SimpleConfirmDialog(
+                        title: const Text('No team found'),
+                        content: const Text('Tried owned Arts SSRs with 2x Castoria (one support).'),
+                      ).showDialog(context);
+                      return;
+                    }
+                    EasyLoading.dismiss();
+                    await _openReplayWithPlan(plan);
+                    } catch (e, s) {
+                    logger.e('Team search failed', e, s);
+                    EasyLoading.showError('Team search failed\n$e');
+                  } finally {
+                    if (mounted) setState(() {});
+                  }
+                },
+          icon: const Icon(Icons.groups),
+          label: const Text('Team Search 3T'),
         ),
       ],
     );
