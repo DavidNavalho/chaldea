@@ -7,12 +7,12 @@ import 'package:chaldea/utils/extension.dart';
 
 /// Auto 3T solver that searches for a 3-turn clear by enumerating
 /// all permutations of usable skills per turn and ending each turn
-/// with the attacker's NP.
+/// with one or more NPs (attacker NP goes last if used).
 ///
 /// Assumptions (v1):
 /// - Attacker is the first on-field ally (index 0).
 /// - No Order Change / swaps.
-/// - Each turn ends by using only the attacker's NP.
+/// - Each turn ends by using one or more NPs; if wave not cleared, prune.
 /// - Ally-targeted skills target the attacker; enemy-targeted skills target the first alive enemy.
 /// - Random target selection picks attacker (ally) or first enemy (enemy-side, if applicable).
 /// - Exclude the attacker's own skills (configurable via [excludeAttackerSkills]).
@@ -139,19 +139,51 @@ class AutoThreeTurnSolver {
       return data.isBattleWin;
     }
     _turnsVisited += 1;
+    final remainingTurns = 4 - currentTurn;
 
-    // Depth-first over all permutations of usable skills, attempting NP at every prefix
+    // Apply always-deploy skills for this turn.
+    final beforeAlwaysSnapshots = data.snapshots.length;
+    final alwaysApplied = await _applyAlwaysDeploySkills(data, remainingTurns: remainingTurns);
+    _log.writeln('[Turn$currentTurn] Always-deploy skills applied: ${alwaysApplied.length}');
+
+    // Prepare canonical action list once for combination enumeration.
+    final canonicalActions = _collectUsableSkillActions(data)
+      ..sort((a, b) {
+        int ai = a.isMysticCode ? 1 : 0;
+        int bi = b.isMysticCode ? 1 : 0;
+        if (ai != bi) return ai.compareTo(bi);
+        if (a.isMysticCode) return a.mcSkillIndex.compareTo(b.mcSkillIndex);
+        final c = a.svtIndex.compareTo(b.svtIndex);
+        if (c != 0) return c;
+        return a.skillIndex.compareTo(b.skillIndex);
+      });
+
+    // Depth-first over combinations of usable skills, attempting NP set at every prefix
     // to cover 0..N skills used before NP.
-    return await _dfsSkillsThenNp(data, currentTurn: currentTurn);
+    final result = await _dfsSkillsThenNp(data, canonicalActions, currentTurn: currentTurn, depth: 0, startIndex: 0);
+
+    // Only backtrack always-deploy skills if this branch failed.
+    if (!result) {
+      while (data.snapshots.length > beforeAlwaysSnapshots) {
+        data.popSnapshot();
+      }
+    }
+    return result;
   }
 
-  Future<bool> _dfsSkillsThenNp(BattleData data, {required int currentTurn, int depth = 0}) async {
+  Future<bool> _dfsSkillsThenNp(
+    BattleData data,
+    List<_SkillAction> actions, {
+    required int currentTurn,
+    int depth = 0,
+    int startIndex = 0,
+  }) async {
     if (_checkTimeout()) return false;
     if (depth > _maxSkillDepth) _maxSkillDepth = depth;
-    _log.writeln('[Turn$currentTurn] Try NP (prefix skills applied)');
+    _log.writeln('[Turn$currentTurn] Try NPs (prefix skills applied)');
     // Attempt NP with current prefix (0-skill or more).
     final beforeNpSnapshots = data.snapshots.length;
-    if (await _tryNP(data)) {
+    if (await _tryNPCombos(data)) {
       if (data.isBattleWin) return true;
       final ok = await _searchTurn(data, currentTurn: currentTurn + 1);
       if (ok) return true;
@@ -159,17 +191,29 @@ class AutoThreeTurnSolver {
       while (data.snapshots.length > beforeNpSnapshots) {
         data.popSnapshot();
       }
-      _log.writeln('[Turn$currentTurn] Backtrack NP, continue skills');
+      _log.writeln('[Turn$currentTurn] Backtrack NP(s), continue skills');
     }
 
-    // Otherwise expand by applying one more usable skill and recurse.
-    final actions = _collectUsableSkillActions(data);
+    // Otherwise expand by applying one more usable skill (combinations via startIndex) and recurse.
     _log.writeln('[Turn$currentTurn] Usable skills: ${actions.length}');
     if (actions.isEmpty) {
       _log.writeln('[Turn$currentTurn] Dead end: no skills and NP failed');
       return false;
     }
-    for (final act in actions) {
+    for (int i = startIndex; i < actions.length; i++) {
+      final act = actions[i];
+      // Skip if no longer usable due to previous selections
+      if (act.isMysticCode) {
+        final info = data.masterSkillInfo.getOrNull(act.mcSkillIndex);
+        if (info == null || info.chargeTurn != 0) continue;
+      } else {
+        final svt = data.onFieldAllyServants.getOrNull(act.svtIndex);
+        if (svt == null) continue;
+        final info = svt.skillInfoList.getOrNull(act.skillIndex);
+        if (info == null || info.chargeTurn != 0) continue;
+        if (data.isSkillSealed(act.svtIndex, act.skillIndex)) continue;
+        if (data.isSkillCondFailed(act.svtIndex, act.skillIndex)) continue;
+      }
       _branches += 1;
       if (act.isMysticCode) {
         final info = data.masterSkillInfo[act.mcSkillIndex];
@@ -190,7 +234,13 @@ class AutoThreeTurnSolver {
       data.playerTargetIndex = 0;
       _setFirstAliveEnemyAsTarget(data);
 
-      final ok = await _dfsSkillsThenNp(data, currentTurn: currentTurn, depth: depth + 1);
+      final ok = await _dfsSkillsThenNp(
+        data,
+        actions,
+        currentTurn: currentTurn,
+        depth: depth + 1,
+        startIndex: i + 1,
+      );
       if (ok) return true;
 
       // Backtrack the last skill application.
@@ -201,33 +251,60 @@ class AutoThreeTurnSolver {
     return false;
   }
 
-  Future<bool> _tryNP(BattleData data) async {
-    _npAttempts += 1;
-    final attacker = data.onFieldAllyServants.getOrNull(0);
-    if (attacker == null) return false;
-    if (!attacker.canSelectNP(data)) {
-      _log.writeln('  - NP not ready: np=${attacker.np}, canNP=${attacker.canNP()}');
+  Future<bool> _tryNPCombos(BattleData data) async {
+    // Build NP candidates
+    final List<int> cand = [];
+    for (int i = 0; i < data.onFieldAllyServants.length; i++) {
+      final svt = data.onFieldAllyServants.getOrNull(i);
+      if (svt == null) continue;
+      if (svt.canSelectNP(data)) cand.add(i);
+    }
+    if (cand.isEmpty) {
+      _log.writeln('  - No NP-capable ally at this prefix');
       return false;
     }
+    final bool attackerReady = cand.contains(0);
+    final supports = cand.where((i) => i != 0).toList()..sort();
 
-    // Ensure we hit the first alive enemy if single-target.
-    _setFirstAliveEnemyAsTarget(data);
+    // Iterate over subsets of supports, and optionally attacker last
+    final int supCount = supports.length;
+    final int maskMax = 1 << supCount;
+    for (int mask = 0; mask < maskMax; mask++) {
+      for (final includeAttacker in [false, true]) {
+        if (!includeAttacker && mask == 0) continue; // must use at least one NP
+        if (includeAttacker && !attackerReady) continue;
 
-    final prevWave = data.waveCount;
-    final card = attacker.getNPCard();
-    if (card == null) return false;
+        final List<CombatAction> actions = [];
+        // supports first
+        for (int k = 0; k < supCount; k++) {
+          if (((mask >> k) & 1) == 1) {
+            final idx = supports[k];
+            final svt = data.onFieldAllyServants[idx]!;
+            final card = svt.getNPCard();
+            if (card != null) actions.add(CombatAction(svt, card));
+          }
+        }
+        // attacker last
+        if (includeAttacker) {
+          final atk = data.onFieldAllyServants[0]!;
+          final card = atk.getNPCard();
+          if (card != null) actions.add(CombatAction(atk, card));
+        }
+        if (actions.isEmpty) continue;
 
-    await data.playerTurn([CombatAction(attacker, card)]);
-
-    // Success if wave advanced or the battle ended.
-    if (data.waveCount > prevWave || data.isBattleWin) {
-      _log.writeln('  - NP success: wave ${prevWave} -> ${data.waveCount}');
-      return true;
+        _npAttempts += 1;
+        _setFirstAliveEnemyAsTarget(data);
+        final prevWave = data.waveCount;
+        await data.playerTurn(actions);
+        if (data.waveCount > prevWave || data.isBattleWin) {
+          _log.writeln('  - NP success with ${actions.length} NP(s): wave $prevWave -> ${data.waveCount}');
+          return true;
+        }
+        _log.writeln('  - NP combo failed (${actions.length}); undo');
+        data.popSnapshot();
+        if (_checkTimeout()) return false;
+      }
     }
-
-    // Revert NP.
-    _log.writeln('  - NP failed to clear wave; undo');
-    data.popSnapshot();
     return false;
   }
 
@@ -274,6 +351,57 @@ class AutoThreeTurnSolver {
     }
 
     return list;
+  }
+
+  Future<List<_SkillAction>> _applyAlwaysDeploySkills(BattleData data, {required int remainingTurns}) async {
+    final applied = <_SkillAction>[];
+    bool usableSvt(int i, int j) {
+      final svt = data.onFieldAllyServants.getOrNull(i);
+      if (svt == null) return false;
+      final info = svt.skillInfoList.getOrNull(j);
+      if (info == null) return false;
+      if (info.chargeTurn != 0) return false;
+      if (data.isSkillSealed(i, j)) return false;
+      if (data.isSkillCondFailed(i, j)) return false;
+      return _isAlwaysDeploy(info, remainingTurns: remainingTurns);
+    }
+
+    for (int i = 0; i < data.onFieldAllyServants.length; i++) {
+      for (int j = 0; j < 3; j++) {
+        if (!usableSvt(i, j)) continue;
+        await data.activateSvtSkill(i, j);
+        applied.add(_SkillAction.svt(i, j));
+      }
+    }
+
+    // MC skills
+    for (int k = 0; k < data.masterSkillInfo.length; k++) {
+      final info = data.masterSkillInfo[k];
+      if (info.chargeTurn != 0) continue;
+      if (!_isAlwaysDeploy(info, remainingTurns: remainingTurns)) continue;
+      await data.activateMysticCodeSkill(k);
+      applied.add(_SkillAction.mc(k));
+    }
+    return applied;
+  }
+
+  bool _isAlwaysDeploy(BattleSkillInfoData info, {required int remainingTurns}) {
+    final skill = info.skill;
+    if (skill == null) return false;
+    // reject order change or immediate NP-gain
+    for (final f in skill.functions) {
+      if (f.funcType == FuncType.replaceMember) return false;
+      if (f.funcType == FuncType.gainNp) return false;
+    }
+    // accept if has any long-duration buff (remainingTurns)
+    final lv = info.skillLv <= 0 ? 1 : info.skillLv;
+    for (final f in skill.functions) {
+      if (!f.funcType.isAddState) continue;
+      final vals = f.svals.getOrNull(lv - 1);
+      final turn = vals?.Turn ?? 0;
+      if (turn >= remainingTurns) return true;
+    }
+    return false;
   }
 }
 
