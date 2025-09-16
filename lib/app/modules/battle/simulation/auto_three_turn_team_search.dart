@@ -7,6 +7,7 @@ import 'package:chaldea/models/gamedata/servant.dart';
 import 'package:chaldea/models/userdata/battle.dart';
 import 'package:chaldea/models/userdata/userdata.dart';
 import 'package:chaldea/utils/extension.dart';
+import 'package:chaldea/models/models.dart';
 
 /// Orchestrates Auto 3T search across attacker + CE candidates for the
 /// 1-attacker + 2-Castoria team pattern.
@@ -24,6 +25,10 @@ class AutoThreeTurnTeamSearch {
   });
 
   Future<BattleShareData?> search() async {
+    _attempts.clear();
+    _log.clear();
+    final startedAt = DateTime.now();
+    final deadline = startedAt.add(timeout);
     // Resolve owned Castoria (must exist) and support Castoria template.
     final castoriaOwned = _findOwnedCastoria();
     if (castoriaOwned == null) {
@@ -31,29 +36,108 @@ class AutoThreeTurnTeamSearch {
     }
     final castoriaSupport = castoriaOwned; // use same servant entry; we will mark as support
 
-    // Build attacker candidates: all owned SSR servants with Arts NP.
-    final attackers = _findOwnedArtsSSR();
+    // Compute top attacker classes based on enemy class relations.
+    final topClasses = _selectTopAttackerClasses();
+
+    // Build attacker candidates: all owned SSR servants with Arts NP, filtered by top classes.
+    final attackers = _findOwnedArtsSSR(allowedClasses: topClasses);
     if (attackers.isEmpty) return null;
 
     // CE candidates for attacker (by collectionNo)
     final ceCandidates = _resolveAttackerCeCandidates();
 
     for (final attacker in attackers) {
+      // Pass A: Double Castoria + Summer Streetwear (#330)
       for (final ce in ceCandidates) {
-        final opt = baseOptions.copy();
-        // Build on-field team: [attacker, owned Castoria, support Castoria]
-        final onField = await _buildOnField(attacker: attacker, ownedCastoria: castoriaOwned, supportCastoria: castoriaSupport, attackerCe: ce);
-        opt.formation = BattleTeamSetup(onFieldSvtDataList: onField, mysticCodeData: baseOptions.formation.mysticCodeData.copy());
-
-        final solver = AutoThreeTurnSolver(
+        final nowA = DateTime.now();
+        final remainingA = deadline.difference(nowA);
+        if (remainingA.isNegative || remainingA.inMilliseconds == 0) return null;
+        final optA = baseOptions.copy();
+        final onField = await _buildOnField(
+          attacker: attacker,
+          ownedCastoria: castoriaOwned,
+          supportCastoria: castoriaSupport,
+          attackerCe: ce,
+        );
+        final mcA = MysticCodeData()
+          ..mysticCode = db.gameData.mysticCodes[330]
+          ..level = 10;
+        optA.formation = BattleTeamSetup(
+          onFieldSvtDataList: onField,
+          mysticCodeData: mcA,
+        );
+        final solverA = AutoThreeTurnSolver(
           quest: quest,
           region: region,
-          baseOptions: opt,
+          baseOptions: optA,
           excludeAttackerSkills: false,
-          timeout: timeout,
+          timeout: remainingA,
         );
-        final result = await solver.search();
-        if (result != null) return result; // first success
+        final t0 = DateTime.now();
+        final resA = await solverA.search();
+        final dt = DateTime.now().difference(t0);
+        if (resA == null) {
+          _recordAttempt(
+            attacker: attacker,
+            ce: ce,
+            mcId: 330,
+            ocTurn: null,
+            solver: solverA,
+            elapsed: dt,
+          );
+        }
+        if (resA != null) return resA;
+      }
+
+      // Pass B: Plugsuit (#210) + Oberon in backup (slot 4). OC priority 3 -> 2 -> 1.
+      final oberon = db.gameData.servants[316];
+      if (oberon != null) {
+        for (final ce in ceCandidates) {
+          for (final ocTurn in const [3, 2, 1]) {
+            final nowB = DateTime.now();
+            final remainingB = deadline.difference(nowB);
+            if (remainingB.isNegative || remainingB.inMilliseconds == 0) return null;
+            final optB = baseOptions.copy();
+            final pairs = await _buildOnFieldWithOberon(
+              attacker: attacker,
+              ownedCastoria: castoriaOwned,
+              supportCastoria: castoriaSupport,
+              oberon: oberon,
+              attackerCe: ce,
+            );
+            final mcB = MysticCodeData()
+              ..mysticCode = db.gameData.mysticCodes[210]
+              ..level = 10;
+            optB.formation = BattleTeamSetup(
+              onFieldSvtDataList: pairs.$1,
+              backupSvtDataList: pairs.$2,
+              mysticCodeData: mcB,
+            );
+            final solverB = AutoThreeTurnSolver(
+              quest: quest,
+              region: region,
+              baseOptions: optB,
+              excludeAttackerSkills: false,
+              timeout: remainingB,
+              plugsuitMode: true,
+              allowedReplaceTurn: ocTurn,
+            );
+            final t0b = DateTime.now();
+            final resB = await solverB.search();
+            final dtb = DateTime.now().difference(t0b);
+            if (resB == null) {
+              _recordAttempt(
+                attacker: attacker,
+                ce: ce,
+                mcId: 210,
+                ocTurn: ocTurn,
+                solver: solverB,
+                elapsed: dtb,
+              );
+            }
+            if (resB != null) return resB;
+          }
+        }
       }
     }
     return null;
@@ -80,7 +164,7 @@ class AutoThreeTurnTeamSearch {
     return null;
   }
 
-  List<Servant> _findOwnedArtsSSR() {
+  List<Servant> _findOwnedArtsSSR({Set<int>? allowedClasses}) {
     final List<Servant> list = [];
     for (final entry in db.curUser.servants.entries) {
       final colNo = entry.key;
@@ -90,6 +174,7 @@ class AutoThreeTurnTeamSearch {
       if (svt == null) continue;
       if (svt.rarity != 5) continue;
       if (!svt.noblePhantasms.any((td) => td.svt.card.isArts())) continue;
+      if (allowedClasses != null && allowedClasses.isNotEmpty && !allowedClasses.contains(svt.classId)) continue;
       list.add(svt);
     }
     // Sort attackers to try best-suited first:
@@ -106,6 +191,65 @@ class AutoThreeTurnTeamSearch {
       return b.atkMax.compareTo(a.atkMax);
     });
     return list;
+  }
+
+  Set<int> _selectTopAttackerClasses() {
+    // Collect defender classes per wave (up to 3 waves)
+    final waves = quest.stages;
+    final weights = <double>[1.0, 1.2, 1.5];
+    // Candidate attacker classes come from owned SSR Arts list
+    final allSSRArts = _findOwnedArtsSSR();
+    final candidateClasses = allSSRArts.map((e) => e.classId).toSet();
+    if (candidateClasses.isEmpty) return candidateClasses;
+
+    final List<_ClassScore> scores = [];
+    for (final cls in candidateClasses) {
+      double total = 0.0;
+      final avgs = <double>[0, 0, 0];
+      for (int wi = 0; wi < waves.length && wi < 3; wi++) {
+        final stage = waves[wi];
+        final enemies = stage.enemies.where((e) => e.deck == DeckType.enemy).toList();
+        if (enemies.isEmpty) {
+          avgs[wi] = 0;
+          continue;
+        }
+        int bucketSum = 0;
+        for (final en in enemies) {
+          final rel = db.gameData.constData.getClassIdRelation(cls, en.dispClassId);
+          final bucket = rel > 1000
+              ? 2
+              : (rel == 1000
+                  ? 1
+                  : 0);
+          bucketSum += bucket;
+        }
+        final avgBucket = bucketSum / enemies.length;
+        avgs[wi] = avgBucket;
+        total += avgBucket * weights[wi];
+      }
+      // Prune class that is disadvantaged across all present waves
+      final validWaves = avgs.where((v) => v > 0).toList();
+      final allWeak = validWaves.isNotEmpty && validWaves.every((v) => v == 0);
+      if (!allWeak) {
+        scores.add(_ClassScore(cls, total, avgs));
+      }
+    }
+    // Persist latest scores for summary
+    _classScores = scores.toList();
+    if (scores.isEmpty) return candidateClasses; // fallback
+    scores.sort((a, b) {
+      final t = b.total.compareTo(a.total);
+      if (t != 0) return t;
+      // tie-breakers: wave3, wave2, wave1
+      for (final idx in [2, 1, 0]) {
+        final c = b.avgs[idx].compareTo(a.avgs[idx]);
+        if (c != 0) return c;
+      }
+      return a.classId.compareTo(b.classId);
+    });
+    final top = scores.take(3).map((e) => e.classId).toSet();
+    _topClasses = top.toList();
+    return top;
   }
 
   List<_CeChoice> _resolveAttackerCeCandidates() {
@@ -170,6 +314,97 @@ class AutoThreeTurnTeamSearch {
 
     return [p0, p1, p2];
   }
+
+  Future<(List<PlayerSvtData>, List<PlayerSvtData>)> _buildOnFieldWithOberon({
+    required Servant attacker,
+    required Servant ownedCastoria,
+    required Servant supportCastoria,
+    required Servant oberon,
+    required _CeChoice attackerCe,
+  }) async {
+    final onField = await _buildOnField(
+      attacker: attacker,
+      ownedCastoria: ownedCastoria,
+      supportCastoria: supportCastoria,
+      attackerCe: attackerCe,
+    );
+    final p3 = PlayerSvtData.svt(oberon)
+      ..supportType = SupportSvtType.none
+      ..limitCount = 4
+      ..lv = oberon.lvMax
+      ..tdLv = 1
+      ..skillLvs = [10, 10, 10]
+      ..appendLvs = [0, 0, 0]
+      ..atkFou = 1000
+      ..hpFou = 1000;
+    final backup = [p3, PlayerSvtData.base(), PlayerSvtData.base()];
+    return (onField, backup);
+  }
+
+  // Summary logging
+  final List<_Attempt> _attempts = [];
+  final StringBuffer _log = StringBuffer();
+  List<_ClassScore> _classScores = [];
+  List<int> _topClasses = [];
+
+  void _recordAttempt({
+    required Servant attacker,
+    required _CeChoice ce,
+    required int mcId,
+    required int? ocTurn,
+    required AutoThreeTurnSolver solver,
+    required Duration elapsed,
+  }) {
+    final attName = attacker.lName.l;
+    final className = Transl.svtClassId(attacker.classId).l;
+    final ceName = ce.ce.lName.l;
+    _attempts.add(
+      _Attempt(
+        attacker: attName,
+        className: className,
+        ce: ceName,
+        ceMLB: ce.limitBreak,
+        ceLv: ce.lv ?? 0,
+        mcId: mcId,
+        ocTurn: ocTurn,
+        result: solver.result,
+        branches: solver.branchesTried,
+        npAttempts: solver.npAttempts,
+        elapsedMs: elapsed.inMilliseconds,
+      ),
+    );
+  }
+
+  String get summaryText {
+    if (_attempts.isEmpty) return 'No attempts recorded.';
+    _log.writeln('Team Search 3T Summary');
+    if (_classScores.isNotEmpty) {
+      _log.writeln('Class scores (weighted total; avgs by W1/W2/W3):');
+      final sorted = [..._classScores]..sort((a, b) => b.total.compareTo(a.total));
+      for (final s in sorted) {
+        final name = Transl.svtClassId(s.classId).l;
+        final w1 = s.avgs.getOrNull(0) ?? 0;
+        final w2 = s.avgs.getOrNull(1) ?? 0;
+        final w3 = s.avgs.getOrNull(2) ?? 0;
+        _log.writeln(' - $name: total=${s.total.toStringAsFixed(2)} | '
+            'W1=${w1.toStringAsFixed(1)}, W2=${w2.toStringAsFixed(1)}, W3=${w3.toStringAsFixed(1)}');
+      }
+      if (_topClasses.isNotEmpty) {
+        final topNames = _topClasses.map((id) => Transl.svtClassId(id).l).join(', ');
+        _log.writeln('Top classes chosen: $topNames');
+      }
+      _log.writeln('');
+    }
+    for (final a in _attempts) {
+      final oc = a.ocTurn == null ? '-' : 'T${a.ocTurn}';
+      final mlb = a.ceMLB ? 'MLB' : 'NLB';
+      _log.writeln(
+        'MC ${a.mcId} | Attacker: ${a.attacker} (${a.className}) | CE: ${a.ce} [$mlb Lv${a.ceLv}] | OC: $oc | '
+        'result: ${a.result} | branches: ${a.branches} | np: ${a.npAttempts} | ${a.elapsedMs}ms',
+      );
+    }
+    return _log.toString();
+  }
 }
 
 class _CeChoice {
@@ -177,4 +412,39 @@ class _CeChoice {
   final bool limitBreak;
   final int? lv; // owned CE level if available
   _CeChoice(this.ce, this.limitBreak, {this.lv});
+}
+
+class _ClassScore {
+  final int classId;
+  final double total;
+  final List<double> avgs; // [w1,w2,w3]
+  _ClassScore(this.classId, this.total, this.avgs);
+}
+
+class _Attempt {
+  final String attacker;
+  final String className;
+  final String ce;
+  final bool ceMLB;
+  final int ceLv;
+  final int mcId;
+  final int? ocTurn;
+  final String result;
+  final int branches;
+  final int npAttempts;
+  final int elapsedMs;
+
+  _Attempt({
+    required this.attacker,
+    required this.className,
+    required this.ce,
+    required this.ceMLB,
+    required this.ceLv,
+    required this.mcId,
+    required this.ocTurn,
+    required this.result,
+    required this.branches,
+    required this.npAttempts,
+    required this.elapsedMs,
+  });
 }

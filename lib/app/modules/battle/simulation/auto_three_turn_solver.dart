@@ -4,6 +4,7 @@ import 'package:chaldea/app/battle/interactions/_delegate.dart';
 import 'package:chaldea/app/battle/models/battle.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/extension.dart';
+import 'package:tuple/tuple.dart';
 
 /// Auto 3T solver that searches for a 3-turn clear by enumerating
 /// all permutations of usable skills per turn and ending each turn
@@ -31,6 +32,8 @@ class AutoThreeTurnSolver {
     required this.baseOptions,
     this.excludeAttackerSkills = true,
     this.timeout = const Duration(seconds: 60),
+    this.plugsuitMode = false,
+    this.allowedReplaceTurn,
   });
 
   final Duration timeout;
@@ -59,7 +62,13 @@ class AutoThreeTurnSolver {
     return '$summary${_log.toString()}';
   }
   int get branchesTried => _branches;
+  int get npAttempts => _npAttempts;
+  int get turnsVisited => _turnsVisited;
+  int get maxSkillDepth => _maxSkillDepth;
+  String get result => _result;
   Duration _elapsed() => _start == null ? Duration.zero : DateTime.now().difference(_start!);
+  final bool plugsuitMode;
+  final int? allowedReplaceTurn;
   bool _checkTimeout() {
     if (_deadline != null && DateTime.now().isAfter(_deadline!)) {
       if (_result == 'unknown') _result = 'timeout';
@@ -128,7 +137,7 @@ class AutoThreeTurnSolver {
     }
   }
 
-  Future<bool> _searchTurn(BattleData data, {required int currentTurn}) async {
+  Future<bool> _searchTurn(BattleData data, {required int currentTurn, bool usedReplace = false}) async {
     if (_checkTimeout()) return false;
     if (data.isBattleWin) {
       // Finished early is acceptable for a 3-turn goal.
@@ -147,7 +156,7 @@ class AutoThreeTurnSolver {
     _log.writeln('[Turn$currentTurn] Always-deploy skills applied: ${alwaysApplied.length}');
 
     // Prepare canonical action list once for combination enumeration.
-    final canonicalActions = _collectUsableSkillActions(data)
+    final canonicalActions = _collectUsableSkillActions(data, currentTurn, usedReplace)
       ..sort((a, b) {
         int ai = a.isMysticCode ? 1 : 0;
         int bi = b.isMysticCode ? 1 : 0;
@@ -177,6 +186,7 @@ class AutoThreeTurnSolver {
     required int currentTurn,
     int depth = 0,
     int startIndex = 0,
+    bool usedReplace = false,
   }) async {
     if (_checkTimeout()) return false;
     if (depth > _maxSkillDepth) _maxSkillDepth = depth;
@@ -185,7 +195,7 @@ class AutoThreeTurnSolver {
     final beforeNpSnapshots = data.snapshots.length;
     if (await _tryNPCombos(data)) {
       if (data.isBattleWin) return true;
-      final ok = await _searchTurn(data, currentTurn: currentTurn + 1);
+      final ok = await _searchTurn(data, currentTurn: currentTurn + 1, usedReplace: usedReplace);
       if (ok) return true;
       // Backtrack NP and continue exploring more skills for this turn
       while (data.snapshots.length > beforeNpSnapshots) {
@@ -206,6 +216,11 @@ class AutoThreeTurnSolver {
       if (act.isMysticCode) {
         final info = data.masterSkillInfo.getOrNull(act.mcSkillIndex);
         if (info == null || info.chargeTurn != 0) continue;
+        if (_isReplaceMember(info)) {
+          if (!plugsuitMode) continue;
+          if (usedReplace) continue;
+          if (allowedReplaceTurn != null && allowedReplaceTurn != currentTurn) continue;
+        }
       } else {
         final svt = data.onFieldAllyServants.getOrNull(act.svtIndex);
         if (svt == null) continue;
@@ -213,6 +228,7 @@ class AutoThreeTurnSolver {
         if (info == null || info.chargeTurn != 0) continue;
         if (data.isSkillSealed(act.svtIndex, act.skillIndex)) continue;
         if (data.isSkillCondFailed(act.svtIndex, act.skillIndex)) continue;
+        if (_isOberon(svt) && act.skillIndex == 2 && currentTurn < 3) continue;
       }
       _branches += 1;
       if (act.isMysticCode) {
@@ -223,7 +239,10 @@ class AutoThreeTurnSolver {
         final info = svt?.skillInfoList[act.skillIndex];
         _log.writeln('[Turn$currentTurn] Use svt${act.svtIndex + 1} skill #${act.skillIndex + 1}: ${info?.lName ?? '?'}');
       }
+      bool isReplace = false;
       if (act.isMysticCode) {
+        final info = data.masterSkillInfo[act.mcSkillIndex];
+        isReplace = _isReplaceMember(info);
         await data.activateMysticCodeSkill(act.mcSkillIndex);
       } else {
         await data.activateSvtSkill(act.svtIndex, act.skillIndex);
@@ -240,6 +259,7 @@ class AutoThreeTurnSolver {
         currentTurn: currentTurn,
         depth: depth + 1,
         startIndex: i + 1,
+        usedReplace: usedReplace || isReplace,
       );
       if (ok) return true;
 
@@ -320,7 +340,7 @@ class AutoThreeTurnSolver {
     data.enemyTargetIndex = idx;
   }
 
-  List<_SkillAction> _collectUsableSkillActions(BattleData data) {
+  List<_SkillAction> _collectUsableSkillActions(BattleData data, int currentTurn, bool usedReplace) {
     final list = <_SkillAction>[];
 
     // Ally skills (on-field only). Optionally exclude attacker skills.
@@ -334,18 +354,24 @@ class AutoThreeTurnSolver {
         if (info.chargeTurn != 0) continue;
         if (data.isSkillSealed(i, j)) continue;
         if (data.isSkillCondFailed(i, j)) continue;
+        // Oberon S3 only on T3
+        if (_isOberon(svt) && j == 2 && currentTurn < 3) continue;
         list.add(_SkillAction.svt(i, j));
-      }
     }
+  }
 
-    // Mystic Code skills (exclude Order Change explicitly).
+    // Mystic Code skills
     for (int k = 0; k < data.masterSkillInfo.length; k++) {
       final info = data.masterSkillInfo[k];
       if (info.chargeTurn != 0) continue;
       final skill = info.skill;
       if (skill == null) continue;
       final hasOrderChange = skill.functions.any((f) => f.funcType == FuncType.replaceMember);
-      if (hasOrderChange) continue;
+      if (hasOrderChange) {
+        if (!plugsuitMode) continue;
+        if (usedReplace) continue;
+        if (allowedReplaceTurn != null && allowedReplaceTurn != currentTurn) continue;
+      }
       if (!data.canUseMysticCodeSkillIgnoreCoolDown(k)) continue;
       list.add(_SkillAction.mc(k));
     }
@@ -379,6 +405,7 @@ class AutoThreeTurnSolver {
       final info = data.masterSkillInfo[k];
       if (info.chargeTurn != 0) continue;
       if (!_isAlwaysDeploy(info, remainingTurns: remainingTurns)) continue;
+      if (_isReplaceMember(info)) continue;
       await data.activateMysticCodeSkill(k);
       applied.add(_SkillAction.mc(k));
     }
@@ -402,6 +429,16 @@ class AutoThreeTurnSolver {
       if (turn >= remainingTurns) return true;
     }
     return false;
+  }
+
+  bool _isReplaceMember(BattleSkillInfoData info) {
+    final s = info.skill;
+    if (s == null) return false;
+    return s.functions.any((f) => f.funcType == FuncType.replaceMember);
+  }
+
+  bool _isOberon(BattleServantData svt) {
+    return svt.niceSvt?.collectionNo == 316;
   }
 }
 
@@ -442,5 +479,18 @@ class _Auto3TDelegate extends BattleDelegate {
 
     // For probability checks when tailoredExecution=true, just accept engine's current result.
     canActivate = (curResult) async => curResult;
+
+    // Prefer swapping out slot 1 (owned Castoria) with backup slot 0 (Oberon)
+    replaceMember = (onFieldSvts, backupSvts) async {
+      final onField = onFieldSvts.getOrNull(1);
+      final backup = backupSvts.getOrNull(0);
+      if (onField != null && backup != null) {
+        return Tuple2(onField, backup);
+      }
+      final anyOn = onFieldSvts.firstWhereOrNull((e) => e != null);
+      final anyBk = backupSvts.firstWhereOrNull((e) => e != null);
+      if (anyOn != null && anyBk != null) return Tuple2(anyOn, anyBk);
+      return null;
+    };
   }
 }

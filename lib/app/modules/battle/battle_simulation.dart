@@ -895,10 +895,40 @@ class _BattleSimulationPageState extends State<BattleSimulationPage> {
                     final plan = await teamSearch.search();
                     if (plan == null) {
                       EasyLoading.dismiss();
-                      await SimpleConfirmDialog(
-                        title: const Text('No team found'),
-                        content: const Text('Tried owned Arts SSRs with 2x Castoria (one support).'),
-                      ).showDialog(context);
+                      await showDialog(
+                        context: context,
+                        useRootNavigator: false,
+                        builder: (context) {
+                          return SimpleConfirmDialog(
+                            title: const Text('No team found'),
+                            scrollable: true,
+                            content: ConstrainedBox(
+                              constraints: const BoxConstraints(maxHeight: 320),
+                              child: SingleChildScrollView(
+                                child: SelectableText(
+                                  teamSearch.summaryText,
+                                  style: const TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ),
+                            showOk: false,
+                            actions: [
+                              TextButton(
+                                onPressed: () {
+                                  copyToClipboard(teamSearch.summaryText);
+                                  Navigator.pop(context);
+                                  EasyLoading.showSuccess('Summary copied');
+                                },
+                                child: const Text('Copy Summary'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text(S.current.general_close),
+                              ),
+                            ],
+                          );
+                        },
+                      );
                       return;
                     }
                     EasyLoading.dismiss();

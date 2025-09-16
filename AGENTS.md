@@ -72,6 +72,26 @@
    - On success: a new page opens with the chosen attacker + CE and two Castorias, then replays the run
    - On failure: simple dialog “No team found” (we can add aggregate logs later if needed)
 
+## Plugsuit + Oberon Extension (v2.1)
+- Goal: Extend team search by adding a plugsuit strategy (Order Change) with Oberon to boost damage/NP, while keeping the same per‑turn solver rules.
+
+### Implemented Behavior
+- Mystic Code passes per attacker (in order):
+  1) Double Castoria + Summer Streetwear (#330) — same CE candidates as v2
+  2) Double Castoria + Chaldea Uniform – Decisive Battle (#210) + Oberon (#316) in backup slot
+- Order Change (OC) policy (plugsuit pass only):
+  - OC is tried at most once per run; priority of OC turn is T3 → T2 → T1
+  - Swap choice is deterministic: swap out slot 1 (owned Castoria) with backup slot 0 (Oberon)
+  - Oberon S3 is only considered on turn 3 (as it ends attacker actions afterward); S1/S2 are regular skills
+- Solver constraints remain:
+  - Skills per turn are combinations (unordered), with “always‑deploy” excluding NP‑granting skills
+  - One or more NPs per turn; attacker NP last; prune if the wave didn’t clear
+  - Per‑turn dedup; logging + 60s timeout preserved
+
+### Notes
+- CE selection remains “owned only” with exact LB/level for both equipped CE and candidates (Black Grail #48, Kaleidoscope #34).
+- First success short‑circuits and opens a new sim page with the chosen formation, then replays the plan.
+
 
 ## Project Structure & Module Organization
 - Source code in `lib/` (feature modules under `lib/app/...`; models under `lib/models/...`).
