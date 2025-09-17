@@ -27,6 +27,7 @@ class AutoThreeTurnTeamSearch {
   Future<BattleShareData?> search() async {
     _attempts.clear();
     _log.clear();
+    _candidateAttackersCount = 0;
     final startedAt = DateTime.now();
     final deadline = startedAt.add(timeout);
     // Resolve owned Castoria (must exist) and support Castoria template.
@@ -41,6 +42,7 @@ class AutoThreeTurnTeamSearch {
 
     // Build attacker candidates: all owned SSR servants with Arts NP, filtered by top classes.
     final attackers = _findOwnedArtsSSR(allowedClasses: topClasses);
+    _candidateAttackersCount = attackers.length;
     if (attackers.isEmpty) return null;
 
     // CE candidates for attacker (by collectionNo)
@@ -76,16 +78,14 @@ class AutoThreeTurnTeamSearch {
         final t0 = DateTime.now();
         final resA = await solverA.search();
         final dt = DateTime.now().difference(t0);
-        if (resA == null) {
-          _recordAttempt(
-            attacker: attacker,
-            ce: ce,
-            mcId: 330,
-            ocTurn: null,
-            solver: solverA,
-            elapsed: dt,
-          );
-        }
+        _recordAttempt(
+          attacker: attacker,
+          ce: ce,
+          mcId: 330,
+          ocTurn: null,
+          solver: solverA,
+          elapsed: dt,
+        );
         if (resA != null) return resA;
       }
 
@@ -125,16 +125,14 @@ class AutoThreeTurnTeamSearch {
             final t0b = DateTime.now();
             final resB = await solverB.search();
             final dtb = DateTime.now().difference(t0b);
-            if (resB == null) {
-              _recordAttempt(
-                attacker: attacker,
-                ce: ce,
-                mcId: 210,
-                ocTurn: ocTurn,
-                solver: solverB,
-                elapsed: dtb,
-              );
-            }
+            _recordAttempt(
+              attacker: attacker,
+              ce: ce,
+              mcId: 210,
+              ocTurn: ocTurn,
+              solver: solverB,
+              elapsed: dtb,
+            );
             if (resB != null) return resB;
           }
         }
@@ -346,6 +344,7 @@ class AutoThreeTurnTeamSearch {
   final StringBuffer _log = StringBuffer();
   List<_ClassScore> _classScores = [];
   List<int> _topClasses = [];
+  int _candidateAttackersCount = 0;
 
   void _recordAttempt({
     required Servant attacker,
@@ -370,6 +369,11 @@ class AutoThreeTurnTeamSearch {
         result: solver.result,
         branches: solver.branchesTried,
         npAttempts: solver.npAttempts,
+        turnsVisited: solver.turnsVisited,
+        maxSkillDepth: solver.maxSkillDepth,
+        alwaysDeployCount: solver.alwaysDeployCount,
+        prunesWaveNotCleared: solver.prunesWaveNotCleared,
+        skillApplications: null, // currently not exposed separately
         elapsedMs: elapsed.inMilliseconds,
       ),
     );
@@ -378,6 +382,41 @@ class AutoThreeTurnTeamSearch {
   String get summaryText {
     if (_attempts.isEmpty) return 'No attempts recorded.';
     _log.writeln('Team Search 3T Summary');
+    // Aggregate to first success if present, otherwise all attempts.
+    final int successIndex = _attempts.indexWhere((a) => a.result == 'success');
+    final List<_Attempt> considered = successIndex >= 0 ? _attempts.sublist(0, successIndex + 1) : _attempts;
+    final bool hasSuccess = successIndex >= 0;
+    final double elapsedSec = considered.fold<int>(0, (p, a) => p + a.elapsedMs) / 1000.0;
+    // Distinct attackers tried until success
+    final Set<String> attackersTried = considered.map((a) => a.attacker).toSet();
+    final int attackersTriedCount = attackersTried.length;
+    final int attemptsCount = considered.length;
+    // Pass counts by MC
+    final int passBase = considered.where((a) => a.mcId == 330).length;
+    final int passPlug = considered.where((a) => a.mcId == 210).length;
+    // CE variants tried (distinct names)
+    final int ceVariants = considered.map((a) => a.ce).toSet().length;
+    // Totals (to success or to end)
+    final int totBranches = considered.fold(0, (p, a) => p + a.branches);
+    final int totNp = considered.fold(0, (p, a) => p + a.npAttempts);
+    final int totTurnsVisited = considered.fold(0, (p, a) => p + a.turnsVisited);
+    final int totAlwaysDeploy = considered.fold(0, (p, a) => p + a.alwaysDeployCount);
+    final int totPrunes = considered.fold(0, (p, a) => p + a.prunesWaveNotCleared);
+
+    if (_topClasses.isNotEmpty) {
+      final topNames = _topClasses.map((id) => Transl.svtClassId(id).l).join(', ');
+      _log.writeln('Top classes chosen: $topNames');
+    }
+    _log.writeln(hasSuccess
+        ? 'Elapsed to success: ${elapsedSec.toStringAsFixed(2)}s'
+        : 'Elapsed: ${elapsedSec.toStringAsFixed(2)}s (timeout/no solution)');
+    _log.writeln(
+        'Attackers enumerated: $_candidateAttackersCount; attempted (distinct): $attackersTriedCount; attempts until success: $attemptsCount');
+    _log.writeln('Attempts by pass: Base=$passBase, Plugsuit+Oberon=$passPlug');
+    _log.writeln('CE variants tried: $ceVariants');
+    _log.writeln(
+        'Solver totals: branches=$totBranches; npCombos=$totNp; turnsVisited=$totTurnsVisited; alwaysDeploy=$totAlwaysDeploy; prunes=$totPrunes');
+    _log.writeln('');
     if (_classScores.isNotEmpty) {
       _log.writeln('Class scores (weighted total; avgs by W1/W2/W3):');
       final sorted = [..._classScores]..sort((a, b) => b.total.compareTo(a.total));
@@ -389,10 +428,6 @@ class AutoThreeTurnTeamSearch {
         _log.writeln(' - $name: total=${s.total.toStringAsFixed(2)} | '
             'W1=${w1.toStringAsFixed(1)}, W2=${w2.toStringAsFixed(1)}, W3=${w3.toStringAsFixed(1)}');
       }
-      if (_topClasses.isNotEmpty) {
-        final topNames = _topClasses.map((id) => Transl.svtClassId(id).l).join(', ');
-        _log.writeln('Top classes chosen: $topNames');
-      }
       _log.writeln('');
     }
     for (final a in _attempts) {
@@ -400,7 +435,8 @@ class AutoThreeTurnTeamSearch {
       final mlb = a.ceMLB ? 'MLB' : 'NLB';
       _log.writeln(
         'MC ${a.mcId} | Attacker: ${a.attacker} (${a.className}) | CE: ${a.ce} [$mlb Lv${a.ceLv}] | OC: $oc | '
-        'result: ${a.result} | branches: ${a.branches} | np: ${a.npAttempts} | ${a.elapsedMs}ms',
+        'result: ${a.result} | branches: ${a.branches} | np: ${a.npAttempts} | turns: ${a.turnsVisited} | '
+        'alwaysDeploy: ${a.alwaysDeployCount} | prunes: ${a.prunesWaveNotCleared} | ${a.elapsedMs}ms',
       );
     }
     return _log.toString();
@@ -432,6 +468,11 @@ class _Attempt {
   final String result;
   final int branches;
   final int npAttempts;
+  final int turnsVisited;
+  final int maxSkillDepth;
+  final int alwaysDeployCount;
+  final int prunesWaveNotCleared;
+  final int? skillApplications;
   final int elapsedMs;
 
   _Attempt({
@@ -445,6 +486,11 @@ class _Attempt {
     required this.result,
     required this.branches,
     required this.npAttempts,
+    required this.turnsVisited,
+    required this.maxSkillDepth,
+    required this.alwaysDeployCount,
+    required this.prunesWaveNotCleared,
+    required this.skillApplications,
     required this.elapsedMs,
   });
 }

@@ -47,6 +47,8 @@ class AutoThreeTurnSolver {
   int _skillApplications = 0;
   int _turnsVisited = 0;
   int _maxSkillDepth = 0;
+  int _alwaysDeployCount = 0;
+  int _prunesWaveNotCleared = 0;
 
   String get logText {
     final summary = StringBuffer()
@@ -58,6 +60,8 @@ class AutoThreeTurnSolver {
       ..writeln(' - skillApplications: $_skillApplications')
       ..writeln(' - npAttempts: $_npAttempts')
       ..writeln(' - maxSkillDepth: $_maxSkillDepth')
+      ..writeln(' - alwaysDeployUsed: $_alwaysDeployCount')
+      ..writeln(' - prunesWaveNotCleared: $_prunesWaveNotCleared')
       ..writeln('');
     return '$summary${_log.toString()}';
   }
@@ -65,6 +69,8 @@ class AutoThreeTurnSolver {
   int get npAttempts => _npAttempts;
   int get turnsVisited => _turnsVisited;
   int get maxSkillDepth => _maxSkillDepth;
+  int get alwaysDeployCount => _alwaysDeployCount;
+  int get prunesWaveNotCleared => _prunesWaveNotCleared;
   String get result => _result;
   Duration _elapsed() => _start == null ? Duration.zero : DateTime.now().difference(_start!);
   final bool plugsuitMode;
@@ -154,6 +160,7 @@ class AutoThreeTurnSolver {
     final beforeAlwaysSnapshots = data.snapshots.length;
     final alwaysApplied = await _applyAlwaysDeploySkills(data, remainingTurns: remainingTurns);
     _log.writeln('[Turn$currentTurn] Always-deploy skills applied: ${alwaysApplied.length}');
+    _alwaysDeployCount += alwaysApplied.length;
 
     // Prepare canonical action list once for combination enumeration.
     final canonicalActions = _collectUsableSkillActions(data, currentTurn, usedReplace)
@@ -321,6 +328,7 @@ class AutoThreeTurnSolver {
           return true;
         }
         _log.writeln('  - NP combo failed (${actions.length}); undo');
+        _prunesWaveNotCleared += 1;
         data.popSnapshot();
         if (_checkTimeout()) return false;
       }

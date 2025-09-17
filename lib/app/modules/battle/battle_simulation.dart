@@ -33,6 +33,7 @@ class BattleSimulationPage extends StatefulWidget {
   final BattleOptions options;
   final BattleShareData? replayActions;
   final int? replayTeamId;
+  final String? teamSearchSummary;
 
   BattleSimulationPage({
     super.key,
@@ -41,6 +42,7 @@ class BattleSimulationPage extends StatefulWidget {
     required this.options,
     this.replayActions,
     this.replayTeamId,
+    this.teamSearchSummary,
   });
 
   @override
@@ -57,6 +59,7 @@ class _BattleSimulationPageState extends State<BattleSimulationPage> {
   BattleData get battleData => runtime.battleData;
   QuestPhase get questPhase => runtime.originalQuest;
   BattleOptionsRuntime get options => battleData.options;
+  String _teamSearchSummaryText = '';
 
   @override
   void initState() {
@@ -66,6 +69,8 @@ class _BattleSimulationPageState extends State<BattleSimulationPage> {
     battleData
       ..options = runtime.originalOptions.copy()
       ..context = context;
+    // Initialize cached team search summary (if provided by caller)
+    _teamSearchSummaryText = widget.teamSearchSummary ?? '';
     battleData.options.manualAllySkillTarget = db.settings.battleSim.manualAllySkillTarget;
 
     battleData.recorder.determineUploadEligibility(questPhase, runtime.originalOptions);
@@ -147,6 +152,7 @@ class _BattleSimulationPageState extends State<BattleSimulationPage> {
         region: widget.region,
         options: options2,
         replayActions: plan,
+        teamSearchSummary: _teamSearchSummaryText,
       ),
     );
   }
@@ -248,6 +254,46 @@ class _BattleSimulationPageState extends State<BattleSimulationPage> {
         child: Text(S.current.battle_battle_log),
         onTap: () {
           router.pushPage(BattleLogPage(logger: battleData.battleLogger));
+        },
+      ),
+      PopupMenuItem(
+        child: const Text('Team Search Log'),
+        onTap: () async {
+          final summary = _teamSearchSummaryText.isEmpty ? 'No Team Search logs yet.' : _teamSearchSummaryText;
+          await showDialog(
+            context: context,
+            useRootNavigator: false,
+            builder: (context) {
+              return SimpleConfirmDialog(
+                title: const Text('Team Search Log'),
+                scrollable: true,
+                content: ConstrainedBox(
+                  constraints: const BoxConstraints(maxHeight: 360),
+                  child: SingleChildScrollView(
+                    child: SelectableText(
+                      summary,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                  ),
+                ),
+                showOk: false,
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      copyToClipboard(summary);
+                      Navigator.pop(context);
+                      EasyLoading.showSuccess('Summary copied');
+                    },
+                    child: const Text('Copy Summary'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(S.current.general_close),
+                  ),
+                ],
+              );
+            },
+          );
         },
       ),
       PopupMenuItem(
@@ -893,45 +939,15 @@ class _BattleSimulationPageState extends State<BattleSimulationPage> {
                       baseOptions: runtime.originalOptions,
                     );
                     final plan = await teamSearch.search();
+                    // Cache latest summary for contextual menu
+                    _teamSearchSummaryText = teamSearch.summaryText;
                     if (plan == null) {
                       EasyLoading.dismiss();
-                      await showDialog(
-                        context: context,
-                        useRootNavigator: false,
-                        builder: (context) {
-                          return SimpleConfirmDialog(
-                            title: const Text('No team found'),
-                            scrollable: true,
-                            content: ConstrainedBox(
-                              constraints: const BoxConstraints(maxHeight: 320),
-                              child: SingleChildScrollView(
-                                child: SelectableText(
-                                  teamSearch.summaryText,
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                              ),
-                            ),
-                            showOk: false,
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  copyToClipboard(teamSearch.summaryText);
-                                  Navigator.pop(context);
-                                  EasyLoading.showSuccess('Summary copied');
-                                },
-                                child: const Text('Copy Summary'),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: Text(S.current.general_close),
-                              ),
-                            ],
-                          );
-                        },
-                      );
+                      EasyLoading.showInfo('No team found. Open menu → Team Search Log');
                       return;
                     }
                     EasyLoading.dismiss();
+                    // Immediately replay the winning plan for instant feedback
                     await _openReplayWithPlan(plan);
                     } catch (e, s) {
                     logger.e('Team search failed', e, s);
