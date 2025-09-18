@@ -403,6 +403,8 @@ class AutoThreeTurnSolver {
         if (data.isSkillCondFailed(i, j)) continue;
         // Oberon S3 only on T3
         if (_isOberon(svt) && j == 2 && currentTurn < 3) continue;
+        // v1.3: static ignores (survival-only, crit/star-only, NP readiness, bypass-invul when not needed)
+        if (_isSkillIrrelevant(data, info)) continue;
         list.add(_SkillAction.svt(i, j));
     }
   }
@@ -420,6 +422,7 @@ class AutoThreeTurnSolver {
         if (allowedReplaceTurn != null && allowedReplaceTurn != currentTurn) continue;
       }
       if (!data.canUseMysticCodeSkillIgnoreCoolDown(k)) continue;
+      if (_isSkillIrrelevant(data, info)) continue;
       list.add(_SkillAction.mc(k));
     }
 
@@ -436,6 +439,7 @@ class AutoThreeTurnSolver {
       if (info.chargeTurn != 0) return false;
       if (data.isSkillSealed(i, j)) return false;
       if (data.isSkillCondFailed(i, j)) return false;
+      if (_isSkillIrrelevant(data, info)) return false; // v1.3: do not auto-use irrelevant skills
       return _isAlwaysDeploy(info, remainingTurns: remainingTurns);
     }
 
@@ -451,6 +455,7 @@ class AutoThreeTurnSolver {
     for (int k = 0; k < data.masterSkillInfo.length; k++) {
       final info = data.masterSkillInfo[k];
       if (info.chargeTurn != 0) continue;
+      if (_isSkillIrrelevant(data, info)) continue; // v1.3
       if (!_isAlwaysDeploy(info, remainingTurns: remainingTurns)) continue;
       if (_isReplaceMember(info)) continue;
       await data.activateMysticCodeSkill(k);
@@ -486,6 +491,66 @@ class AutoThreeTurnSolver {
 
   bool _isOberon(BattleServantData svt) {
     return svt.niceSvt?.collectionNo == 316;
+  }
+
+  // v1.3: static ignore filter for skills
+  bool _isSkillIrrelevant(BattleData data, BattleSkillInfoData info) {
+    final classified = SkillClassifier.classifySkill(info);
+    final tags = classified.tags;
+    // If any relevant tag exists, keep
+    bool hasRelevant = tags.contains(SkillTag.npBattery) ||
+        tags.contains(SkillTag.npRefund) ||
+        tags.contains(SkillTag.npRegen) ||
+        tags.contains(SkillTag.damageBuff) ||
+        tags.contains(SkillTag.enemyDebuff) ||
+        tags.contains(SkillTag.relationOverwrite) ||
+        tags.contains(SkillTag.traitProducer) ||
+        tags.contains(SkillTag.fieldProducer);
+
+    // Bypass-invul only if needed this wave
+    final hasBypassOnly = tags.contains(SkillTag.bypassAvoidance) && !hasRelevant;
+    if (hasBypassOnly) {
+      if (!_anyEnemyHasEvadeOrInvincible(data)) {
+        _log.writeln('    [ignore] ${info.lName} (bypass invul not needed)');
+        return true;
+      } else {
+        return false; // needed
+      }
+    }
+
+    // NP readiness (enemy hasten/delay NP) — ignore
+    final skill = info.skill;
+    if (skill != null) {
+      final onlyNpReady = skill.functions.isNotEmpty &&
+          skill.functions.every((f) => f.funcType == FuncType.hastenNpturn || f.funcType == FuncType.delayNpturn);
+      if (onlyNpReady) {
+        _log.writeln('    [ignore] ${info.lName} (enemy NP readiness)');
+        return true;
+      }
+    }
+
+    // Survival/Crit-Star only if no relevant tag present
+    final survivalOnly = tags.contains(SkillTag.survival) && !hasRelevant;
+    final critOnly = tags.contains(SkillTag.critStarOnly) && !hasRelevant;
+    if (survivalOnly || critOnly) {
+      _log.writeln('    [ignore] ${info.lName} (${survivalOnly ? 'survival' : 'crit/star'} only)');
+      return true;
+    }
+
+    return false;
+  }
+
+  bool _anyEnemyHasEvadeOrInvincible(BattleData data) {
+    for (final e in data.onFieldEnemies) {
+      if (e == null || e.hp <= 0) continue;
+      for (final b in e.battleBuff.validBuffs) {
+        final t = b.buff.type;
+        if (t == BuffType.invincible || t == BuffType.avoidance || t == BuffType.specialInvincible) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 }
 
