@@ -5,6 +5,7 @@ import 'package:chaldea/app/battle/models/battle.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/extension.dart';
 import 'package:tuple/tuple.dart';
+import 'package:chaldea/app/modules/battle/simulation/skill_classifier.dart';
 
 /// Auto 3T solver that searches for a 3-turn clear by enumerating
 /// all permutations of usable skills per turn and ending each turn
@@ -160,6 +161,23 @@ class AutoThreeTurnSolver {
     final beforeAlwaysSnapshots = data.snapshots.length;
     final alwaysApplied = await _applyAlwaysDeploySkills(data, remainingTurns: remainingTurns);
     _log.writeln('[Turn$currentTurn] Always-deploy skills applied: ${alwaysApplied.length}');
+    // Log classification for applied skills
+    for (final act in alwaysApplied) {
+      if (act.isMysticCode) {
+        final info = data.masterSkillInfo.getOrNull(act.mcSkillIndex);
+        if (info != null) {
+          final c = SkillClassifier.classifySkill(info);
+          _log.writeln('  >> ${c.toString()}');
+        }
+      } else {
+        final svt = data.onFieldAllyServants.getOrNull(act.svtIndex);
+        final info = svt?.skillInfoList.getOrNull(act.skillIndex);
+        if (info != null) {
+          final c = SkillClassifier.classifySkill(info);
+          _log.writeln('  >> ${c.toString()}');
+        }
+      }
+    }
     _alwaysDeployCount += alwaysApplied.length;
 
     // Prepare canonical action list once for combination enumeration.
@@ -213,6 +231,24 @@ class AutoThreeTurnSolver {
 
     // Otherwise expand by applying one more usable skill (combinations via startIndex) and recurse.
     _log.writeln('[Turn$currentTurn] Usable skills: ${actions.length}');
+    // Log classification summaries (first time at this turn)
+    for (int i = startIndex; i < actions.length; i++) {
+      final act = actions[i];
+      if (act.isMysticCode) {
+        final info = data.masterSkillInfo.getOrNull(act.mcSkillIndex);
+        if (info != null) {
+          final c = SkillClassifier.classifySkill(info);
+          _log.writeln('  - ${c.toString()}');
+        }
+      } else {
+        final svt = data.onFieldAllyServants.getOrNull(act.svtIndex);
+        final info = svt?.skillInfoList.getOrNull(act.skillIndex);
+        if (info != null) {
+          final c = SkillClassifier.classifySkill(info);
+          _log.writeln('  - ${c.toString()}');
+        }
+      }
+    }
     if (actions.isEmpty) {
       _log.writeln('[Turn$currentTurn] Dead end: no skills and NP failed');
       return false;
