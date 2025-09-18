@@ -373,15 +373,18 @@ class AutoThreeTurnSolver {
   }
 
   void _setFirstAliveEnemyAsTarget(BattleData data) {
-    int idx = 0;
+    int idx = -1;
+    int bestHp = -1;
     for (int i = 0; i < data.onFieldEnemies.length; i++) {
       final e = data.onFieldEnemies[i];
       if (e != null && e.hp > 0) {
-        idx = i;
-        break;
+        if (e.hp > bestHp) {
+          bestHp = e.hp;
+          idx = i;
+        }
       }
     }
-    data.enemyTargetIndex = idx;
+    data.enemyTargetIndex = idx < 0 ? 0 : idx;
   }
 
   List<_SkillAction> _collectUsableSkillActions(BattleData data, int currentTurn, bool usedReplace) {
