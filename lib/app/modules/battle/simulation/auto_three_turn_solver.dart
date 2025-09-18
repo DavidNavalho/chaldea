@@ -472,13 +472,23 @@ class AutoThreeTurnSolver {
       if (f.funcType == FuncType.replaceMember) return false;
       if (f.funcType == FuncType.gainNp) return false;
     }
-    // accept if has any long-duration buff (remainingTurns)
-    final lv = info.skillLv <= 0 ? 1 : info.skillLv;
-    for (final f in skill.functions) {
-      if (!f.funcType.isAddState) continue;
-      final vals = f.svals.getOrNull(lv - 1);
-      final turn = vals?.Turn ?? 0;
-      if (turn >= remainingTurns) return true;
+    // v1.4: content-aware always-deploy
+    // require: at least one add-state part with duration >= remainingTurns
+    // and tagged as damage/NP-relevant (not survival/crit-only/utility only)
+    final classified = SkillClassifier.classifySkill(info);
+    for (final part in classified.parts) {
+      if (!part.isAddState) continue;
+      final turn = part.turn ?? 0;
+      if (turn < remainingTurns) continue;
+      final tags = part.tags;
+      final relevant = tags.contains(SkillTag.damageBuff) ||
+          tags.contains(SkillTag.enemyDebuff) ||
+          tags.contains(SkillTag.npRefund) ||
+          tags.contains(SkillTag.npRegen) ||
+          tags.contains(SkillTag.relationOverwrite) ||
+          tags.contains(SkillTag.traitProducer) ||
+          tags.contains(SkillTag.fieldProducer);
+      if (relevant) return true;
     }
     return false;
   }
