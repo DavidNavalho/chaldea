@@ -6,6 +6,8 @@ import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/extension.dart';
 import 'package:tuple/tuple.dart';
 import 'package:chaldea/app/modules/battle/simulation/skill_classifier.dart';
+import 'package:chaldea/app/battle/functions/function_executor.dart';
+import 'package:chaldea/models/gamedata/const_data.dart';
 
 /// Auto 3T solver that searches for a 3-turn clear by enumerating
 /// all permutations of usable skills per turn and ending each turn
@@ -231,6 +233,11 @@ class AutoThreeTurnSolver {
 
     // Otherwise expand by applying one more usable skill (combinations via startIndex) and recurse.
     _log.writeln('[Turn$currentTurn] Usable skills: ${actions.length}');
+    // v1.6: Battery gating – prune if no ally can reach 100% NP this turn even with all remaining batteries
+    if (!_canAnyNpBeReadyThisTurn(data, currentTurn, usedReplace)) {
+      _log.writeln('[Turn$currentTurn] Gating: no NP reachable with remaining batteries – prune');
+      return false;
+    }
     // Log classification summaries (first time at this turn)
     for (int i = startIndex; i < actions.length; i++) {
       final act = actions[i];
@@ -559,6 +566,121 @@ class AutoThreeTurnSolver {
           return true;
         }
       }
+    }
+    return false;
+  }
+
+  // v1.6: Conservative upper-bound check: can any ally reach 100% NP with remaining batteries this turn?
+  bool _canAnyNpBeReadyThisTurn(BattleData data, int currentTurn, bool usedReplace) {
+    final int full = ConstData.constants.fullTdPoint;
+    final allyCount = data.onFieldAllyServants.length;
+    if (allyCount == 0) return false;
+
+    // Current NP per ally
+    final List<int> cur = List<int>.generate(allyCount, (i) => data.onFieldAllyServants[i]?.np ?? 0);
+    // Upper-bound contributions
+    final List<int> flat = List<int>.filled(allyCount, 0);
+    final List<int> pct = List<int>.filled(allyCount, 0); // per-thousand sum
+
+    void applyFuncToAllies(NiceFunction f, int skillLv) {
+      // Only consider pre-NP batteries
+      switch (f.funcType) {
+        case FuncType.gainNp:
+        case FuncType.lossNp:
+        case FuncType.gainMultiplyNp:
+        case FuncType.lossMultiplyNp:
+        case FuncType.gainNpIndividualSum:
+        case FuncType.gainNpBuffIndividualSum:
+        case FuncType.gainNpTargetSum:
+        case FuncType.gainNpCriticalstarSum:
+        case FuncType.gainNpFromTargets:
+        case FuncType.absorbNpturn:
+          break;
+        default:
+          return;
+      }
+
+      final vals = FunctionExecutor.getDataVals(f, skillLv, 1);
+      switch (f.funcType) {
+        case FuncType.gainNp:
+          final add = (vals.Value is num) ? (vals.Value as num).toInt() : (vals.Value ?? 0);
+          for (int i = 0; i < allyCount; i++) flat[i] += add;
+          break;
+        case FuncType.gainMultiplyNp:
+          final addPct = (vals.Value is num) ? (vals.Value as num).toInt() : (vals.Value ?? 0);
+          for (int i = 0; i < allyCount; i++) pct[i] += addPct;
+          break;
+        case FuncType.gainNpIndividualSum:
+        case FuncType.gainNpBuffIndividualSum:
+        case FuncType.gainNpTargetSum:
+          // Over-estimate: assume all eligible count targets match
+          final per = (vals.Value is num) ? (vals.Value as num).toInt() : (vals.Value ?? 0);
+          int countUpper = 0;
+          // rough upper bound: all alive actors (allies+enemies)
+          countUpper = data.nonnullPlayers.length + data.nonnullEnemies.length;
+          final add = per * countUpper;
+          for (int i = 0; i < allyCount; i++) flat[i] += add;
+          break;
+        case FuncType.gainNpCriticalstarSum:
+          final perStar = (vals.Value is num) ? (vals.Value as num).toInt() : (vals.Value ?? 0);
+          final maxStar = vals.Value2 ?? BattleData.kValidStarMax;
+          final usableStars = (data.criticalStars.floor()).clamp(0, maxStar);
+          final addStar = perStar * usableStars;
+          for (int i = 0; i < allyCount; i++) flat[i] += addStar;
+          break;
+        case FuncType.gainNpFromTargets:
+        case FuncType.absorbNpturn:
+          // Upper bound generously: one full bar
+          for (int i = 0; i < allyCount; i++) flat[i] += full;
+          break;
+        default:
+          break;
+      }
+    }
+
+    // Accumulate from ally skills
+    for (int i = 0; i < allyCount; i++) {
+      final svt = data.onFieldAllyServants[i];
+      if (svt == null) continue;
+      for (int j = 0; j < svt.skillInfoList.length; j++) {
+        final info = svt.skillInfoList[j];
+        if (info.chargeTurn != 0) continue;
+        if (data.isSkillSealed(i, j)) continue;
+        if (data.isSkillCondFailed(i, j)) continue;
+        final skill = info.skill;
+        if (skill == null) continue;
+        for (final f in skill.functions) {
+          applyFuncToAllies(f, info.skillLv <= 0 ? 1 : info.skillLv);
+        }
+      }
+    }
+
+    // Accumulate from MC skills
+    for (int k = 0; k < data.masterSkillInfo.length; k++) {
+      final info = data.masterSkillInfo[k];
+      if (info.chargeTurn != 0) continue;
+      final skill = info.skill;
+      if (skill == null) continue;
+      for (final f in skill.functions) {
+        applyFuncToAllies(f, info.skillLv <= 0 ? 1 : info.skillLv);
+      }
+    }
+
+    // Potential Oberon S3 on T3 after plugsuit swap (very conservative upper bound)
+    if (plugsuitMode && !usedReplace && allowedReplaceTurn == currentTurn && currentTurn == 3) {
+      final ob = data.backupAllyServants.getOrNull(0);
+      if (ob?.niceSvt?.collectionNo == 316) {
+        // assume 70% battery available to the attacker (index 0)
+        if (allyCount > 0) flat[0] += (full * 70 ~/ 100);
+      }
+    }
+
+    for (int i = 0; i < allyCount; i++) {
+      final base = cur[i];
+      final npAfterFlat = base + flat[i];
+      final percent = pct[i];
+      final npAfterPct = npAfterFlat + (npAfterFlat * percent ~/ 1000);
+      if (npAfterPct >= full) return true;
     }
     return false;
   }
