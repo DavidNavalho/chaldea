@@ -23,7 +23,6 @@ import 'simulation/battle_log.dart';
 import 'simulation/combat_action_selector.dart';
 import 'simulation/custom_skill_activator.dart';
 import 'simulation/recorder.dart';
-import 'simulation/auto_three_turn_solver.dart';
 import 'simulation/auto_three_turn_team_search.dart';
 import 'simulation/svt_detail.dart';
 
@@ -843,86 +842,7 @@ class _BattleSimulationPageState extends State<BattleSimulationPage> {
               ? Text('Win', style: TextStyle(color: AppTheme(context).tertiary))
               : Text(S.current.battle_attack),
         ),
-        // Auto 3T button
-        FilledButton.icon(
-          onPressed: battleData.isBattleWin
-              ? null
-              : () async {
-                  if (battleData.isRunning) {
-                    EasyLoading.showToast('Previous task is still running');
-                    return;
-                  }
-                  EasyLoading.show(status: 'Auto 3T searching...');
-                  try {
-                    // Run search on a fresh runtime using current setup
-                    final auto = AutoThreeTurnSolver(
-                      quest: questPhase,
-                      region: widget.region,
-                      baseOptions: runtime.originalOptions,
-                      excludeAttackerSkills: false,
-                    );
-                    final plan = await auto.search();
-                    if (plan == null) {
-                      EasyLoading.dismiss();
-                      // Offer to copy or view logs for debugging
-                      await showDialog(
-                        context: context,
-                        useRootNavigator: false,
-                        builder: (context) {
-                          return SimpleConfirmDialog(
-                            title: const Text('No 3T solution found'),
-                            scrollable: true,
-                            content: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('Branches tried: ${auto.branchesTried}'),
-                                const SizedBox(height: 8),
-                                ConstrainedBox(
-                                  constraints: const BoxConstraints(maxHeight: 280),
-                                  child: SingleChildScrollView(
-                                    child: SelectableText(
-                                      auto.logText,
-                                      style: const TextStyle(fontSize: 12),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            showOk: false,
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  copyToClipboard(auto.logText);
-                                  Navigator.pop(context);
-                                  EasyLoading.showSuccess('Logs copied');
-                                },
-                                child: const Text('Copy Logs'),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: Text(S.current.general_close),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                      return;
-                    }
-                    // Replay the actions into current page
-                    await replay(plan);
-                    EasyLoading.showSuccess('Auto 3T found and applied');
-                  } catch (e, s) {
-                    logger.e('Auto 3T failed', e, s);
-                    EasyLoading.showError('Auto 3T failed\n$e');
-                  } finally {
-                    EasyLoading.dismiss();
-                    if (mounted) setState(() {});
-                  }
-                },
-          icon: const Icon(Icons.auto_mode),
-          label: const Text('Auto 3T'),
-        ),
+        // (Removed) Auto 3T button
         FilledButton.icon(
           onPressed: battleData.isBattleWin
               ? null

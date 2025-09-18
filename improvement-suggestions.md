@@ -47,14 +47,12 @@ This document lists potential extensions to reduce search time and improve hit r
   - Add more 3‑turn buffs that are damage‑relevant and do not grant NP (Atk Up, Arts Up, NP Damage Up, relevant trait buffs).
   - Exclude skills that solely grant stars or are otherwise irrelevant to damage/NP in this comp.
 
-- Combinational depth bounds
-  - Bound maximum number of non‑always skills per turn from a heuristic (e.g., useful buff count + battery steps required), not a raw cap.
 
 ## 6) Deduplication Beyond Per‑Turn
 
 - Coarse state memoization
   - Memoize visited states by (wave, turn, OC used flag, attacker NP charge bucket (e.g., number of battery steps to 100%), skill cooldown signature, and a hash of active long buffs).
-  - If a state reappears via a different path, skip it.
+  - If a state reappears via a different path, skip it. Note: this may actually be useful, because two units share the exact same skills (the artorias); But I'd still rather try to do at a later iteration...
 
 -------------
 
@@ -176,4 +174,16 @@ What We Can Read
 
 
 ------------------
-logging data in some format, so we can start comparing performance
+Notes:       
+
+Med prio
+- Enemy-target skills target the first alive enemy. -> target highest HP enemy instead
+- nothing based on aoe vs single target, definitely should do that to remove attacker's pool;
+High prio: reduce combinations
+
+So here's the buckets I see:
+- anything that gains immediate NP (let's reffer to it as NP battery), goes into the NP bucket. Regardless of other skills it may have;
+- after this, any skill that contains at least a state that increases attack in any way OR NP-gain per turn, should go into the immediate activation IF it is within the 3-turn math we already do (i.e. if it lasts 3 turns, apply immediately, if it lasts 2 turns, apply either on turn 3 or 2, but always apply on turn 2, etc); Attack skills are skills that directly impact damage, which includes Atak up, NP damage up, Arts up, .
+- Remaining skills do not need to be activated, if they don't impact NP damage in any way (i believe this can be checked through the engine?). 
+
+does this sound like a plan that can further cut skills? can you evaluate? And suggest additional item s that can potentially cut skills, but i will want to go one step at a time...don't do any implementations yet.
