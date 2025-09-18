@@ -396,6 +396,9 @@ class AutoThreeTurnSolver {
 
   List<_SkillAction> _collectUsableSkillActions(BattleData data, int currentTurn, bool usedReplace) {
     final list = <_SkillAction>[];
+    final int full = ConstData.constants.fullTdPoint;
+    final int attackerNp = data.onFieldAllyServants.getOrNull(0)?.np ?? 0;
+    final bool attackerFull = attackerNp >= full;
 
     // Ally skills (on-field only). Optionally exclude attacker skills.
     for (int i = 0; i < data.onFieldAllyServants.length; i++) {
@@ -412,6 +415,11 @@ class AutoThreeTurnSolver {
         if (_isOberon(svt) && j == 2 && currentTurn < 3) continue;
         // v1.3: static ignores (survival-only, crit/star-only, NP readiness, bypass-invul when not needed)
         if (_isSkillIrrelevant(data, info)) continue;
+        // v1.7b: If attacker already has >=100% NP, skip skills that would add NP to attacker
+        if (attackerFull && _appliesBatteryToAttacker(i, info)) {
+          _log.writeln('    [skip battery at 100%] ${info.lName}');
+          continue;
+        }
         list.add(_SkillAction.svt(i, j));
     }
   }
@@ -430,6 +438,10 @@ class AutoThreeTurnSolver {
       }
       if (!data.canUseMysticCodeSkillIgnoreCoolDown(k)) continue;
       if (_isSkillIrrelevant(data, info)) continue;
+      if (attackerFull && _appliesBatteryToAttacker(-1, info)) {
+        _log.writeln('    [skip battery at 100%] MC: ${info.lName}');
+        continue;
+      }
       list.add(_SkillAction.mc(k));
     }
 
@@ -568,6 +580,46 @@ class AutoThreeTurnSolver {
       }
     }
     return false;
+  }
+
+  // v1.7b: Detect if this skill would add NP to the attacker (index 0)
+  bool _appliesBatteryToAttacker(int svtIndex, BattleSkillInfoData info) {
+    final skill = info.skill;
+    if (skill == null) return false;
+    for (final f in skill.functions) {
+      if (!_isBatteryFunc(f)) continue;
+      final tgt = f.funcTargetType;
+      if (!tgt.canTargetAlly) {
+        // Not an ally-targeting battery; ignore
+        continue;
+      }
+      if (tgt == FuncTargetType.self) {
+        // Self only charges the activator; applies to attacker only if attacker owns this skill
+        if (svtIndex == 0) return true;
+        continue;
+      }
+      // Any ally-targeting (party or single-target) battery would target attacker in our deterministic setup
+      return true;
+    }
+    return false;
+  }
+
+  bool _isBatteryFunc(NiceFunction f) {
+    switch (f.funcType) {
+      case FuncType.gainNp:
+      case FuncType.lossNp:
+      case FuncType.gainMultiplyNp:
+      case FuncType.lossMultiplyNp:
+      case FuncType.gainNpIndividualSum:
+      case FuncType.gainNpBuffIndividualSum:
+      case FuncType.gainNpTargetSum:
+      case FuncType.gainNpCriticalstarSum:
+      case FuncType.gainNpFromTargets:
+      case FuncType.absorbNpturn:
+        return true;
+      default:
+        return false;
+    }
   }
 
   // v1.6: Conservative upper-bound check: can any ally reach 100% NP with remaining batteries this turn?
