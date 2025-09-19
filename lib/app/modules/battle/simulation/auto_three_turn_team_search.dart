@@ -164,6 +164,12 @@ class AutoThreeTurnTeamSearch {
 
   List<Servant> _findOwnedArtsSSR({Set<int>? allowedClasses}) {
     final List<Servant> list = [];
+    // Decide NP shape filter based on wave pattern: if every wave has only 1 on-field enemy, prefer ST; otherwise AoE
+    final bool singlePerWave = quest.stages.every((stage) {
+      final enemies = stage.enemies.where((e) => e.deck == DeckType.enemy).toList();
+      final onField = enemies.where((e) => e.deckId <= stage.enemyFieldPosCountReal).length;
+      return onField <= 1;
+    });
     for (final entry in db.curUser.servants.entries) {
       final colNo = entry.key;
       final status = entry.value;
@@ -173,6 +179,15 @@ class AutoThreeTurnTeamSearch {
       if (svt.rarity != 5) continue;
       if (!svt.noblePhantasms.any((td) => td.svt.card.isArts())) continue;
       if (allowedClasses != null && allowedClasses.isNotEmpty && !allowedClasses.contains(svt.classId)) continue;
+      // Filter by NP target shape
+      final isAoE = _isAoeNpArts(svt);
+      if (singlePerWave) {
+        // only accept ST
+        if (isAoE) continue;
+      } else {
+        // any wave with >1 enemy → prefer AoE only
+        if (!isAoE) continue;
+      }
       list.add(svt);
     }
     // Sort attackers to try best-suited first:
@@ -189,6 +204,28 @@ class AutoThreeTurnTeamSearch {
       return b.atkMax.compareTo(a.atkMax);
     });
     return list;
+  }
+
+  bool _isAoeNpArts(final Servant svt) {
+    // Determine AoE vs ST from NP functions for Arts NPs
+    for (final td in svt.noblePhantasms) {
+      if (!td.svt.card.isArts()) continue;
+      for (final f in td.functions) {
+        if (!f.funcType.isDamageNp) continue;
+        final tgt = f.funcTargetType;
+        // AoE if NP can target multiple enemies
+        if (tgt == FuncTargetType.enemyAll || tgt == FuncTargetType.enemyRange || tgt == FuncTargetType.enemyFull ||
+            tgt == FuncTargetType.enemyOtherFull) {
+          return true;
+        }
+        if (tgt == FuncTargetType.enemyRandom) {
+          // random enemy target treated as multi-target NP (not purely ST)
+          return true;
+        }
+      }
+    }
+    // Default to ST if no AoE marker found
+    return false;
   }
 
   Set<int> _selectTopAttackerClasses() {

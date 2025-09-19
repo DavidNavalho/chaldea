@@ -1,76 +1,57 @@
 # Repository Guidelines
 
-## Current Focus: Laplace Auto 3T Search (v1.1)
-- Goal: Automated 3-turn (3T) search in Laplace Battle Simulation that finds and replays a winning sequence (skills + Mystic Code + one-or-more NPs per turn) using the existing engine.
-- Status: v1.1 stable baseline implemented (fast on common 1 attacker + 2 supports). Further performance/features will be added incrementally (TBD) under explicit specs.
+## Current Focus: Laplace Auto 3T Search (v1.7b)
+- Goal: Automated 3-turn (3T) search in Laplace Battle Simulation that finds and replays a winning sequence (skills + Mystic Code + one-or-more NPs per turn) using the existing engine. Team Search orchestrates candidates and replays the first success.
+- Status: Stable. Team Search is the primary entry; single‑team Auto 3T was removed. Logs available from the menu.
 
 ### Key Files
-- UI entry: `lib/app/modules/battle/battle_simulation.dart` (adds an “Auto 3T” button and failure logs dialog)
-- Solver: `lib/app/modules/battle/simulation/auto_three_turn_solver.dart` (search and logging)
+- UI entry: `lib/app/modules/battle/battle_simulation.dart` (Team Search button; menu → Team Search Log)
+- Solver: `lib/app/modules/battle/simulation/auto_three_turn_solver.dart` (search + logging)
+- Team Search: `lib/app/modules/battle/simulation/auto_three_turn_team_search.dart` (candidate generation + orchestration)
 
-### v1.1 Assumptions
-- Fixed formation; attacker is ally index `0`. End each turn by casting attacker NP only (no face cards).
-- Ally-targeted skills go to attacker; enemy-targeted skills go to the first alive enemy.
-- Mystic Code skills are allowed. Order Change is forbidden.
-- Uses engine APIs exclusively (no custom damage/NP logic). Always replays found plan into the simulator UI.
+### Core Assumptions
+- Attacker is ally index `0`. No face cards; each turn ends by NP(s); attacker NP, if present, goes last.
+- Ally-targeted skills default to attacker; enemy-targeted skills default to single target (highest‑HP).
+- Engine APIs only; found plans are replayed into the simulator UI.
 
-### v1.1 Implemented Behavior
-- Team pattern: 1 attacker (index 0) + 2 supports (1, 2). Inputs (team/CE/MC) are user-provided.
-- Hard constraints:
-  - Exactly 3 turns.
-  - Each turn ends with one or more NPs (from any ally); attacker NP, if present, goes last. If the wave is not cleared after the turn’s NP(s), prune.
-- Skill selection per turn:
-  - Skills are treated as combinations (unordered). Chosen skills are applied in a canonical order for determinism/dedup.
-  - “Always-deploy” at the start of the turn (especially turn 1): auto-apply usable skills that do NOT grant NP (e.g., no `gainNp`), are not Order Change, and grant add-state buffs whose duration ≥ remaining turns; targeting is to attacker/self via rules below.
-  - Any skill that grants NP is not “always-deploy” (kept for combinational search).
-- Targeting rules:
-  - Ally-targeted → attacker (index 0). Self-target stays self. Enemy-targeted → first alive enemy.
-- NP combos per turn:
-  - Try subsets of support NPs first (indices 1,2), then optionally attacker NP last (index 0). Requires at least one NP per turn.
-- Early pruning:
-  - After executing the selected NP set, if the wave didn’t clear, prune immediately (no face cards).
-- Dedup:
-  - Per-turn dedup by unordered set of used skills: tuples `(svtIndex, skillIndex)` and `(mcSkillIndex)` (order ignored), with targeting fixed by rules above.
-- Timeout & logs:
-  - Default timeout 60s. On completion (success/no-solution/timeout) logs include a summary (elapsed, branches, turns visited, skill apps, NP attempts, max skill depth).
-  - On failure a dialog shows the summary + full logs with “Copy Logs”.
+### Implemented Solver Behavior
+- Deterministic delegate (fixed actSet; ptRandom allies → attacker).
+- Order‑insensitive skill combinations per turn; try NP at every prefix (at least one NP per turn). If a wave doesn’t clear after NP(s), prune.
+- Targeting: enemy single‑target actions use the highest‑HP alive enemy.
+- Static ignores: survival‑only; crit/star‑only; “enemy NP readiness” (hasten/delay); bypass‑invul unless any enemy currently has Evade/Invincible.
+- Always‑deploy (content‑aware): auto‑apply only long‑duration add‑states that are damage/NP‑relevant; excludes Order Change and direct `gainNp`.
+- Battery gating (conservative): prune branch if no ally can reach 100% NP this turn even with all remaining castable batteries.
+- Battery cutoff at full: once attacker NP ≥ 100%, skip further skills that would add NP to the attacker (servant or MC).
+- Logging includes summary stats (branches, npAttempts, turnsVisited, maxSkillDepth, alwaysDeploy used, prunes).
 
-### Next Iterations (High-Level, Not Yet Implemented)
-- Additional team archetypes (order change, double attacker, rotations) with tailored rules.
-- Optional feasibility pruning (NP gauge / optimistic damage oracles) if specified.
-- Broader state dedup / memoization if needed.
+### Team Selection (v2)
+- Baseline: 1 attacker + 2 Castoria; variant: Plugsuit + Oberon (Order Change) with OC turn tries T3 → T2 → T1.
+- Attacker pool: owned SSR Arts NP filtered by top 3 classes (bucket scoring) and NP shape:
+  - If every wave has exactly one initial on‑field enemy → single‑target only
+  - Otherwise → AoE only
+- CE candidates: equipped CE (slot 0 exact LB/level), Black Grail #48 (owned), Kaleidoscope #34 (owned).
+- Success auto‑replays in a fresh simulation. Summary is available via menu → Team Search Log (copyable).
 
 ### How to Run (dev)
-1) Setup the team and quest in Simulation Preview.
-2) Press Start to enter Battle Simulation.
-3) Click “Auto 3T” to run the search; on success the actions are replayed; on failure open the dialog to view/copy logs.
+1) Open a quest in Battle Simulation.
+2) Click “Team Search 3T”. On success the plan auto‑replays; use menu → Team Search Log to inspect/copy the summary.
 
-## Team Search 3T (v2)
-- Goal: Don’t assume a fixed team. Explore attacker + CE candidates for a 1‑attacker + 2‑support (double Castoria) composition and run the v1.1 solver to find the first winning plan.
+## Team Search 3T (details)
+- Goal: Explore attacker + CE candidates for a 1‑attacker + 2‑Castoria composition and run the solver to find the first winning plan.
 
 ### Implemented Behavior
 - Supports: two Artoria Caster (Castoria)
   - Slot 1 = owned Castoria (required; search aborts if not owned)
-  - Slot 2 = support Castoria with max reasonable stats (skills 10/10/10, NP1, max level)
-- Attacker candidates: all owned SSR servants with at least one Arts NP
-- Attacker ordering heuristic (to reduce time):
-  1) Berserkers first
-  2) Higher NP level (owned) first
-  3) Higher ATK as tie‑breaker
-- Mystic Code: uses the current user‑selected MC
-- Attacker CE candidates (owned only):
-  - The CE currently equipped on attacker slot in Simulation Preview (exact LB and level)
-  - The Black Grail (#48) — MLB if owned MLB, else best available LB and owned level
-  - Kaleidoscope (#34) — MLB if owned MLB, else best available LB and owned level
-  - Event CE: skipped unless the user equips it in slot 0 (then it’s included automatically)
-- Execution: runs the v1.1 solver per candidate, stops on first success; opens a fresh sim page with the selected formation and replays the actions
+  - Slot 2 = support Castoria (skills 10/10/10, NP1, max level)
+- Attacker candidates: owned SSR Arts NP; filtered by class scores and NP shape (ST vs AoE per node waves)
+- Attacker ordering: Berserkers first; higher NP level; higher ATK tie‑breaker
+- Mystic Code: Summer Streetwear (#330) baseline; Decisive Battle (#210) when testing Plugsuit + Oberon
+- CE candidates (owned only): equipped CE (exact LB/level), Black Grail #48, Kaleidoscope #34
+- Execution: runs the solver per candidate; stops on first success; opens a fresh sim page and replays the actions
 
 ### How to Run (team search)
-1) Set quest and MC in Simulation Preview (leave attacker empty if you want the tool to search)
-2) Start to enter Battle Simulation
-3) Click “Team Search 3T”
-   - On success: a new page opens with the chosen attacker + CE and two Castorias, then replays the run
-   - On failure: simple dialog “No team found” (we can add aggregate logs later if needed)
+1) Open a quest in Battle Simulation
+2) Click “Team Search 3T” (success auto‑replays; use the menu for the summary)
 
 ## Plugsuit + Oberon Extension (v2.1)
 - Goal: Extend team search by adding a plugsuit strategy (Order Change) with Oberon to boost damage/NP, while keeping the same per‑turn solver rules.
