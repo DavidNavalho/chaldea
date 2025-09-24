@@ -843,42 +843,7 @@ class _BattleSimulationPageState extends State<BattleSimulationPage> {
               : Text(S.current.battle_attack),
         ),
         // (Removed) Auto 3T button
-        FilledButton.icon(
-          onPressed: battleData.isBattleWin
-              ? null
-              : () async {
-                  if (battleData.isRunning) {
-                    EasyLoading.showToast('Previous task is still running');
-                    return;
-                  }
-                  EasyLoading.show(status: 'Team Search 3T...');
-                  try {
-                    final teamSearch = AutoThreeTurnTeamSearch(
-                      quest: questPhase,
-                      region: widget.region,
-                      baseOptions: runtime.originalOptions,
-                    );
-                    final plan = await teamSearch.search();
-                    // Cache latest summary for contextual menu
-                    _teamSearchSummaryText = teamSearch.summaryText;
-                    if (plan == null) {
-                      EasyLoading.dismiss();
-                      EasyLoading.showInfo('No team found. Open menu → Team Search Log');
-                      return;
-                    }
-                    EasyLoading.dismiss();
-                    // Immediately replay the winning plan for instant feedback
-                    await _openReplayWithPlan(plan);
-                    } catch (e, s) {
-                    logger.e('Team search failed', e, s);
-                    EasyLoading.showError('Team search failed\n$e');
-                  } finally {
-                    if (mounted) setState(() {});
-                  }
-                },
-          icon: const Icon(Icons.groups),
-          label: const Text('Team Search 3T'),
-        ),
+        // Team Search button moved to Simulation Preview
       ],
     );
     if (battleData.isBattleWin && widget.replayActions == null && questPhase.isLaplaceSharable) {

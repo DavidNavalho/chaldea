@@ -13,6 +13,7 @@ import 'package:chaldea/app/api/chaldea.dart';
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/battle/models/battle.dart';
 import 'package:chaldea/app/modules/battle/battle_simulation.dart';
+import 'package:chaldea/app/modules/battle/simulation/auto_three_turn_team_search.dart';
 import 'package:chaldea/app/modules/battle/teams/teams_query_page.dart';
 import 'package:chaldea/app/modules/bond/bond_bonus.dart';
 import 'package:chaldea/app/modules/common/builders.dart';
@@ -947,6 +948,89 @@ class _SimulationPreviewState extends State<SimulationPreview> {
         ConstrainedBox(
           constraints: const BoxConstraints(minWidth: 90),
           child: Text(' COST: ${options.formation.totalCost} ', textAlign: TextAlign.center),
+        ),
+        FilledButton.icon(
+          onPressed: (questPhase == null)
+              ? null
+              : () async {
+                  if (EasyLoading.isShow) return;
+                  EasyLoading.show(status: 'Team Search 3T...');
+                  try {
+                    // Ensure quest phase is loaded
+                    if (questPhase == null) {
+                      EasyLoading.showError(S.current.battle_no_quest_phase);
+                      return;
+                    }
+                    final teamSearch = AutoThreeTurnTeamSearch(
+                      quest: questPhase!,
+                      region: questRegion,
+                      baseOptions: options,
+                    );
+                    final plan = await teamSearch.search();
+                    if (plan == null) {
+                      EasyLoading.dismiss();
+                      await showDialog(
+                        context: context,
+                        useRootNavigator: false,
+                        builder: (context) => SimpleConfirmDialog(
+                          title: const Text('No team found'),
+                          scrollable: true,
+                          content: ConstrainedBox(
+                            constraints: const BoxConstraints(maxHeight: 360),
+                            child: SingleChildScrollView(
+                              child: SelectableText(teamSearch.summaryText, style: const TextStyle(fontSize: 12)),
+                            ),
+                          ),
+                          showOk: false,
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                copyToClipboard(teamSearch.summaryText);
+                                Navigator.pop(context);
+                                EasyLoading.showSuccess('Summary copied');
+                              },
+                              child: const Text('Copy Summary'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text(S.current.general_close),
+                            ),
+                          ],
+                        ),
+                      );
+                      return;
+                    }
+                    EasyLoading.dismiss();
+                    // Build options/formation from plan to ensure replay team matches the found configuration
+                    final questCopy = QuestPhase.fromJson(questPhase!.toJson());
+                    final options2 = BattleOptions();
+                    options2.fromShareData(plan.options);
+                    final formation = plan.formation;
+                    for (int i = 0; i < 3; i++) {
+                      options2.formation.onFieldSvtDataList[i] =
+                          await PlayerSvtData.fromStoredData(formation.onFieldSvts.getOrNull(i));
+                      options2.formation.backupSvtDataList[i] =
+                          await PlayerSvtData.fromStoredData(formation.backupSvts.getOrNull(i));
+                    }
+                    options2.formation.mysticCodeData.loadStoredData(formation.mysticCode);
+
+                    router.push(
+                      url: Routes.laplaceBattle,
+                      child: BattleSimulationPage(
+                        questPhase: questCopy,
+                        region: questRegion,
+                        options: options2,
+                        replayActions: plan,
+                        teamSearchSummary: teamSearch.summaryText,
+                      ),
+                    );
+                  } catch (e, s) {
+                    logger.e('Team search failed', e, s);
+                    EasyLoading.showError('Team search failed\n$e');
+                  }
+                },
+          icon: const Icon(Icons.groups),
+          label: const Text('Team Search 3T'),
         ),
         FilledButton.icon(
           onPressed: errorMsg != null
