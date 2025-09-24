@@ -13,7 +13,7 @@ import 'package:chaldea/app/api/chaldea.dart';
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/battle/models/battle.dart';
 import 'package:chaldea/app/modules/battle/battle_simulation.dart';
-import 'package:chaldea/app/modules/battle/simulation/auto_three_turn_team_search.dart';
+import 'package:chaldea/custom/team_search/auto_three_turn_team_search.dart';
 import 'package:chaldea/app/modules/battle/teams/teams_query_page.dart';
 import 'package:chaldea/app/modules/bond/bond_bonus.dart';
 import 'package:chaldea/app/modules/common/builders.dart';
@@ -1021,7 +1021,6 @@ class _SimulationPreviewState extends State<SimulationPreview> {
                         region: questRegion,
                         options: options2,
                         replayActions: plan,
-                        teamSearchSummary: teamSearch.summaryText,
                       ),
                     );
                   } catch (e, s) {

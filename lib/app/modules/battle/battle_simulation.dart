@@ -23,7 +23,6 @@ import 'simulation/battle_log.dart';
 import 'simulation/combat_action_selector.dart';
 import 'simulation/custom_skill_activator.dart';
 import 'simulation/recorder.dart';
-import 'simulation/auto_three_turn_team_search.dart';
 import 'simulation/svt_detail.dart';
 
 class BattleSimulationPage extends StatefulWidget {
@@ -32,7 +31,6 @@ class BattleSimulationPage extends StatefulWidget {
   final BattleOptions options;
   final BattleShareData? replayActions;
   final int? replayTeamId;
-  final String? teamSearchSummary;
 
   BattleSimulationPage({
     super.key,
@@ -41,7 +39,6 @@ class BattleSimulationPage extends StatefulWidget {
     required this.options,
     this.replayActions,
     this.replayTeamId,
-    this.teamSearchSummary,
   });
 
   @override
@@ -58,7 +55,6 @@ class _BattleSimulationPageState extends State<BattleSimulationPage> {
   BattleData get battleData => runtime.battleData;
   QuestPhase get questPhase => runtime.originalQuest;
   BattleOptionsRuntime get options => battleData.options;
-  String _teamSearchSummaryText = '';
 
   @override
   void initState() {
@@ -68,8 +64,6 @@ class _BattleSimulationPageState extends State<BattleSimulationPage> {
     battleData
       ..options = runtime.originalOptions.copy()
       ..context = context;
-    // Initialize cached team search summary (if provided by caller)
-    _teamSearchSummaryText = widget.teamSearchSummary ?? '';
     battleData.options.manualAllySkillTarget = db.settings.battleSim.manualAllySkillTarget;
 
     battleData.recorder.determineUploadEligibility(questPhase, runtime.originalOptions);
@@ -151,7 +145,7 @@ class _BattleSimulationPageState extends State<BattleSimulationPage> {
         region: widget.region,
         options: options2,
         replayActions: plan,
-        teamSearchSummary: _teamSearchSummaryText,
+        
       ),
     );
   }
@@ -253,46 +247,6 @@ class _BattleSimulationPageState extends State<BattleSimulationPage> {
         child: Text(S.current.battle_battle_log),
         onTap: () {
           router.pushPage(BattleLogPage(logger: battleData.battleLogger));
-        },
-      ),
-      PopupMenuItem(
-        child: const Text('Team Search Log'),
-        onTap: () async {
-          final summary = _teamSearchSummaryText.isEmpty ? 'No Team Search logs yet.' : _teamSearchSummaryText;
-          await showDialog(
-            context: context,
-            useRootNavigator: false,
-            builder: (context) {
-              return SimpleConfirmDialog(
-                title: const Text('Team Search Log'),
-                scrollable: true,
-                content: ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 360),
-                  child: SingleChildScrollView(
-                    child: SelectableText(
-                      summary,
-                      style: const TextStyle(fontSize: 12),
-                    ),
-                  ),
-                ),
-                showOk: false,
-                actions: [
-                  TextButton(
-                    onPressed: () {
-                      copyToClipboard(summary);
-                      Navigator.pop(context);
-                      EasyLoading.showSuccess('Summary copied');
-                    },
-                    child: const Text('Copy Summary'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: Text(S.current.general_close),
-                  ),
-                ],
-              );
-            },
-          );
         },
       ),
       PopupMenuItem(

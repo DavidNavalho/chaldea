@@ -5,7 +5,7 @@ import 'package:chaldea/app/battle/models/battle.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/extension.dart';
 import 'package:tuple/tuple.dart';
-import 'package:chaldea/app/modules/battle/simulation/skill_classifier.dart';
+import 'package:chaldea/custom/team_search/skill_classifier.dart';
 import 'package:chaldea/app/battle/functions/function_executor.dart';
 import 'package:chaldea/models/gamedata/const_data.dart';
 

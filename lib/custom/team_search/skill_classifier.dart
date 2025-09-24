@@ -4,27 +4,26 @@ import 'package:chaldea/models/gamedata/const_data.dart';
 import 'package:chaldea/app/battle/functions/function_executor.dart';
 import 'package:chaldea/app/battle/models/skill.dart';
 
-/// High-level intent buckets for functions/skills. Purely descriptive; no behavior change.
 enum SkillTag {
-  npBattery, // direct gauge change (incl. aggregate/absorb variants)
-  npRefund, // on-hit refund (attacker-side)
-  npRegen, // per-turn NP gain
-  damageBuff, // attacker-side damage up
-  enemyDebuff, // enemy-side damage taken up
-  bypassAvoidance, // pierce/sure-hit/break-avoidance
-  relationOverwrite, // class/attribute overwrite
-  traitProducer, // add trait(s) to self/enemy
-  fieldProducer, // field change/field trait
-  critStarOnly, // crit/star only effects
-  survival, // guts/invul/def/regen-only
-  utility, // misc non-damage/np utility
+  npBattery,
+  npRefund,
+  npRegen,
+  damageBuff,
+  enemyDebuff,
+  bypassAvoidance,
+  relationOverwrite,
+  traitProducer,
+  fieldProducer,
+  critStarOnly,
+  survival,
+  utility,
 }
 
 class ClassifiedFunction {
   final NiceFunction func;
   final Set<SkillTag> tags;
-  final int? turn; // DataVals.Turn if add-state
-  final int? count; // DataVals.Count
+  final int? turn;
+  final int? count;
   final bool isAddState;
   ClassifiedFunction({
     required this.func,
@@ -39,8 +38,8 @@ class ClassifiedSkill {
   final BattleSkillInfoData info;
   final List<ClassifiedFunction> parts;
   final Set<SkillTag> tags;
-  final int maxTurn; // max DataVals.Turn across add-state parts (0 if none)
-  final bool hasDirectBattery; // contains any direct NP battery func type
+  final int maxTurn;
+  final bool hasDirectBattery;
   ClassifiedSkill({
     required this.info,
     required this.parts,
@@ -148,7 +147,6 @@ class SkillClassifier {
   }
 
   static bool _isFieldProducer(final NiceFunction f) {
-    // function-level field changes
     return f.funcType == FuncType.addFieldChangeToField ||
         _hasAnyAction(f.buff, const [BuffAction.toFieldChangeField, BuffAction.toFieldSubIndividualityField]);
   }
@@ -180,8 +178,6 @@ class SkillClassifier {
   static ClassifiedFunction classifyFunction(final NiceFunction func, {required int skillLevel}) {
     final tags = <SkillTag>{};
     if (_isBatteryFunc(func)) tags.add(SkillTag.npBattery);
-
-    // Add-state derived tags
     if (func.funcType.isAddState) {
       final buff = func.buff;
       if (_isDamageBuff(buff)) tags.add(SkillTag.damageBuff);
@@ -193,14 +189,11 @@ class SkillClassifier {
       if (_isTraitProducer(buff)) tags.add(SkillTag.traitProducer);
       if (_isCritStarOnly(buff)) tags.add(SkillTag.critStarOnly);
       if (_isSurvival(buff)) tags.add(SkillTag.survival);
-      // Utility catchall: no specific tag matched
       if (tags.isEmpty) tags.add(SkillTag.utility);
     } else {
-      // Non add-state: field changes, others
       if (_isFieldProducer(func)) tags.add(SkillTag.fieldProducer);
     }
 
-    // Pull duration if add-state
     int? turn;
     int? count;
     if (func.funcType.isAddState) {
@@ -239,3 +232,4 @@ class SkillClassifier {
     return ClassifiedSkill(info: info, parts: parts, tags: tags, maxTurn: maxTurn, hasDirectBattery: hasBattery);
   }
 }
+

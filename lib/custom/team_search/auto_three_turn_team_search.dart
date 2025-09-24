@@ -1,5 +1,5 @@
 import 'package:chaldea/app/battle/models/user.dart';
-import 'package:chaldea/app/modules/battle/simulation/auto_three_turn_solver.dart';
+import 'package:chaldea/custom/team_search/auto_three_turn_solver.dart';
 import 'package:chaldea/models/db.dart';
 import 'package:chaldea/models/gamedata/gamedata.dart';
 import 'package:chaldea/models/gamedata/common.dart';
