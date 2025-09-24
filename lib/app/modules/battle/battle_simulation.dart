@@ -12,7 +12,6 @@ import 'package:chaldea/app/modules/common/builders.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/packages/app_info.dart';
-import 'package:chaldea/packages/logger.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
 import '../../battle/interactions/_delegate.dart';
@@ -796,8 +795,6 @@ class _BattleSimulationPageState extends State<BattleSimulationPage> {
               ? Text('Win', style: TextStyle(color: AppTheme(context).tertiary))
               : Text(S.current.battle_attack),
         ),
-        // (Removed) Auto 3T button
-        // Team Search button moved to Simulation Preview
       ],
     );
     if (battleData.isBattleWin && widget.replayActions == null && questPhase.isLaplaceSharable) {
