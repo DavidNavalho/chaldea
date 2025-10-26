@@ -440,7 +440,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = 4Z25Q4L3F2;
+				DEVELOPMENT_TEAM = WAF9PC2Y8K;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Chaldea/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -582,7 +582,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = 4Z25Q4L3F2;
+				DEVELOPMENT_TEAM = WAF9PC2Y8K;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Chaldea/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
@@ -608,7 +608,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_TEAM = 4Z25Q4L3F2;
+				DEVELOPMENT_TEAM = WAF9PC2Y8K;
 				ENABLE_HARDENED_RUNTIME = YES;
 				INFOPLIST_FILE = Chaldea/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
