@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:chaldea/app/modules/common/filter_group.dart';
 import 'package:chaldea/app/modules/common/filter_page_base.dart';
+import 'package:chaldea/custom/shared_teams/my_box_compatibility.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/extension.dart';
@@ -51,6 +52,9 @@ class TeamFilterData with FilterDataMixin {
   final mysticCode = FilterGroupData<int>();
   final miscOptions = FilterGroupData<TeamFilterMiscType>();
   final eventWarId = FilterRadioData<int>();
+  bool myBoxOnly = false;
+  bool prioritizeMyBox = true;
+  TeamBoxMatchStrictness myBoxStrictness = TeamBoxMatchStrictness.strict;
 
   @override
   List<FilterGroupData> get groups => [
@@ -72,6 +76,9 @@ class TeamFilterData with FilterDataMixin {
     favorite = false;
     useSvtTdLv = 0;
     blockCEMLBOnly.clear();
+    myBoxOnly = false;
+    prioritizeMyBox = true;
+    myBoxStrictness = TeamBoxMatchStrictness.strict;
   }
 
   bool filter(BattleShareData data) {
@@ -223,7 +230,18 @@ class TeamFilterData with FilterDataMixin {
       }
     }
 
+    if (myBoxOnly) {
+      final score = evaluateMyBox(data);
+      if (!score.matches(myBoxStrictness)) {
+        return false;
+      }
+    }
+
     return true;
+  }
+
+  TeamBoxMatchScore evaluateMyBox(BattleShareData data) {
+    return evaluateMyBoxScore(data);
   }
 }
 
@@ -319,6 +337,48 @@ class _TeamFilterPageState extends FilterPageState<TeamFilterData, TeamFilterPag
                 },
               ),
             ),
+          getGroup(
+            header: 'My Box',
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Checkbox(
+                    value: filterData.myBoxOnly,
+                    onChanged: (v) {
+                      filterData.myBoxOnly = v ?? false;
+                      update();
+                    },
+                  ),
+                  const Text('Only Compatible Teams'),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Checkbox(
+                    value: filterData.prioritizeMyBox,
+                    onChanged: (v) {
+                      filterData.prioritizeMyBox = v ?? false;
+                      update();
+                    },
+                  ),
+                  const Text('Prioritize Compatible Teams'),
+                ],
+              ),
+              DropdownButton<TeamBoxMatchStrictness>(
+                isDense: true,
+                value: filterData.myBoxStrictness,
+                items: TeamBoxMatchStrictness.values
+                    .map((e) => DropdownMenuItem(value: e, child: Text('Match Mode: ${e.shownName}')))
+                    .toList(),
+                onChanged: (v) {
+                  if (v != null) filterData.myBoxStrictness = v;
+                  update();
+                },
+              ),
+            ],
+          ),
           FilterGroup<int>(
             title: Text(S.current.noble_phantasm, style: textStyle),
             options: [CardType.arts.value, CardType.buster.value, CardType.quick.value],

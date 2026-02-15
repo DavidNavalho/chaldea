@@ -7,6 +7,8 @@ import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/modules/battle/formation/formation_card.dart';
 import 'package:chaldea/app/modules/battle/simulation_preview.dart';
 import 'package:chaldea/app/modules/common/builders.dart';
+import 'package:chaldea/custom/shared_teams/my_box_batch_controller.dart';
+import 'package:chaldea/custom/shared_teams/my_box_compatibility.dart';
 import 'package:chaldea/app/modules/home/subpage/login_page.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/api/api.dart';
@@ -56,6 +58,8 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
   int offset = 0;
   TeamQueryResult queryResult = TeamQueryResult(data: []);
   final filterData = TeamFilterData(true);
+  final _myBoxBatch = SharedTeamsMyBoxBatchController();
+  bool _isRunningMyBoxBatch = false;
 
   @override
   Iterable<UserBattleData> get wholeData => queryResult.data;
@@ -68,7 +72,7 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
 
   @override
   Widget build(BuildContext context) {
-    filterShownList();
+    filterShownList(compare: _compareRecord);
     if (db.settings.remoteConfig.versionConstraints?.laplace?.isThisAppInvalid() ?? false) {
       return Center(child: Text(S.current.update_app_hint));
     }
@@ -85,6 +89,11 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
         TeamQueryMode.ranking => 'Ranking',
       }),
       actions: [
+        IconButton(
+          icon: const Icon(Icons.play_circle_outline),
+          tooltip: 'Evaluate Top $kMyBoxBatchLimit Compatible Teams (Strict + Relaxed)',
+          onPressed: _isRunningMyBoxBatch ? null : _runMyBoxBatchEvaluation,
+        ),
         IconButton(
           icon: const Icon(Icons.filter_alt),
           tooltip: S.current.filter,
@@ -112,6 +121,7 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
                 availableMCs: mcIds,
                 availableEventWarIds: eventWarIds,
                 onChanged: (_) {
+                  _myBoxBatch.clearScoreCache();
                   if (mounted) {
                     setState(() {});
                   }
@@ -151,6 +161,12 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
       }
       buttons = [
         Text(rangeHint, style: Theme.of(context).textTheme.bodySmall),
+        if (_myBoxBatch.hasResults)
+          Text(
+            'MyBox Batch ${_myBoxBatch.winCount}/${_myBoxBatch.results.length} win'
+            ' (${_myBoxBatch.uniqueWinCount} unique)',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         const SizedBox(width: 8),
         TextButton(
           onPressed: offset == 0 ? null : () => _queryTeams(offset - pageSize),
@@ -349,6 +365,21 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
     final team = record.decoded;
     if (team == null) return const SizedBox.shrink();
 
+    if (filterData.myBoxOnly || filterData.prioritizeMyBox || mode == TeamQueryMode.quest) {
+      final boxScore = _myBoxBatch.scoreOf(record, filterData.evaluateMyBox);
+      final strictMatched = boxScore.matches(TeamBoxMatchStrictness.strict);
+      final relaxedMatched = boxScore.matches(TeamBoxMatchStrictness.relaxed);
+      final matched = strictMatched ? 'Strict' : (relaxedMatched ? 'Relaxed' : 'No');
+      spans.add(
+        TextSpan(
+          text:
+              'MyBox $matched [H${boxScore.hardMismatch}, W${boxScore.weightedPenalty}, D${boxScore.requirementDeficit}, S${boxScore.usedServantSlots}]',
+        ),
+      );
+    }
+    final batchLabel = _myBoxBatch.extraInfoLabel(record);
+    if (batchLabel != null) spans.add(TextSpan(text: batchLabel));
+
     if (team.isCritTeam) {
       spans.add(TextSpan(text: S.current.critical_team));
     }
@@ -488,6 +519,14 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
   Widget buildTeamActions(UserBattleData record) {
     List<Widget> actions = [];
     final teamData = record.decoded;
+    final boxScore = teamData == null ? null : _myBoxBatch.scoreOf(record, filterData.evaluateMyBox);
+    final strictCompatible = boxScore?.matches(TeamBoxMatchStrictness.strict) == true;
+    final relaxedCompatible = boxScore?.matches(TeamBoxMatchStrictness.relaxed) == true;
+    final batchResult = _myBoxBatch.resultOf(record);
+    final batchWon = _myBoxBatch.isBatchWinner(record);
+    final batchLabel = _myBoxBatch.badgeLabel(record);
+    final batchTooltip = _myBoxBatch.badgeTooltip(record);
+    final batchColor = _myBoxBatch.badgeColor(record, context);
     actions.add(
       IconButton(
         onPressed: () {
@@ -501,6 +540,29 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
         tooltip: S.current.favorite_teams,
       ),
     );
+    if (batchResult != null && batchLabel != null && batchTooltip != null && batchColor != null) {
+      actions.add(
+        Tooltip(
+          message: batchTooltip,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(color: batchColor, borderRadius: BorderRadius.circular(999)),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(batchWon ? Icons.emoji_events : Icons.cancel, size: 14, color: Colors.white),
+                const SizedBox(width: 4),
+                Text(
+                  batchLabel,
+                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     if (mode == TeamQueryMode.user || record.userId == curUserId || secrets.user?.isTeamMod == true) {
       actions.add(
@@ -532,6 +594,19 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
             replaySimulation(detail: teamData, replayTeamId: record.id);
           },
           child: Text(S.current.details),
+        ),
+      );
+    }
+    if (teamData != null && relaxedCompatible) {
+      final isStrict = strictCompatible;
+      final runStyle = _myBoxBatch.runButtonStyle(record, strictCompatible: isStrict);
+      actions.add(
+        FilledButton(
+          onPressed: () {
+            replaySimulationWithMyBox(detail: teamData, replayTeamId: record.id);
+          },
+          style: FilledButton.styleFrom(backgroundColor: runStyle.backgroundColor),
+          child: Text(runStyle.label),
         ),
       );
     }
@@ -583,6 +658,83 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
       return false;
     }
     return filterData.filter(data);
+  }
+
+  int _compareRecord(UserBattleData a, UserBattleData b) {
+    return _myBoxBatch.compareRecords(
+      a: a,
+      b: b,
+      prioritizeMyBox: filterData.prioritizeMyBox,
+      strictness: filterData.myBoxStrictness,
+      evaluator: filterData.evaluateMyBox,
+      fallbackCompare: _defaultCompareRecord,
+    );
+  }
+
+  int _defaultCompareRecord(UserBattleData a, UserBattleData b) {
+    int c = (a.userId == curUserId ? 0 : 1).compareTo(b.userId == curUserId ? 0 : 1);
+    if (c != 0) return c;
+    c = (db.curUser.battleSim.favoriteTeams[a.questId]?.contains(a.id) == true ? 0 : 1).compareTo(
+      db.curUser.battleSim.favoriteTeams[b.questId]?.contains(b.id) == true ? 0 : 1,
+    );
+    if (c != 0) return c;
+    c = (-a.votes.up + a.votes.down).compareTo(-b.votes.up + b.votes.down);
+    if (c != 0) return c;
+    return a.id.compareTo(b.id);
+  }
+
+  Future<void> _runMyBoxBatchEvaluation() async {
+    if (_isRunningMyBoxBatch) return;
+
+    filterShownList(compare: _compareRecord);
+    if (shownList.isEmpty) {
+      EasyLoading.showInfo('No teams available.');
+      return;
+    }
+
+    final selection = _myBoxBatch.selectCandidates(
+      shownList.toList(),
+      limit: kMyBoxBatchLimit,
+      evaluator: filterData.evaluateMyBox,
+    );
+    if (selection.isEmpty) {
+      EasyLoading.showInfo('No strict/relaxed compatible teams found in top $kMyBoxBatchLimit.');
+      return;
+    }
+
+    if (mounted) {
+      setState(() {
+        _isRunningMyBoxBatch = true;
+        _myBoxBatch.clearBatchResults();
+      });
+    }
+
+    EasyLoading.showProgress(0, status: 'Running 0/${selection.candidates.length} (Strict+Relaxed)');
+    final report = await _myBoxBatch.runCandidates(
+      selection,
+      onProgress: (done, total) {
+        EasyLoading.showProgress(done / total, status: 'Running $done/$total (Strict+Relaxed)');
+      },
+    );
+    EasyLoading.dismiss();
+
+    if (mounted) {
+      setState(() {
+        _isRunningMyBoxBatch = false;
+      });
+    }
+
+    if (report.error != null) {
+      logger.e('My Box batch evaluation failed', report.error);
+      EasyLoading.showError(
+        'Batch ended with error: ${report.error}. Partial results: ${report.wins}/${report.total} wins.',
+      );
+    } else {
+      EasyLoading.showSuccess(
+        'Finished: ${report.wins}/${report.total} wins, ${report.uniqueWins} unique winning compositions '
+        '(strict: ${report.strictCount}, relaxed-only: ${report.relaxedOnlyCount}).',
+      );
+    }
   }
 
   Future<void> _queryTeams(int offset, {bool refresh = false}) async {
@@ -640,6 +792,7 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
     }
     TeamQueryResult? result = await task;
     if (result != null) {
+      _myBoxBatch.clearAll();
       if ((result.total ?? 0) > result.limit) {
         pageSize = result.limit;
       }
