@@ -124,31 +124,6 @@ class _BattleSimulationPageState extends State<BattleSimulationPage> {
     battleData.delegate = null;
   }
 
-  Future<void> _openReplayWithPlan(BattleShareData plan) async {
-    // Build options and formation from the plan
-    final options2 = BattleOptions();
-    options2.fromShareData(plan.options);
-    final formation = plan.formation;
-    for (int i = 0; i < 3; i++) {
-      options2.formation.onFieldSvtDataList[i] = await PlayerSvtData.fromStoredData(formation.onFieldSvts.getOrNull(i));
-      options2.formation.backupSvtDataList[i] = await PlayerSvtData.fromStoredData(formation.backupSvts.getOrNull(i));
-    }
-    options2.formation.mysticCodeData.loadStoredData(formation.mysticCode);
-
-    final questCopy = QuestPhase.fromJson(questPhase.toJson());
-
-    router.push(
-      url: Routes.laplaceBattle,
-      child: BattleSimulationPage(
-        questPhase: questCopy,
-        region: widget.region,
-        options: options2,
-        replayActions: plan,
-        
-      ),
-    );
-  }
-
   Future<void> _replaySkill(BattleRecordData action) async {
     if (action.skill == null) return;
 

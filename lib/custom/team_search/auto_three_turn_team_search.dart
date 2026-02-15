@@ -16,12 +16,23 @@ class AutoThreeTurnTeamSearch {
   final Region? region;
   final BattleOptions baseOptions; // used for MC/options; formation overridden per candidate
   final Duration timeout;
+  // Strategy knobs
+  final bool includeRarity4Attackers; // include 4-star Arts NP attackers
+  final int? maxAttackersToTry; // optional cap on attacker candidates
+  final double classKeepRatio; // keep classes >= ratio * best score
+  final int minClassesKept; // ensure at least this many classes kept if available
+  final int? maxClassesKept; // optional hard cap of classes kept
 
   AutoThreeTurnTeamSearch({
     required this.quest,
     required this.region,
     required this.baseOptions,
     this.timeout = const Duration(seconds: 60),
+    this.includeRarity4Attackers = true,
+    this.maxAttackersToTry,
+    this.classKeepRatio = 0.75,
+    this.minClassesKept = 2,
+    this.maxClassesKept = 3,
   });
 
   Future<BattleShareData?> search() async {
@@ -38,10 +49,13 @@ class AutoThreeTurnTeamSearch {
     final castoriaSupport = castoriaOwned; // use same servant entry; we will mark as support
 
     // Compute top attacker classes based on enemy class relations.
-    final topClasses = _selectTopAttackerClasses();
+    final topClasses = _selectTopAttackerClasses(includeRarity4: includeRarity4Attackers);
 
     // Build attacker candidates: all owned SSR servants with Arts NP, filtered by top classes.
-    final attackers = _findOwnedArtsSSR(allowedClasses: topClasses);
+    var attackers = _findOwnedArtsSSR(allowedClasses: topClasses, includeRarity4: includeRarity4Attackers);
+    if (maxAttackersToTry != null && attackers.length > maxAttackersToTry!) {
+      attackers = attackers.take(maxAttackersToTry!).toList();
+    }
     _candidateAttackersCount = attackers.length;
     if (attackers.isEmpty) return null;
 
@@ -65,7 +79,7 @@ class AutoThreeTurnTeamSearch {
           ..mysticCode = db.gameData.mysticCodes[330]
           ..level = 10;
         optA.formation = BattleTeamSetup(
-          onFieldSvtDataList: onField,
+          svts: onField,
           mysticCodeData: mcA,
         );
         final solverA = AutoThreeTurnSolver(
@@ -90,7 +104,7 @@ class AutoThreeTurnTeamSearch {
       }
 
       // Pass B: Plugsuit (#210) + Oberon in backup (slot 4). OC priority 3 -> 2 -> 1.
-      final oberon = db.gameData.servants[316];
+      final oberon = db.gameData.servantsNoDup[316];
       if (oberon != null) {
         for (final ce in ceCandidates) {
           for (final ocTurn in const [3, 2, 1]) {
@@ -109,8 +123,7 @@ class AutoThreeTurnTeamSearch {
               ..mysticCode = db.gameData.mysticCodes[210]
               ..level = 10;
             optB.formation = BattleTeamSetup(
-              onFieldSvtDataList: pairs.$1,
-              backupSvtDataList: pairs.$2,
+              svts: [...pairs.$1, ...pairs.$2],
               mysticCodeData: mcB,
             );
             final solverB = AutoThreeTurnSolver(
@@ -148,13 +161,13 @@ class AutoThreeTurnTeamSearch {
       final colNo = entry.key;
       final status = entry.value;
       if (status.cur.favorite != true) continue;
-      final svt = db.gameData.servants[colNo];
+      final svt = db.gameData.servantsNoDup[colNo];
       if (svt == null) continue;
       if (svt.classId != SvtClass.caster.value) continue;
       final n = svt.name.toLowerCase();
       if (patterns.any((p) => n.contains(p.toLowerCase()))) {
         // ensure it's truly Castoria by checking she has Arts NP and skills consistent
-        if (svt.noblePhantasms.any((td) => td.svt.card.isArts())) {
+        if (svt.noblePhantasms.any((td) => CardType.isArts(td.svt.card))) {
           return svt;
         }
       }
@@ -162,7 +175,7 @@ class AutoThreeTurnTeamSearch {
     return null;
   }
 
-  List<Servant> _findOwnedArtsSSR({Set<int>? allowedClasses}) {
+  List<Servant> _findOwnedArtsSSR({Set<int>? allowedClasses, bool includeRarity4 = true}) {
     final List<Servant> list = [];
     // Decide NP shape filter based on wave pattern: if every wave has only 1 on-field enemy, prefer ST; otherwise AoE
     final bool singlePerWave = quest.stages.every((stage) {
@@ -174,10 +187,10 @@ class AutoThreeTurnTeamSearch {
       final colNo = entry.key;
       final status = entry.value;
       if (status.cur.favorite != true) continue; // owned
-      final svt = db.gameData.servants[colNo];
+      final svt = db.gameData.servantsNoDup[colNo];
       if (svt == null) continue;
-      if (svt.rarity != 5) continue;
-      if (!svt.noblePhantasms.any((td) => td.svt.card.isArts())) continue;
+      if (!(svt.rarity == 5 || (includeRarity4 && svt.rarity == 4))) continue;
+      if (!svt.noblePhantasms.any((td) => CardType.isArts(td.svt.card))) continue;
       if (allowedClasses != null && allowedClasses.isNotEmpty && !allowedClasses.contains(svt.classId)) continue;
       // Filter by NP target shape
       final isAoE = _isAoeNpArts(svt);
@@ -201,6 +214,8 @@ class AutoThreeTurnTeamSearch {
       final npA = db.curUser.svtStatusOf(a.collectionNo).cur.npLv;
       final npB = db.curUser.svtStatusOf(b.collectionNo).cur.npLv;
       if (npA != npB) return npB.compareTo(npA);
+      // Prefer higher rarity when NP level ties
+      if (a.rarity != b.rarity) return b.rarity.compareTo(a.rarity);
       return b.atkMax.compareTo(a.atkMax);
     });
     return list;
@@ -209,7 +224,7 @@ class AutoThreeTurnTeamSearch {
   bool _isAoeNpArts(final Servant svt) {
     // Determine AoE vs ST from NP functions for Arts NPs
     for (final td in svt.noblePhantasms) {
-      if (!td.svt.card.isArts()) continue;
+      if (!CardType.isArts(td.svt.card)) continue;
       for (final f in td.functions) {
         if (!f.funcType.isDamageNp) continue;
         final tgt = f.funcTargetType;
@@ -228,13 +243,13 @@ class AutoThreeTurnTeamSearch {
     return false;
   }
 
-  Set<int> _selectTopAttackerClasses() {
+  Set<int> _selectTopAttackerClasses({bool includeRarity4 = true}) {
     // Collect defender classes per wave (up to 3 waves)
     final waves = quest.stages;
     final weights = <double>[1.0, 1.2, 1.5];
-    // Candidate attacker classes come from owned SSR Arts list
-    final allSSRArts = _findOwnedArtsSSR();
-    final candidateClasses = allSSRArts.map((e) => e.classId).toSet();
+    // Candidate attacker classes come from owned Arts attackers (SSR + optional SR)
+    final allArts = _findOwnedArtsSSR(includeRarity4: includeRarity4);
+    final candidateClasses = allArts.map((e) => e.classId).toSet();
     if (candidateClasses.isEmpty) return candidateClasses;
 
     final List<_ClassScore> scores = [];
@@ -262,10 +277,9 @@ class AutoThreeTurnTeamSearch {
         avgs[wi] = avgBucket;
         total += avgBucket * weights[wi];
       }
-      // Prune class that is disadvantaged across all present waves
-      final validWaves = avgs.where((v) => v > 0).toList();
-      final allWeak = validWaves.isNotEmpty && validWaves.every((v) => v == 0);
-      if (!allWeak) {
+      // Prune classes that are never neutral or advantaged across evaluated waves
+      final hasAnyNeutralOrAdvantage = avgs.any((v) => v >= 1.0);
+      if (hasAnyNeutralOrAdvantage) {
         scores.add(_ClassScore(cls, total, avgs));
       }
     }
@@ -282,7 +296,17 @@ class AutoThreeTurnTeamSearch {
       }
       return a.classId.compareTo(b.classId);
     });
-    final top = scores.take(3).map((e) => e.classId).toSet();
+    // Keep within ratio of the best score; enforce min/max kept
+    final double best = scores.first.total;
+    final double threshold = best * classKeepRatio;
+    List<_ClassScore> kept = scores.where((s) => s.total >= threshold).toList();
+    if (kept.length < minClassesKept && scores.isNotEmpty) {
+      kept = scores.take(minClassesKept).toList();
+    }
+    if (maxClassesKept != null && kept.length > maxClassesKept!) {
+      kept = kept.take(maxClassesKept!).toList();
+    }
+    final top = kept.map((e) => e.classId).toSet();
     _topClasses = top.toList();
     return top;
   }
@@ -290,7 +314,7 @@ class AutoThreeTurnTeamSearch {
   List<_CeChoice> _resolveAttackerCeCandidates() {
     final choices = <_CeChoice>[];
     // 1) currently equipped CE in UI slot 0 (if any) — use exactly the equipped LB and level
-    final curEquip = baseOptions.formation.onFieldSvtDataList[0].equip1;
+    final curEquip = baseOptions.formation.svts[0].equip1;
     final curCe = curEquip.ce;
     if (curCe != null) {
       choices.add(_CeChoice(curCe, curEquip.limitBreak, lv: curEquip.lv));

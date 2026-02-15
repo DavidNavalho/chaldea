@@ -7,7 +7,6 @@ import 'package:chaldea/utils/extension.dart';
 import 'package:tuple/tuple.dart';
 import 'package:chaldea/custom/team_search/skill_classifier.dart';
 import 'package:chaldea/app/battle/functions/function_executor.dart';
-import 'package:chaldea/models/gamedata/const_data.dart';
 
 /// Auto 3T solver that searches for a 3-turn clear by enumerating
 /// all permutations of usable skills per turn and ending each turn
@@ -106,10 +105,7 @@ class AutoThreeTurnSolver {
     // Initialize battle using the current formation and settings.
     await data.init(
       quest,
-      [
-        ...runtime.originalOptions.formation.onFieldSvtDataList,
-        ...runtime.originalOptions.formation.backupSvtDataList,
-      ],
+      runtime.originalOptions.formation.svts,
       runtime.originalOptions.formation.mysticCodeData,
     );
     _log.writeln(' - init: wave=${data.waveCount}, enemyOnField=${data.enemyOnFieldCount}');

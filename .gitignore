@@ -76,7 +76,6 @@ doc/api/
 # See https://dart.dev/guides/libraries/private-files#pubspeclock
 # pubspec.lock
 
-
 # Web related
 
 # Symbolication related
@@ -360,3 +359,6 @@ Temporary Items
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+
+# FVM Version Cache
+.fvm/

@@ -1007,10 +1007,11 @@ class _SimulationPreviewState extends State<SimulationPreview> {
                     options2.fromShareData(plan.options);
                     final formation = plan.formation;
                     for (int i = 0; i < 3; i++) {
-                      options2.formation.onFieldSvtDataList[i] =
-                          await PlayerSvtData.fromStoredData(formation.onFieldSvts.getOrNull(i));
-                      options2.formation.backupSvtDataList[i] =
-                          await PlayerSvtData.fromStoredData(formation.backupSvts.getOrNull(i));
+                      // New formation API uses a single svts list (0..2 on-field, 3..5 backup)
+                      options2.formation.svts[i] =
+                          await PlayerSvtData.fromStoredData(formation.svts.getOrNull(i));
+                      options2.formation.svts[i + 3] =
+                          await PlayerSvtData.fromStoredData(formation.svts.getOrNull(i + 3));
                     }
                     options2.formation.mysticCodeData.loadStoredData(formation.mysticCode);
 
