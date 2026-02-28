@@ -1,5 +1,40 @@
 # Repository Guidelines
 
+## Fork Purpose And Strategy
+- This repository is a personal fork of upstream `chaldea` with one main goal:
+  maintain and evolve automated team-identification and simulation workflows
+  (Laplace Auto 3T and Shared Teams "My Box" tooling).
+- Upstream remains the source of truth for the core app. This fork should stay close
+  to upstream so updates can be pulled frequently with minimal merge pain.
+
+### Session Handoff
+- Use `chaldea/HANDOFF.md` as the canonical cross-computer handoff file.
+- At the end of each session, update the "Last Session Snapshot" in `HANDOFF.md`.
+- At the start of each session, follow the "Quick Resume Checklist" in `HANDOFF.md`.
+
+### Core Development Rules For The Fork
+- Prefer keeping custom logic in isolated modules under `lib/custom/...`.
+- Keep edits to upstream core files (`lib/app/...`, platform files, etc.) as thin adapters:
+  UI entry points, small wiring hooks, and integration boundaries only.
+- Avoid broad refactors in upstream-owned files unless strictly required.
+- If behavior can be implemented either in core or custom modules, choose custom modules.
+
+### Upstream Sync Workflow
+- Canonical sync command: `./scripts/sync_fork.sh`
+- Default behavior:
+  - stashes local dirty changes,
+  - fetches `upstream` and `origin`,
+  - rebases local `main` onto `upstream/main`,
+  - pushes to `origin` with `--force-with-lease`,
+  - leaves stash for manual `git stash pop` (unless `--pop-stash`).
+- Common options:
+  - `./scripts/sync_fork.sh --no-push`
+  - `./scripts/sync_fork.sh --merge`
+  - `./scripts/sync_fork.sh --pop-stash`
+- Remotes expected:
+  - `upstream` -> official `chaldea` repository
+  - `origin` -> personal fork repository
+
 ## Current Focus: Laplace Auto 3T Search (v1.7b)
 - Goal: Automated 3-turn (3T) search in Laplace Battle Simulation that finds and replays a winning sequence (skills + Mystic Code + one-or-more NPs per turn) using the existing engine. Team Search orchestrates candidates and replays the first success.
 - Status: Stable. Team Search is the primary entry; single‑team Auto 3T was removed. Logs available from the menu.
