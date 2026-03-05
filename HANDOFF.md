@@ -15,7 +15,8 @@ Update it at the end of each working session.
 2. `git checkout main`
 3. `git pull origin main`
 4. If needed, sync with upstream:
-   - `./scripts/sync_fork.sh`
+   - `./scripts/sync_fork_pr.sh --open-pr`
+   - legacy (if needed): `./scripts/sync_fork.sh`
 5. Install deps if needed:
    - `flutter pub get` (or `fvm flutter pub get`)
 6. Launch app:
@@ -43,7 +44,7 @@ Update it at the end of each working session.
 - `fvm flutter build macos --debug`
 
 ## Notes For Safe Upstream Updates
-- Prefer rebasing with `./scripts/sync_fork.sh` before starting new work.
+- Prefer `./scripts/sync_fork_pr.sh --open-pr` for protected-main syncs; use `./scripts/sync_fork.sh` only for manual/non-protected flows.
 - Resolve conflicts by preserving upstream behavior first, then re-apply custom
   integration hooks.
 - Re-check custom module wiring after any upstream UI changes in battle modules.

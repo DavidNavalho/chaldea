@@ -20,21 +20,23 @@
 - If behavior can be implemented either in core or custom modules, choose custom modules.
 
 ### Upstream Sync Workflow
-- Canonical sync command: `./scripts/sync_fork.sh`
-- Default behavior:
+- Canonical sync command (protected main / automation): `./scripts/sync_fork_pr.sh --open-pr`
+- What it does by default:
   - stashes local dirty changes,
   - fetches `upstream` and `origin`,
-  - rebases local `main` onto `upstream/main`,
-  - pushes to `origin` with `--force-with-lease`,
-  - leaves stash for manual `git stash pop` (unless `--pop-stash`).
+  - creates/resets `automation/upstream-sync-YYYY-MM-DD` from `origin/main`,
+  - merges `upstream/main` into that sync branch,
+  - pushes the sync branch (tries origin URL first, then GitHub HTTPS fallback),
+  - opens/updates a PR when `gh` is available (and applies `codex` + `codex-automation` labels).
+- Legacy command (unprotected branches / manual history rewrite): `./scripts/sync_fork.sh`
 - Common options:
+  - `./scripts/sync_fork_pr.sh --open-pr`
+  - `./scripts/sync_fork_pr.sh -s automation/upstream-sync-YYYY-MM-DD --open-pr`
   - `./scripts/sync_fork.sh --no-push`
   - `./scripts/sync_fork.sh --merge`
-  - `./scripts/sync_fork.sh --pop-stash`
 - Remotes expected:
   - `upstream` -> official `chaldea` repository
   - `origin` -> personal fork repository
-
 ## Current Focus: Laplace Auto 3T Search (v1.7b)
 - Goal: Automated 3-turn (3T) search in Laplace Battle Simulation that finds and replays a winning sequence (skills + Mystic Code + one-or-more NPs per turn) using the existing engine. Team Search orchestrates candidates and replays the first success.
 - Status: Stable. Team Search is the primary entry; single‑team Auto 3T was removed. Logs available from the menu.
