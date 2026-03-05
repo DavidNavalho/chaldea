@@ -338,13 +338,13 @@ class ScriptCommand extends ScriptComponent {
   String command;
   List<String> args;
   ScriptCommand(super.src, this.command, [this.args = const []]);
-  static const _csv = CsvToListConverter(fieldDelimiter: " ", shouldParseNumbers: false);
+  static final _csv = CsvCodec(fieldDelimiter: " ", dynamicTyping: false);
 
   factory ScriptCommand.parse(String code) {
     if (code.startsWith('[') && code.endsWith(']')) {
       code = code.substring(1, code.length - 1);
     }
-    final cells = _csv.convert(code).first.map((e) => e.toString().trim()).toList();
+    final cells = _csv.decode(code).first.map((e) => e.toString().trim()).toList();
     return ScriptCommand(code, cells.first, cells.sublist(1));
   }
 

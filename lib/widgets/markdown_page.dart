@@ -2,7 +2,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:markdown/markdown.dart' as md;
 
 import 'package:chaldea/app/app.dart';
@@ -80,7 +80,7 @@ class _MyMarkdownWidgetState extends State<MyMarkdownWidget> {
       return Markdown(
         data: data,
         selectable: widget.selectable,
-        sizedImageBuilder: imageBuilder,
+        imageBuilder: imageBuilder,
         onTapLink: onTapLink,
         extensionSet: widget.extensionSet,
       );
@@ -88,18 +88,18 @@ class _MyMarkdownWidgetState extends State<MyMarkdownWidget> {
       return MarkdownBody(
         data: data,
         selectable: widget.selectable,
-        sizedImageBuilder: imageBuilder,
+        imageBuilder: imageBuilder,
         onTapLink: onTapLink,
         extensionSet: widget.extensionSet,
       );
     }
   }
 
-  Widget imageBuilder(MarkdownImageConfig config) {
+  Widget imageBuilder(Uri uri, String? title, String? alt) {
     return CachedImage(
-      imageUrl: config.uri.toString(),
-      placeholder: (_, _) => Container(),
-      cachedOption: CachedImageOption(errorWidget: (ctx, url, e) => Text("[${config.title ?? config.alt ?? ''}]")),
+      imageUrl: uri.toString(),
+      placeholder: (_, _) => const SizedBox.shrink(),
+      cachedOption: CachedImageOption(errorWidget: (ctx, url, e) => Text("[${title ?? alt ?? ''}]")),
     );
   }
 

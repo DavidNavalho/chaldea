@@ -488,4 +488,8 @@ const _$CondTypeEnumMap = {
   CondType.svtGetAfterDate: 'svtGetAfterDate',
   CondType.notQuestAvailable: 'notQuestAvailable',
   CondType.notImagePartsGroup: 'notImagePartsGroup',
+  CondType.useEventPassiveSkillGivenItem: 'useEventPassiveSkillGivenItem',
+  CondType.notUseEventPassiveSkillGivenItem: 'notUseEventPassiveSkillGivenItem',
+  CondType.selfIndividuality: 'selfIndividuality',
+  CondType.notSelfIndividuality: 'notSelfIndividuality',
 };

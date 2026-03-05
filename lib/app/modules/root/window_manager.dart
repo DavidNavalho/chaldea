@@ -196,7 +196,11 @@ class OneWindow extends StatelessWidget {
             routerDelegate: _delegate,
             active: index == root.appState.activeIndex && root.appState.windowState.isSingle,
           );
-          return Offstage(offstage: index != root.appState.activeIndex, child: child);
+          final bool isActive = index == root.appState.activeIndex;
+          return Offstage(
+            offstage: !isActive,
+            child: TickerMode(enabled: isActive, child: child),
+          );
         }),
       ),
       // if not set, FAB will animate from right to center

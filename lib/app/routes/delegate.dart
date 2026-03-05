@@ -104,14 +104,17 @@ class AppRouterDelegate extends RouterDelegate<RouteConfiguration>
   @override
   Future<bool> popRoute() async {
     final NavigatorState? navigator = navigatorKey.currentState;
-    if (navigator != null && !navigator.canPop()) {
-      if (PlatformU.isAndroid) {
-        await db.saveAll();
-        MethodChannelChaldea.sendBackground();
-        return true;
+    if (navigator != null) {
+      if (!navigator.canPop()) {
+        if (PlatformU.isAndroid) {
+          await db.saveAll();
+          MethodChannelChaldea.sendBackground();
+          return true;
+        }
       }
+      await navigator.maybePop();
     }
-    return navigator?.maybePop() ?? SynchronousFuture<bool>(true);
+    return SynchronousFuture<bool>(true);
   }
 
   bool canPop() {

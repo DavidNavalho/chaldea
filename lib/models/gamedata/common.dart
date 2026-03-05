@@ -1388,7 +1388,11 @@ enum CondType {
   svtGetBeforeDate(266),
   svtGetAfterDate(267),
   notQuestAvailable(268),
-  notImagePartsGroup(269);
+  notImagePartsGroup(269),
+  useEventPassiveSkillGivenItem(270),
+  notUseEventPassiveSkillGivenItem(271),
+  selfIndividuality(272),
+  notSelfIndividuality(273);
 
   const CondType(this.value);
   final int value;

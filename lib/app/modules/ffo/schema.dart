@@ -50,9 +50,8 @@ class FfoDB {
       servants[svt.collectionNo] = svt;
     }
 
-    final csvrows = const CsvToListConverter(
-      eol: '\n',
-    ).convert((await _readFile('CSV/ServantDB-Parts.csv', force)).replaceAll('\r\n', '\n'));
+    final decoder = CsvCodec(lineDelimiter: '\n');
+    final csvrows = decoder.decode((await _readFile('CSV/ServantDB-Parts.csv', force)).replaceAll('\r\n', '\n'));
     for (final row in csvrows) {
       if (row[0] == 'id') {
         assert(row.length == 10, row.toString());
