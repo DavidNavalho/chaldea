@@ -559,7 +559,7 @@ class _SvtBondDetailPageState extends State<SvtBondDetailPage> with SingleTicker
         for (int bond = 4; bond < 15; bond++) svt.bondGrowth.getOrNull(bond) ?? "",
       ]);
     }
-    final content = const ListToCsvConverter().convert(table);
+    final content = csv.encode(table);
 
     final fn = 'bond-detail-${widget.friendCode ?? ""}-${DateTime.now().toDateString()}.csv';
     if (kIsWeb) {

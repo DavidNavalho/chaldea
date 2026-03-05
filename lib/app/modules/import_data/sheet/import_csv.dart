@@ -53,8 +53,8 @@ class _ImportCSVPageState extends State<ImportCSVPage> {
             final bytes = result?.files.getOrNull(0)?.bytes;
             if (bytes == null) return;
             try {
-              final rawData = const CsvToListConverter().convert<String>(utf8.decode(bytes), shouldParseNumbers: false);
-              parsedRows = PlanDataSheetConverter().parseFromCSV(rawData);
+              final rawData = CsvCodec(dynamicTyping: false).decode(utf8.decode(bytes));
+              parsedRows = PlanDataSheetConverter().parseFromCSV([for (final v in rawData) v.cast()]);
             } catch (e, s) {
               logger.e('import chaldea csv failed', e, s);
               EasyLoading.showError(e.toString());
@@ -144,7 +144,7 @@ class _ImportCSVPageState extends State<ImportCSVPage> {
 
   void generateTemplate(bool includeAll, bool includeFavorite) async {
     final data = PlanDataSheetConverter().generateCSV(includeAll, includeFavorite);
-    final contents = const ListToCsvConverter().convert(data);
+    final contents = csv.encode(data);
     final t = DateTime.now().toSafeFileName();
     final fn = 'chaldea_data_$t.csv';
     if (kIsWeb) {

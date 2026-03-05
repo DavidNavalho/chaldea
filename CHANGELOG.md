@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.5.26
+
+- bug fix
+
 ## 2.5.25
 
 Happy New Year!

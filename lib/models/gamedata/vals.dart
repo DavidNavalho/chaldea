@@ -153,6 +153,8 @@ class DataVals {
   int? get RatioHPHigh => _get('RatioHPHigh');
   int? get RatioHPLow => _get('RatioHPLow');
   int? get SetPassiveFrame => _get('SetPassiveFrame');
+  int? get SetPlayerSideBg => _get('SetPlayerSideBg');
+  int? get SetEnemySideBg => _get('SetEnemySideBg');
   int? get ProcPassive => _get('ProcPassive');
   int? get ProcActive => _get('ProcActive');
   int? get HideParam => _get('HideParam');
@@ -425,6 +427,7 @@ class DataVals {
   int? get IgnoreTargetFuncResult => _get('IgnoreTargetFuncResult');
   int? get ExecuteWhenHideText => _get('ExecuteWhenHideText');
   int? get SkipCheckAlive => _get('SkipCheckAlive');
+  int? get CallServantPosition => _get('CallServantPosition');
 
   //
   int? get Individuality => _get('Individuality');
