@@ -23,14 +23,14 @@ Update it at the end of each working session.
    - `fvm flutter run -d macos`
 
 ## Last Session Snapshot
-- Date: 2026-03-05
-- Branch: automation/upstream-sync-2026-03-05
-- Last commit: 26d53eb62
-- Working tree status: clean on sync branch
-- Active feature(s): upstream sync PR workflow hardening + PR conflict resolution
-- What is done: rebuilt sync branch from origin/main, merged upstream/main, added scripts/sync_fork_pr.sh, updated AGENTS.md/HANDOFF.md workflow docs
-- What is next: review and merge PR #1, then run full flutter analyze/test in unrestricted local env
-- Known blockers: sandboxed automation environment has intermittent GitHub API/network and Flutter runtime restrictions
+- Date: 2026-03-08
+- Branch: automation/upstream-sync-2026-03-08
+- Last commit: 4cfee43b5 (merge upstream/main into sync branch)
+- Working tree status: sync branch pushed to origin; local tree clean after validation
+- Active feature(s): protected-main upstream sync + Team Search/Auto 3T integration verification
+- What is done: merged upstream/main (`541f87b2f`) into new sync branch, verified only `lib/models/userdata/battle.dart` changed from upstream, and confirmed Team Search wiring remains in `lib/app/modules/battle/simulation_preview.dart` and `lib/custom/team_search/*`
+- What is next: open and merge PR from `automation/upstream-sync-2026-03-08` into `main`, then rerun full tests in an environment with local gamedata
+- Known blockers: `flutter test` requires `--dart-define=APP_PATH=...` and offline gamedata files; in this sandbox, suites fail with `No data found` from `GameDataLoader`
 ## Files Touched In Current Workstream
 - `lib/custom/team_search/...`
 - `lib/custom/shared_teams/...`
