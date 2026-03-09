@@ -29,8 +29,8 @@ Update it at the end of each working session.
 - Working tree status: clean after merge + validation; branch ahead of `origin/main` by 2 commits
 - Active feature(s): upstream sync + verification of Laplace Team Search 3T and Shared Teams integration hooks
 - What is done: created sync branch from `origin/main`, merged cached `upstream/main` (delta: `lib/models/userdata/battle.dart`), verified Team Search hooks in `simulation_preview.dart` + `lib/custom/team_search/*`, ran `fvm flutter pub get` (pass), `fvm flutter analyze` (15 existing info lints), `fvm flutter test` (blocked by required `APP_PATH`)
-- What is next: push `automation/upstream-sync-2026-03-09` and open PR into `main`, then rerun tests in an environment with `APP_PATH` and gamedata available
-- Known blockers: this sandbox cannot resolve `github.com` (no fetch/push/PR), and `flutter test` needs `APP_PATH` bootstrap
+- What is next: review and merge PR #2 into `main`, then rerun tests in an environment with `APP_PATH` and gamedata available
+- Known blockers: `flutter test` needs `APP_PATH` bootstrap and local gamedata for full suite completion
 ## Files Touched In Current Workstream
 - `lib/custom/team_search/...`
 - `lib/custom/shared_teams/...`
