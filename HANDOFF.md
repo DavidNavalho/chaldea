@@ -23,14 +23,14 @@ Update it at the end of each working session.
    - `fvm flutter run -d macos`
 
 ## Last Session Snapshot
-- Date: 2026-03-05
-- Branch: automation/upstream-sync-2026-03-05
-- Last commit: 26d53eb62
-- Working tree status: clean on sync branch
-- Active feature(s): upstream sync PR workflow hardening + PR conflict resolution
-- What is done: rebuilt sync branch from origin/main, merged upstream/main, added scripts/sync_fork_pr.sh, updated AGENTS.md/HANDOFF.md workflow docs
-- What is next: review and merge PR #1, then run full flutter analyze/test in unrestricted local env
-- Known blockers: sandboxed automation environment has intermittent GitHub API/network and Flutter runtime restrictions
+- Date: 2026-03-09
+- Branch: automation/upstream-sync-2026-03-09
+- Last commit: d1570bac5
+- Working tree status: clean after merge + validation; branch ahead of `origin/main` by 2 commits
+- Active feature(s): upstream sync + verification of Laplace Team Search 3T and Shared Teams integration hooks
+- What is done: created sync branch from `origin/main`, merged cached `upstream/main` (delta: `lib/models/userdata/battle.dart`), verified Team Search hooks in `simulation_preview.dart` + `lib/custom/team_search/*`, ran `fvm flutter pub get` (pass), `fvm flutter analyze` (15 existing info lints), `fvm flutter test` (blocked by required `APP_PATH`)
+- What is next: push `automation/upstream-sync-2026-03-09` and open PR into `main`, then rerun tests in an environment with `APP_PATH` and gamedata available
+- Known blockers: this sandbox cannot resolve `github.com` (no fetch/push/PR), and `flutter test` needs `APP_PATH` bootstrap
 ## Files Touched In Current Workstream
 - `lib/custom/team_search/...`
 - `lib/custom/shared_teams/...`
