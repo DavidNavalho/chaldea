@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:chaldea/models/gamedata/raw.dart';
+import 'package:chaldea/models/userdata/version.dart';
 import 'package:chaldea/packages/rate_limiter.dart';
 import 'package:chaldea/utils/utils.dart';
 import '../../models/models.dart';
@@ -35,6 +36,10 @@ class AtlasApi {
       (data) => RegionInfo.fromJson(data),
       expireAfter: expireAfter,
     );
+  }
+
+  static Future<RegionInfo?> regionInfoExported({Region region = Region.jp, Duration? expireAfter = Duration.zero}) {
+    return exportedData('info', (data) => RegionInfo.fromJson(data), expireAfter: expireAfter);
   }
 
   static Future<Quest?> quest(int questId, {Region region = Region.jp, Duration? expireAfter}) {
@@ -441,32 +446,29 @@ class AtlasApi {
     );
   }
 
-  static Future<GameTops?> gametops({Duration? expireAfter}) async {
+  static Future<GameTop?> gametop({required Region region, Duration? expireAfter}) async {
     final tops = await gametopsRaw(expireAfter: expireAfter);
-    if (tops != null) {
-      final tasks = <Future>[
-        assetbundle(
-          Region.jp,
-          expireAfter: expireAfter,
-        ).then((v) => tops.jp.assetbundleFolder = v?.folderName ?? tops.jp.assetbundleFolder),
-        assetbundle(
-          Region.na,
-          expireAfter: expireAfter,
-        ).then((v) => tops.na.assetbundleFolder = v?.folderName ?? tops.na.assetbundleFolder),
-        verCode(Region.jp, expireAfter: expireAfter).then((v) {
-          if (v == null) return;
-          tops.jp.appVer = v.appVer;
-          tops.jp.verCode = v.verCode;
-        }),
-        verCode(Region.na, expireAfter: expireAfter).then((v) {
-          if (v == null) return;
-          tops.na.appVer = v.appVer;
-          tops.na.verCode = v.verCode;
-        }),
-      ];
-      await Future.wait(tasks);
-    }
-    return tops;
+    if (tops == null) return null;
+    final top = tops.of(region);
+
+    final tasks = <Future>[
+      AtlasApi.regionInfoExported(region: region, expireAfter: expireAfter).then((info) {
+        if (info != null) top.updateFromRegionInfo(info);
+      }),
+      verCode(region, expireAfter: expireAfter).then((v) {
+        if (v == null) return;
+        try {
+          if (AppVersion.compare(v.appVer, top.appVer) > 0) {
+            top.appVer = v.appVer;
+            top.verCode = v.verCode;
+          }
+        } catch (e) {
+          // skip
+        }
+      }),
+    ];
+    await Future.wait(tasks);
+    return top;
   }
 
   static Future<AssetBundleDecrypt?> assetbundle(Region region, {Duration? expireAfter}) {
@@ -510,7 +512,7 @@ class AtlasApi {
   }
 
   static Future<GameAppVerCode?> verCode(Region region, {Duration? expireAfter, bool? proxy}) {
-    assert(region == Region.jp || region == Region.na || region == Region.kr);
+    if (region != .jp && region != .na && region != .kr) return Future.value(null);
     proxy ??= HostsX.proxy.worker;
     String url = "https://fgo.bigcereal.com/${region.upper}/verCode.txt";
     if (proxy) url = HostsX.proxyWorker(url);

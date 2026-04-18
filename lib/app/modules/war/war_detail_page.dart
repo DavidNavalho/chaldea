@@ -537,6 +537,11 @@ Widget addQuestCategoryTile({
         difficultQuests.add(quest);
         // } else if (quest.flags.contains(QuestFlag.noBattle)) {
         //   eventQuests.add(quest);
+      } else if (quest.phases.length == 1 &&
+          quest.flags.contains(QuestFlag.noBattle) &&
+          quest.consume == 0 &&
+          quest.consumeItem.isEmpty) {
+        eventQuests.add(quest);
       } else {
         if (quest.warId == WarId.daily) {
           if (quest.name.contains('種火集め')) {

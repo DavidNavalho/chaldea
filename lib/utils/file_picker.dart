@@ -20,7 +20,7 @@ class FilePickerU {
 
   static Future<bool?> clearTemporaryFiles() async {
     if (PlatformU.isAndroid || PlatformU.isIOS) {
-      return FilePicker.platform.clearTemporaryFiles();
+      return FilePicker.clearTemporaryFiles();
     }
     return false;
   }
@@ -64,7 +64,7 @@ class FilePickerU {
         if (clearCache) {
           await clearTemporaryFiles();
         }
-        return await FilePicker.platform.pickFiles(
+        return await FilePicker.pickFiles(
           dialogTitle: dialogTitle,
           initialDirectory: initialDirectory,
           type: type,
@@ -92,11 +92,8 @@ class FilePickerU {
     String? fp;
     fp = await _withPicking<String?>(
       showError: true,
-      task: () => FilePicker.platform.saveFile(
-        fileName: filename,
-        initialDirectory: saveFolder,
-        bytes: Uint8List.fromList(data),
-      ),
+      task: () =>
+          FilePicker.saveFile(fileName: filename, initialDirectory: saveFolder, bytes: Uint8List.fromList(data)),
     );
     if (fp == null) return;
     final file = File(fp);

@@ -32,7 +32,7 @@ class AprilFoolSvtListPageState extends State<AprilFoolSvtListPage>
 
   @override
   Widget build(BuildContext context) {
-    filterShownList(compare: (a, b) => b.id - a.id);
+    filterShownList();
     return scrollListener(
       useGrid: filterData.useGrid,
       appBar: AppBar(

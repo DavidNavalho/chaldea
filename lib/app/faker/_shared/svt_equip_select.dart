@@ -10,6 +10,8 @@ import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
 import '../runtime.dart';
 
+const int _kBondEquipEventId = -9;
+
 class SelectUserSvtEquipPage extends StatefulWidget {
   final FakerRuntime runtime;
   final String? Function(UserServantEntity userSvt, MasterDataManager mstData, List<int>? inUseUserSvtIds)? getStatus;
@@ -52,7 +54,7 @@ class _SelectUserSvtEquipPageState extends State<SelectUserSvtEquipPage> {
   late final filterData = _svtFilters.of(context);
   late final userSvtFilterData = _userSvtFilters.of(context);
 
-  Map<int, ({Event event, Set<int> ceIds})> eventCeIds = {};
+  Map<int, ({Event? event, Set<int> ceIds})> eventCeIds = {};
 
   @override
   void initState() {
@@ -70,6 +72,18 @@ class _SelectUserSvtEquipPageState extends State<SelectUserSvtEquipPage> {
         eventCeIds[event.id] = (event: event, ceIds: ceIds);
       }
     }
+
+    eventCeIds[_kBondEquipEventId] = (
+      event: null,
+      ceIds: {
+        for (final ce in db.gameData.craftEssencesById.values)
+          if ((ce.flags.contains(SvtFlag.svtEquipManaExchange) || ce.flags.contains(SvtFlag.svtEquipCampaign)) &&
+              ce.collectionNo > 0)
+            for (final skill in ce.skills)
+              for (final func in skill.functions)
+                if (func.funcType == .servantFriendshipUp) ce.id,
+      },
+    );
   }
 
   bool filter(UserServantEntity userSvt) {
@@ -117,7 +131,7 @@ class _SelectUserSvtEquipPageState extends State<SelectUserSvtEquipPage> {
                     setState(() {});
                   }
                 },
-                customFilters: (_, update) => [
+                extraFilters: (_, update) => [
                   FilterGroup<bool>(
                     title: Text('Lock status'),
                     options: const [false, true],
@@ -193,18 +207,27 @@ class _SelectUserSvtEquipPageState extends State<SelectUserSvtEquipPage> {
   }
 
   Widget get buttonBar {
-    final events = eventCeIds.values.toList();
-    events.sortByList((e) => [e.event.startedAt, -e.event.id]);
+    final eventIds = eventCeIds.keys.toList();
+    // final events = eventCeIds.values.toList();
+    eventIds.sortByList((eventId) {
+      final event = eventCeIds[eventId]?.event;
+      return <int>[event == null ? eventId : 9999999, event?.startedAt ?? 0, -eventId];
+    });
 
-    DropdownMenuItem<int?> buildItem(Event? event) {
+    DropdownMenuItem<int?> buildItem(int eventId) {
+      final event = eventCeIds[eventId]?.event;
       return DropdownMenuItem(
-        value: event?.id ?? 0,
+        value: eventId,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              event?.lShortName.l ?? S.current.general_all,
+              eventId == 0
+                  ? S.current.general_all
+                  : eventId == _kBondEquipEventId
+                  ? '${Transl.ceObtain(CEObtain.manaShop).l} - ${S.current.bond_bonus}'
+                  : event?.lShortName.l ?? 'Event $eventId',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textScaler: const TextScaler.linear(0.8),
@@ -227,7 +250,7 @@ class _SelectUserSvtEquipPageState extends State<SelectUserSvtEquipPage> {
         isExpanded: true,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         value: eventCeIds.containsKey(userSvtFilterData.eventId) ? userSvtFilterData.eventId : 0,
-        items: [buildItem(null), for (final (ceIds: _, :event) in events) buildItem(event)],
+        items: [buildItem(0), for (final eventId in eventIds) buildItem(eventId)],
         onChanged: (v) {
           if (v != null) userSvtFilterData.eventId = v;
           if (mounted) setState(() {});

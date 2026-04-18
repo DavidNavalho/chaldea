@@ -50,7 +50,7 @@ class FfoDB {
       servants[svt.collectionNo] = svt;
     }
 
-    final decoder = CsvCodec(lineDelimiter: '\n');
+    final decoder = Csv(lineDelimiter: '\n');
     final csvrows = decoder.decode((await _readFile('CSV/ServantDB-Parts.csv', force)).replaceAll('\r\n', '\n'));
     for (final row in csvrows) {
       if (row[0] == 'id') {

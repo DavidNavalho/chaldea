@@ -101,6 +101,7 @@ const _$CEObtainEnumMap = {
   CEObtain.drop: 'drop',
   CEObtain.regionSpecific: 'regionSpecific',
   CEObtain.unknown: 'unknown',
+  CEObtain.davinciBondBonus: 'davinciBondBonus',
 };
 
 CommandCodeExtra _$CommandCodeExtraFromJson(Map json) => CommandCodeExtra(

@@ -136,6 +136,9 @@ class _GachaDrawPageState extends State<GachaDrawPage> with FakerRuntimeStateMix
 
   Widget get body {
     final gacha = _cachedGachas[gachaOption.gachaId];
+    final int resultSubId = gachaOption.gachaSubId < 0
+        ? (gacha == null ? 0 : runtime.gacha.getTargetGachaSubId(gacha))
+        : gachaOption.gachaSubId;
     return ListView(
       children: [
         ListTile(
@@ -212,7 +215,7 @@ class _GachaDrawPageState extends State<GachaDrawPage> with FakerRuntimeStateMix
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(gachaOption.gachaSubId.toString()),
+              Text([gachaOption.gachaSubId, gacha == null ? '-' : runtime.gacha.getTargetGachaSubId(gacha)].join('→')),
               IconButton(
                 onPressed: gacha == null
                     ? null
@@ -223,7 +226,11 @@ class _GachaDrawPageState extends State<GachaDrawPage> with FakerRuntimeStateMix
                           gacha: gacha,
                           onSelected: (sub) {
                             runtime.lockTask(() {
-                              gachaOption.gachaSubs[gachaOption.gachaId] = sub?.id ?? 0;
+                              if (sub != null) {
+                                gachaOption.gachaSubs[gachaOption.gachaId] = sub.id;
+                              } else {
+                                gachaOption.gachaSubs.remove(gachaOption.gachaId);
+                              }
                             });
                           },
                         ),
@@ -233,7 +240,7 @@ class _GachaDrawPageState extends State<GachaDrawPage> with FakerRuntimeStateMix
             ],
           ),
         ),
-        if (gacha != null) GachaBanner(region: runtime.region, imageId: gacha.getImageId(gachaOption.gachaSubId)),
+        if (gacha != null) GachaBanner(region: runtime.region, imageId: gacha.getImageId(resultSubId)),
         SwitchListTile.adaptive(
           dense: true,
           title: Text('100连抽'),
@@ -746,21 +753,11 @@ class _GachaDrawPageState extends State<GachaDrawPage> with FakerRuntimeStateMix
   Widget get buttonBar {
     final gacha = _cachedGachas[gachaOption.gachaId];
 
-    final buttonStyle = FilledButton.styleFrom(
-      minimumSize: const Size(64, 32),
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-    );
-
-    FilledButton buildButton({bool enabled = true, required VoidCallback? onPressed, required String text}) {
-      return FilledButton.tonal(onPressed: enabled ? onPressed : null, style: buttonStyle, child: Text(text));
-    }
-
     final hasFreeDraw = gacha != null && runtime.gacha.checkHasFreeGachaDraw(gacha);
     List<List<Widget>> btnGroups = [
       [
         gacha != null && gacha.type == GachaType.payGacha.value
-            ? buildButton(
+            ? buildCompactButton(
                 onPressed: hasFreeDraw
                     ? () async {
                         final confirm = await SimpleConfirmDialog(
@@ -775,7 +772,7 @@ class _GachaDrawPageState extends State<GachaDrawPage> with FakerRuntimeStateMix
                     : null,
                 text: 'Free Draw',
               )
-            : buildButton(
+            : buildCompactButton(
                 onPressed: () {
                   router.showDialog(
                     builder: (context) {
@@ -814,20 +811,24 @@ class _GachaDrawPageState extends State<GachaDrawPage> with FakerRuntimeStateMix
                 },
                 text: hasFreeDraw ? 'Free Draw' : 'draw',
               ),
-        buildButton(
+        buildCompactButton(
           onPressed: () {
-            SimpleConfirmDialog(
-              title: const Text('sell'),
-              onTapOk: () {
+            InputCancelOkDialog.number(
+              title: 'Sell Servants',
+              initValue: 2,
+              validate: (v) => v > 0,
+              helperText: 'Summoned in X days',
+              autofocus: false,
+              onSubmit: (value) {
                 runtime.runTask(() async {
-                  return runtime.gacha.sellServant();
+                  return runtime.gacha.sellServant(limitGetDay: value);
                 });
               },
             ).showDialog(context);
           },
           text: 'sell',
         ),
-        buildButton(
+        buildCompactButton(
           onPressed: () {
             router.showDialog(
               builder: (context) {
@@ -867,7 +868,7 @@ class _GachaDrawPageState extends State<GachaDrawPage> with FakerRuntimeStateMix
         ),
       ],
       [
-        buildButton(
+        buildCompactButton(
           enabled: agent.user.gacha.loopCount > 0,
           onPressed: () {
             SimpleConfirmDialog(
@@ -879,7 +880,7 @@ class _GachaDrawPageState extends State<GachaDrawPage> with FakerRuntimeStateMix
           },
           text: 'Loop',
         ),
-        buildButton(
+        buildCompactButton(
           onPressed: () {
             agent.network.stopFlag = true;
           },

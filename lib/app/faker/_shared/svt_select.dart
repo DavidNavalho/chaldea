@@ -134,7 +134,14 @@ class _SelectUserSvtPageState extends State<SelectUserSvtPage> {
       }).toList();
       if (!userSvtFilterData.availableCombines.matchAny(combineTypes)) return false;
 
-      if (!ServantFilterPage.filter(filterData, svt, svtStat: getSvtStatus(userSvt))) return false;
+      if (!ServantFilterPage.filter(
+        filterData,
+        svt,
+        svtStat: getSvtStatus(userSvt),
+        useCostumeTraitForRegion: runtime.region,
+      )) {
+        return false;
+      }
 
       return true;
     }
@@ -180,7 +187,7 @@ class _SelectUserSvtPageState extends State<SelectUserSvtPage> {
                   }
                 },
                 planMode: false,
-                customFilters: (_, update) => [
+                extraFilters: (_, update) => [
                   FilterGroup<_CombineType>(
                     title: Text('Available Combine Type'),
                     showMatchAll: true,

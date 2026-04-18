@@ -19,7 +19,7 @@ void testFunction([BuildContext? context]) async {
 
 void loadSvtIconRemap() async {
   Set<String> _openedFiles = {};
-  final result = await FilePicker.platform.pickFiles(allowMultiple: true);
+  final result = await FilePicker.pickFiles(allowMultiple: true);
   _openedFiles.addAll(result?.paths.whereType<String>() ?? []);
   Map<int, List<int>> mapping = {};
   for (final fp in _openedFiles) {

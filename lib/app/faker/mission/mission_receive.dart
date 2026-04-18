@@ -28,6 +28,7 @@ class _UserEventMissionReceivePageState extends State<UserEventMissionReceivePag
   late final runtime = widget.runtime;
   final thisYear = DateTime.now().year;
   List<MasterMission> mms = [];
+  Map<int, EventMission> eventMissions = {};
   // late final mms = runtime.gameData.masterMissions.values.toList();
 
   MasterMission? _mm;
@@ -63,33 +64,33 @@ class _UserEventMissionReceivePageState extends State<UserEventMissionReceivePag
 
     for (final event in runtime.gameData.timerData.events.values) {
       if (!(event.startedAt <= now && event.endedAt > now && event.missions.isNotEmpty)) continue;
-      List<EventMission> eventMissions = [], randomMissions = [];
+      List<EventMission> _eventMissions = [], _randomMissions = [];
       for (final mission in event.missions) {
         if (mission.type == MissionType.random) {
           if (mstData.userEventRandomMission[mission.id]?.isInProgress == true) {
-            randomMissions.add(mission);
+            _randomMissions.add(mission);
           }
         } else {
-          eventMissions.add(mission);
+          _eventMissions.add(mission);
         }
       }
-      if (eventMissions.isNotEmpty) {
+      if (_eventMissions.isNotEmpty) {
         _mms[event.id] ??= MasterMission(
           id: event.id,
           startedAt: event.startedAt,
           endedAt: event.endedAt,
           closedAt: event.endedAt,
-          missions: eventMissions,
+          missions: _eventMissions,
           script: {MstMasterMission.kMissionIconDetailText: event.lShortName.l.setMaxLines(1)},
         );
       }
-      if (randomMissions.isNotEmpty) {
+      if (_randomMissions.isNotEmpty) {
         _mms[event.id * 100 + 1] ??= MasterMission(
           id: event.id * 100 + 1,
           startedAt: event.startedAt,
           endedAt: event.endedAt,
           closedAt: event.endedAt,
-          missions: randomMissions,
+          missions: _randomMissions,
           script: {
             MstMasterMission.kMissionIconDetailText:
                 '[${S.current.random_mission}] ${event.lShortName.l.setMaxLines(1)}',
@@ -100,6 +101,10 @@ class _UserEventMissionReceivePageState extends State<UserEventMissionReceivePag
 
     // mms.removeWhere((mm) => mm.type == MissionType.daily && mm.endedAt - mm.startedAt > kSecsPerDay * 40);
     mms = _mms.values.toList();
+    eventMissions = {
+      for (final mm in mms)
+        for (final m in mm.missions) m.id: m,
+    };
     mms.sortByList((e) => [e.endedAt, e.closedAt, e.id]);
     if (mms.isNotEmpty) {
       MasterMission? mm;
@@ -116,6 +121,34 @@ class _UserEventMissionReceivePageState extends State<UserEventMissionReceivePag
   }
 
   MissionProgressType getMissionProgress(int eventMissionId) {
+    final mission = eventMissions[eventMissionId];
+    // TODO: check daily updatedAt
+    if (mission != null && mission.type == .daily) {
+      for (final cond in mission.conds) {
+        if (cond.missionProgressType != .clear || cond.targetIds.isEmpty) {
+          continue;
+        }
+        if (cond.condType == .missionConditionDetail) {
+          final userCondDetail = mstData.userEventMissionCondDetail[cond.targetIds.first];
+          if (userCondDetail == null) continue;
+          if (runtime.region.getDateTimeByOffset(userCondDetail.updatedAt).day !=
+              runtime.region.getDateTimeByOffset(DateTime.now().timestamp).day) {
+            // not same day
+            return MissionProgressType.none;
+          }
+
+          int? progressNum = mstData.userEventMissionCondDetail[cond.targetIds.first]?.progressNum;
+          return progressNum != null && progressNum >= cond.targetNum
+              ? MissionProgressType.achieve
+              : MissionProgressType.none;
+        } else if (cond.condType == .eventMissionClear) {
+          return cond.targetIds.where((targetId) => getMissionProgress(targetId).isClearOrAchieve).length >=
+                  cond.targetNum
+              ? MissionProgressType.achieve
+              : MissionProgressType.none;
+        }
+      }
+    }
     final progress = mstData.userEventMission[eventMissionId]?.missionProgressType;
     if (progress == null) return MissionProgressType.none;
     return MissionProgressType.fromValue(progress);

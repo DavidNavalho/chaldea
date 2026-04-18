@@ -45,12 +45,13 @@ class FakeGrandOrder extends StatefulWidget {
   State<FakeGrandOrder> createState() => _FakeGrandOrderState();
 }
 
-class _FakeGrandOrderState extends State<FakeGrandOrder> {
+class _FakeGrandOrderState extends State<FakeGrandOrder> with FakerRuntimeStateMixin {
+  @override
+  final bool autoManageDependencies = false;
   FakerRuntime? _runtime;
+  @override
   FakerRuntime get runtime => _runtime!;
 
-  late final FakerAgent agent = runtime.agent;
-  late final mstData = agent.network.mstData;
   AutoBattleOptions get battleOption => agent.user.curBattleOption;
 
   @override
@@ -209,7 +210,7 @@ class _FakeGrandOrderState extends State<FakeGrandOrder> {
     final userGame = mstData.user ?? agent.user.userGame;
     List<InlineSpan> subtitle = [TextSpan(text: userGame?.friendCode ?? '')];
     if (mstData.isLoggedIn) {
-      onTapPresentBox() => router.pushPage(UserPresentBoxManagePage(runtime: runtime));
+      void onTapPresentBox() => router.pushPage(UserPresentBoxManagePage(runtime: runtime));
       subtitle.addAll([
         TextSpan(text: '  '),
         CenterWidgetSpan(
@@ -229,8 +230,8 @@ class _FakeGrandOrderState extends State<FakeGrandOrder> {
       ]);
     }
 
-    if (runtime.agentData.loginResultData.isNotEmpty) {
-      onTapBonus() => router.pushPage(LoginResultPage(runtime: runtime));
+    if (runtime.agentData.loginResultHistory.isNotEmpty) {
+      void onTapBonus() => router.pushPage(LoginResultPage(runtime: runtime));
       subtitle.addAll([
         TextSpan(text: '  '),
         CenterWidgetSpan(
@@ -241,7 +242,9 @@ class _FakeGrandOrderState extends State<FakeGrandOrder> {
           ),
         ),
         TextSpan(
-          text: ' ${Maths.sum(runtime.agentData.loginResultData.getLists().map((e) => e.length))}',
+          text:
+              ' ${runtime.agentData.loginResultHistory.firstOrNull?.length}'
+              '(${Maths.sum(runtime.agentData.loginResultHistory.map((e) => e.length))})',
           recognizer: TapGestureRecognizer()..onTap = onTapBonus,
         ),
       ]);
@@ -1647,6 +1650,19 @@ class _FakeGrandOrderState extends State<FakeGrandOrder> {
           },
           controlAffinity: ListTileControlAffinity.trailing,
         ),
+        CheckboxListTile.adaptive(
+          dense: true,
+          value: battleOption.sendFriendRequest,
+          title: const Text("Send Friend Request"),
+          onChanged: (v) {
+            runtime.lockTask(() {
+              setState(() {
+                battleOption.sendFriendRequest = v!;
+              });
+            });
+          },
+          controlAffinity: ListTileControlAffinity.trailing,
+        ),
         ListTile(
           dense: true,
           title: const Text('Battle Duration(seconds)'),
@@ -1969,27 +1985,17 @@ class _FakeGrandOrderState extends State<FakeGrandOrder> {
   }
 
   Widget get buttonBar {
-    final buttonStyle = FilledButton.styleFrom(
-      minimumSize: const Size(64, 32),
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-    );
-
-    FilledButton buildButton({bool enabled = true, required VoidCallback onPressed, required String text}) {
-      return FilledButton.tonal(onPressed: enabled ? onPressed : null, style: buttonStyle, child: Text(text));
-    }
-
     final bool loggedIn = mstData.isLoggedIn, inBattle = runtime.agentData.curBattle != null;
 
     List<List<Widget>> btnGroups = [
       [
-        buildButton(
+        buildCompactButton(
           onPressed: () {
             runtime.runTask(agent.gamedataTop);
           },
           text: 'gamedata',
         ),
-        buildButton(
+        buildCompactButton(
           // enabled: !inBattle,
           onPressed: () async {
             if (agent.user.lastRequestOptions?.success == false) {
@@ -2005,7 +2011,7 @@ class _FakeGrandOrderState extends State<FakeGrandOrder> {
           },
           text: 'login',
         ),
-        buildButton(
+        buildCompactButton(
           enabled: loggedIn && !inBattle,
           onPressed: () async {
             final buyCount = await ApSeedExchangeCountDialog(mstData: mstData).showDialog<int>(context);
@@ -2018,7 +2024,7 @@ class _FakeGrandOrderState extends State<FakeGrandOrder> {
         ),
       ],
       [
-        buildButton(
+        buildCompactButton(
           enabled: loggedIn && !inBattle,
           onPressed: () async {
             final recover = await showDialog<RecoverEntity>(
@@ -2043,14 +2049,14 @@ class _FakeGrandOrderState extends State<FakeGrandOrder> {
           },
           text: 'recover',
         ),
-        buildButton(
+        buildCompactButton(
           enabled: loggedIn && !inBattle,
           onPressed: () async {
             runtime.runTask(() => runtime.battle.battleSetupWithOptions(battleOption));
           },
           text: 'b.setup',
         ),
-        buildButton(
+        buildCompactButton(
           enabled: loggedIn && inBattle,
           onPressed: () async {
             runtime.runTask(() async {
@@ -2066,7 +2072,7 @@ class _FakeGrandOrderState extends State<FakeGrandOrder> {
         ),
       ],
       [
-        buildButton(
+        buildCompactButton(
           enabled: loggedIn && !inBattle,
           onPressed: () {
             InputCancelOkDialog.number(
@@ -2080,9 +2086,9 @@ class _FakeGrandOrderState extends State<FakeGrandOrder> {
               },
             ).showDialog(context);
           },
-          text: 'Loop ×${battleOption.loopCount}',
+          text: [if (battleOption.useCampaignItem) '🫖', 'Loop ×${battleOption.loopCount}'].join(''),
         ),
-        buildButton(
+        buildCompactButton(
           onPressed: () {
             agent.network.stopFlag = true;
           },

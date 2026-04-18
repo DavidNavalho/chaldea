@@ -40,7 +40,7 @@ class _CustomSkillActivatorState extends State<CustomSkillActivator> {
   @override
   Widget build(final BuildContext context) {
     errorMsg = skill == null ? S.current.battle_no_skill_selected : null;
-    if (skill != null) skillLv = min(skillLv, skill!.functions.first.svals.length);
+    if (skill != null && skill!.functions.isNotEmpty) skillLv = min(skillLv, skill!.functions.first.svals.length);
     final List<BattleServantData> actors = isAlly ? widget.battleData.nonnullPlayers : widget.battleData.nonnullEnemies;
 
     return Scaffold(

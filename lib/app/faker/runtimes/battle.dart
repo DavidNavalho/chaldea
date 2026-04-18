@@ -42,6 +42,23 @@ class FakerRuntimeBattle extends FakerRuntimeBase {
     if (questPhaseEntity == null) {
       throw SilentException('quest not found');
     }
+    final userQuest = mstData.userQuest[battleOption.questId];
+    if (questPhaseEntity.flags.contains(QuestFlag.dropFirstTimeOnly) &&
+        userQuest != null &&
+        userQuest.clearNum > 0 &&
+        battleOption.loopCount > 1) {
+      final confirm = await runtime.showLocalDialog(
+        SimpleConfirmDialog(
+          title: Text('No Drop! Looping ×${battleOption.loopCount}'),
+          content: Text(
+            questPhaseEntity.messages.isEmpty ? '' : questPhaseEntity.messages.map((e) => e.message).join("\n"),
+          ),
+        ),
+      );
+      if (confirm != true) {
+        throw SilentException('Do not loop dropFirstTimeOnly quests');
+      }
+    }
     if (battleOption.loopCount > 1 &&
         !(questPhaseEntity.afterClear == QuestAfterClearType.repeatLast &&
             battleOption.questPhase == questPhaseEntity.phases.lastOrNull)) {
@@ -292,6 +309,12 @@ class FakerRuntimeBattle extends FakerRuntimeBase {
 
     int campaignItemId = 0;
     if (options.useCampaignItem) {
+      if (questPhaseEntity.bond < 1000) {
+        throw SilentException('Do not waste Teapot on low bond(${questPhaseEntity.bond}) quest');
+      }
+      if (questPhaseEntity.flags.contains(QuestFlag.dropFirstTimeOnly) && userQuest != null && userQuest.clearNum > 0) {
+        throw SilentException('Do not waste Teapot on cleared quest with dropFirstTimeOnly flag');
+      }
       // should check campaign time rather item endedAt
       List<(UserItemEntity, Item)> campaignItems = [];
       final now = DateTime.now().timestamp;
@@ -371,7 +394,16 @@ class FakerRuntimeBattle extends FakerRuntimeBase {
         followerType = 0;
         followerSupportDeckId = 0;
       } else {
-        final npc = questPhaseEntity.supportServants.firstWhereOrNull((e) => e.script?.eventDeckIndex == null);
+        SupportServant? npc;
+        if (options.npcSupportId != 0) {
+          npc = questPhaseEntity.supportServants.firstWhereOrNull(
+            (e) => e.script?.eventDeckIndex == null && e.id == options.npcSupportId,
+          );
+          if (npc == null) {
+            throw SilentException('npc ${options.npcSupportId} not found');
+          }
+        }
+        npc ??= questPhaseEntity.supportServants.firstWhereOrNull((e) => e.script?.eventDeckIndex == null);
         followerId = npc?.id ?? 0;
         followerClassId = 0;
         followerType = (npc == null ? FollowerType.none : FollowerType.npc).value;
@@ -415,7 +447,7 @@ class FakerRuntimeBattle extends FakerRuntimeBase {
       followerGrandGraphId = followerSvt.grandGraphId;
     }
 
-    return agent.battleSetup(
+    final resp = await agent.battleSetup(
       questId: options.questId,
       questPhase: options.questPhase,
       activeDeckId: activeDeckId,
@@ -429,6 +461,11 @@ class FakerRuntimeBattle extends FakerRuntimeBase {
       campaignItemId: campaignItemId,
       userEquipId: userEquipId,
     );
+    // reset npcSupportId if not using support npc
+    if (options.npcSupportId != 0 && options.npcSupportId != followerId) {
+      options.npcSupportId = 0;
+    }
+    return resp;
   }
 
   Future<(FollowerInfo follower, ServantLeaderInfo followerSvt)> _getValidSupport({
@@ -635,7 +672,7 @@ class FakerRuntimeBattle extends FakerRuntimeBase {
         );
       }
 
-      return agent.battleResult(
+      final resp = await agent.battleResult(
         battleId: battleEntity.id,
         resultType: BattleResultType.win,
         winResult: BattleWinResultType.normal,
@@ -652,9 +689,38 @@ class FakerRuntimeBattle extends FakerRuntimeBase {
         skillShiftNpcSvtIdArray: itemDroppedSkillShiftEnemies.map((e) => e.npcId).toList(),
         sendDelay: sendDelay,
       );
+
+      if (options.sendFriendRequest) {
+        await _offerFriend(resp);
+      }
+
+      return resp;
     } else {
       throw Exception('resultType=$resultType not supported');
     }
+  }
+
+  final Set<int> _sentFriendRequestIds = {};
+  Future<void> _offerFriend(FResponse battleResultResp) async {
+    BattleResultData? battleResultData = battleResultResp.data.parseResponse(
+      'battle_result',
+      BattleResultData.fromJson,
+    );
+    if (battleResultData == null) return;
+    if (battleResultData.followerType != FollowerType.notFriend.value) return;
+    if (battleResultData.followerId <= 10000) return;
+
+    if (mstData.tblFriend.where((e) => e.status2 == .friend).length >= mstData.user!.friendKeep) return;
+
+    final friendId = battleResultData.followerId;
+    final friend1 = mstData.tblFriend[TblFriendEntity.createPK(mstData.user!.userId, friendId)];
+    if (friend1 != null && const [FriendStatus.friend, FriendStatus.offer].contains(friend1.status2)) return;
+    final friend2 = mstData.tblFriend[TblFriendEntity.createPK(friendId, mstData.user!.userId)];
+    if (friend2 != null && const [FriendStatus.friend, FriendStatus.offered].contains(friend2.status2)) return;
+
+    if (_sentFriendRequestIds.contains(friendId)) return;
+    await agent.friendOffer(targetUserId: friendId);
+    _sentFriendRequestIds.add(friendId);
   }
 
   Future<void> _checkQuestCondition(QuestPhase questPhase, bool checkCond) async {

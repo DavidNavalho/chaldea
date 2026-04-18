@@ -5,6 +5,7 @@ import 'package:auto_size_text/auto_size_text.dart';
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/modules/battle/formation/formation_card.dart';
 import 'package:chaldea/app/modules/common/builders.dart';
+import 'package:chaldea/app/modules/event/detail/random_mission_sim.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/gamedata/mst_data.dart';
 import 'package:chaldea/models/models.dart';
@@ -44,7 +45,20 @@ class _RandomMissionLoopPageState extends State<RandomMissionLoopPage> with Fake
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('${S.current.random_mission} - Loop'), actions: [runtime.buildHistoryButton(context)]),
+      appBar: AppBar(
+        title: Text('${S.current.random_mission} - Loop'),
+        actions: [
+          if (stat.event != null)
+            IconButton(
+              onPressed: () {
+                router.pushPage(RandomMissionSimulationPage(event: stat.event!, itemWeights: option.itemWeights));
+              },
+              icon: Icon(Icons.calculate),
+              tooltip: S.current.simulator,
+            ),
+          runtime.buildMenuButton(context),
+        ],
+      ),
       body: Column(
         children: [
           battleDetailSection,
@@ -67,16 +81,6 @@ class _RandomMissionLoopPageState extends State<RandomMissionLoopPage> with Fake
   }
 
   List<Widget> get buttonBar {
-    final buttonStyle = FilledButton.styleFrom(
-      minimumSize: const Size(64, 32),
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-    );
-
-    FilledButton buildButton({bool enabled = true, required VoidCallback onPressed, required String text}) {
-      return FilledButton.tonal(onPressed: enabled ? onPressed : null, style: buttonStyle, child: Text(text));
-    }
-
     return [
       ListenableBuilder(
         listenable: runtime.runningTask,
@@ -95,22 +99,43 @@ class _RandomMissionLoopPageState extends State<RandomMissionLoopPage> with Fake
       SafeArea(
         child: OverflowBar(
           alignment: MainAxisAlignment.center,
-          spacing: 2,
+          spacing: 4,
           children: [
-            buildButton(
+            runtime.buildCircularProgress(
+              context: context,
+              showElapsed: true,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+            ),
+            buildCompactButton(
               enabled: !runtime.runningTask.value,
               onPressed: () {
-                runtime.runTask(
-                  () => runtime.withWakeLock('loop-random-mission-$hashCode', runtime.event.startRandomMissionLoop),
-                );
+                InputCancelOkDialog.number(
+                  title: 'Start Looping Random Mission',
+                  autofocus: option.maxFreeCount <= 0,
+                  initValue: option.maxFreeCount == 0 ? 1 : option.maxFreeCount,
+                  validate: (v) => v > 0,
+                  helperText: 'Max free count',
+                  onSubmit: (v) {
+                    option.maxFreeCount = v;
+                    runtime.runTask(
+                      () => runtime.withWakeLock('loop-random-mission-$hashCode', runtime.event.startRandomMissionLoop),
+                    );
+                  },
+                ).showDialog(context);
               },
               text: 'Loop×${option.maxFreeCount}',
             ),
-            buildButton(
+            buildCompactButton(
               onPressed: () {
                 agent.network.stopFlag = true;
               },
               text: 'Stop',
+            ),
+            buildCompactButton(
+              onPressed: () {
+                runtime.battle.stopLoopFlag = true;
+              },
+              text: 'StopLoop',
             ),
           ],
         ),
@@ -218,7 +243,7 @@ class _RandomMissionLoopPageState extends State<RandomMissionLoopPage> with Fake
           ],
         ),
       ),
-      kDefaultDivider,
+      // kIndentDivider,
       SimpleAccordion(
         headerBuilder: (context, _) {
           final missionCount = Maths.sum(
@@ -254,42 +279,90 @@ class _RandomMissionLoopPageState extends State<RandomMissionLoopPage> with Fake
   List<Widget> get optionTiles {
     List<Widget> _buildQuest(int index, ValueChanged<int> onChanged, bool showBond) {
       final team = user.battleOptions.getOrNull(index);
+      final quest = db.gameData.quests[team?.questId];
       final userQuest = mstData.userQuest[team?.questId];
       final userDeck = mstData.userDeck[team?.deckId];
+      final questText = 'No.${index + 1} - ${team?.name} Lv.${quest?.recommendLv} ${quest?.lName.l}';
 
       return [
         ListTile(
           dense: true,
-          title: Text('No.${index + 1} - ${team?.name} ${db.gameData.quests[team?.questId]?.lName.l}'),
+          title: Text(questText),
           subtitle: team == null ? null : Text('clear ${userQuest?.clearNum}  challenge ${userQuest?.challengeNum}'),
-          trailing: Icon(Icons.change_circle),
-          onTap: () async {
-            if (runtime.runningTask.value) return;
-            await router.pushPage(
-              BattleOptionListPage(
-                data: user,
-                onSelected: (result) {
-                  onChanged(result.index);
-                },
-              ),
-            );
-            if (mounted) setState(() {});
-          },
+          trailing: IconButton(
+            onPressed: () async {
+              if (runtime.runningTask.value) return;
+              await router.pushPage(
+                BattleOptionListPage(
+                  data: user,
+                  onSelected: (result) {
+                    onChanged(result.index);
+                  },
+                ),
+              );
+              if (mounted) setState(() {});
+            },
+            icon: Icon(Icons.change_circle),
+          ),
+          onTap: quest?.routeTo,
         ),
         if (userDeck != null) ..._buildUserDeck(userDeck.deckInfo, showBond),
-        Center(
-          child: FilledButton(
-            onPressed: () {
-              runtime.runTask(() async {
-                agent.user.curBattleOptionIndex = index;
-                final battleOption = agent.user.curBattleOption;
-                battleOption.loopCount = 1;
-                await runtime.battle.startLoop();
-              });
-            },
-            child: Text(S.current.start),
+        if (team != null)
+          ListTile(
+            subtitle: Column(
+              mainAxisSize: .min,
+              crossAxisAlignment: .start,
+              children: [
+                Wrap(
+                  crossAxisAlignment: .center,
+                  children: [
+                    Text('${S.current.support_servant_short}: '),
+                    if (team.supportSvtIds.isEmpty) Text(S.current.general_any),
+                    for (final svtId in team.supportSvtIds)
+                      GameCardMixin.anyCardItemBuilder(context: context, id: svtId, width: 24),
+                    //   ],
+                    // ),
+                    // Wrap(
+                    //   crossAxisAlignment: .center,
+                    //   children: [
+                    Text('  ${S.current.craft_essence_short}: '),
+                    if (team.supportEquipIds.isEmpty) Text(S.current.general_any),
+                    for (final ceId in team.supportEquipIds)
+                      GameCardMixin.anyCardItemBuilder(context: context, id: ceId, width: 24),
+                  ],
+                ),
+                Wrap(
+                  crossAxisAlignment: .center,
+                  children: [
+                    Text("${S.current.item_apple}: "),
+                    for (final recoverId in team.recoverIds)
+                      CachedImage(
+                        imageUrl: apRecovers.firstWhereOrNull((e) => e.id == recoverId)?.icon,
+                        width: 24,
+                        height: 24 * 144 / 132,
+                      ),
+                  ],
+                ),
+              ],
+            ),
+            trailing: FilledButton(
+              onPressed: () {
+                SimpleConfirmDialog(
+                  title: Text(S.current.start),
+                  content: Text(questText),
+                  onTapOk: () {
+                    runtime.runTask(() async {
+                      agent.user.curBattleOptionIndex = index;
+                      final battleOption = agent.user.curBattleOption;
+                      battleOption.loopCount = 1;
+                      await runtime.battle.startLoop();
+                    });
+                  },
+                ).showDialog(context);
+              },
+              child: Text(S.current.start),
+            ),
           ),
-        ),
       ];
     }
 
@@ -391,7 +464,8 @@ class _RandomMissionLoopPageState extends State<RandomMissionLoopPage> with Fake
             dense: true,
             title: Text(S.current.free_quest),
             subtitle: Text(
-              '${option.enabledQuests.isEmpty ? S.current.general_all : option.enabledQuests.length}/${stat.fqs0.length}',
+              '${option.enabledQuests.isEmpty ? S.current.general_all : option.enabledQuests.length}/${stat.fqs0.length}: '
+              '${option.enabledQuests.take(3).map((e) => db.gameData.quests[e]?.lDispName ?? e).join(",")}',
             ),
             trailing: Icon(DirectionalIcons.keyboard_arrow_forward(context)),
             onTap: () async {
@@ -489,20 +563,20 @@ class _RandomMissionLoopPageState extends State<RandomMissionLoopPage> with Fake
 
     List<Widget> children = [];
     for (int row = 0; row * kSvtNumPerRow < svts.length; row++) {
-      if (showBond) {
-        children.add(
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: FormationCard(
-              formation: BattleTeamFormationX.fromUserDeck(
-                deckInfo: deckInfo,
-                mstData: mstData,
-                posOffset: row * kSvtNumPerRow,
-              ),
-              userSvtCollections: mstData.userSvtCollection.lookup,
+      children.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: FormationCard(
+            formation: BattleTeamFormationX.fromUserDeck(
+              deckInfo: deckInfo,
+              mstData: mstData,
+              posOffset: row * kSvtNumPerRow,
             ),
+            userSvtCollections: mstData.userSvtCollection.lookup,
           ),
-        );
+        ),
+      );
+      if (showBond) {
         Widget bondDetail = Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
@@ -541,7 +615,7 @@ class _RandomMissionLoopPageState extends State<RandomMissionLoopPage> with Fake
                       style: reachBondLimit ? TextStyle(color: Theme.of(context).colorScheme.error) : null,
                     ),
                     BondProgress(
-                      value: bondData.next,
+                      value: bondData.elapsed,
                       total: bondData.total,
                       padding: EdgeInsets.symmetric(horizontal: 4),
                       minHeight: 4,
@@ -593,10 +667,9 @@ class _RandomMissionLoopPageState extends State<RandomMissionLoopPage> with Fake
               : Wrap(
                   children: [
                     for (final itemId in dropItems.keys.toList()..sort((a, b) => Item.compare2(a, b)))
-                      Item.iconBuilder(
+                      GameCardMixin.anyCardItemBuilder(
                         context: context,
-                        item: null,
-                        itemId: itemId,
+                        id: itemId,
                         height: 36,
                         text: [
                           '+${dropItems[itemId]!.format()}',
@@ -652,17 +725,20 @@ class _RandomMissionEnableQuestPageState extends State<RandomMissionEnableQuestP
       body: ListView.builder(
         itemBuilder: (context, index) {
           final quest = quests[index];
-          return CheckboxListTile(
-            dense: true,
-            secondary: db.getIconImage(quest.spot?.shownImage),
-            title: Text(quest.lName.l),
-            subtitle: Text('Lv.${quest.recommendLv} ${quest.lSpot.l}'),
-            value: widget.option.enabledQuests.contains(quest.id),
-            onChanged: (v) {
-              setState(() {
-                widget.option.enabledQuests.toggle(quest.id);
-              });
-            },
+          return InkWell(
+            onLongPress: quest.routeTo,
+            child: CheckboxListTile(
+              dense: true,
+              secondary: db.getIconImage(quest.spot?.shownImage),
+              title: Text(quest.lName.l),
+              subtitle: Text('Lv.${quest.recommendLv} ${quest.lSpot.l}'),
+              value: widget.option.enabledQuests.contains(quest.id),
+              onChanged: (v) {
+                setState(() {
+                  widget.option.enabledQuests.toggle(quest.id);
+                });
+              },
+            ),
           );
         },
         itemCount: quests.length,

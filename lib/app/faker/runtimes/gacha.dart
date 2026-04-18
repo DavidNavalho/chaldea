@@ -1,3 +1,5 @@
+import 'package:flutter/widgets.dart';
+
 import 'package:chaldea/app/api/atlas.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/faker/faker.dart';
@@ -5,6 +7,7 @@ import 'package:chaldea/models/gamedata/mst_data.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/packages/logger.dart';
 import 'package:chaldea/utils/utils.dart';
+import 'package:chaldea/widgets/custom_dialogs.dart';
 import '_base.dart';
 
 class FakerRuntimeGacha extends FakerRuntimeBase {
@@ -17,7 +20,10 @@ class FakerRuntimeGacha extends FakerRuntimeBase {
     while (agent.user.gacha.loopCount > 0) {
       runtime.checkStop();
       runtime.displayToast('Draw FP gacha ${initCount - agent.user.gacha.loopCount + 1}/$initCount...');
-      await gachaDraw(hundredDraw: agent.user.gacha.hundredDraw);
+      await gachaDraw(
+        hundredDraw: agent.user.gacha.hundredDraw,
+        skipSubIdCheck: initCount > agent.user.gacha.loopCount,
+      );
       agent.user.gacha.loopCount -= 1;
       runtime.update();
 
@@ -39,7 +45,35 @@ class FakerRuntimeGacha extends FakerRuntimeBase {
     return DateTimeX.findNextHourAt(userGacha?.freeDrawAt ?? 0, runtime.region.getGachaResetUTC(gacha.type)) < now;
   }
 
-  Future<void> gachaDraw({bool hundredDraw = false}) async {
+  int getTargetGachaSubId(NiceGacha gacha) {
+    assert(gacha.isFpGacha, 'Gacha ${gacha.id} is not FP gacha');
+    final now = DateTime.now().timestamp;
+    final validSubs = gacha.gachaSubs.where((sub) {
+      if (sub.openedAt > now || sub.closedAt <= now) return false;
+      bool? condMatch = CommonRelease.check(sub.releaseConditions, (release) {
+        if (release.condType == CondType.questClear) {
+          return mstData.isQuestClear(release.condId);
+        } else if (release.condType == CondType.questNotClear) {
+          return !mstData.isQuestClear(release.condId);
+        } else if (release.condType == CondType.eventScriptPlay) {
+          final userEvent = mstData.userEvent[release.condId];
+          return userEvent != null && (userEvent.scriptFlag & (1 << release.condNum) != 0);
+        }
+        return null;
+      });
+      if (condMatch == false) return false;
+      return true;
+    }).toList();
+    if (validSubs.isEmpty) {
+      return 0;
+    } else {
+      int maxPriority = Maths.max(validSubs.map((e) => e.priority));
+      final validSub = validSubs.firstWhere((e) => e.priority == maxPriority);
+      return validSub.id;
+    }
+  }
+
+  Future<void> gachaDraw({bool hundredDraw = false, bool skipSubIdCheck = false}) async {
     final counts = mstData.countSvtKeep();
     final userGame = mstData.user!;
     if (counts.svtCount >= userGame.svtKeep + 100) {
@@ -60,7 +94,7 @@ class FakerRuntimeGacha extends FakerRuntimeBase {
     if (gacha == null) {
       throw SilentException('Gacha ${option.gachaId} not found');
     }
-    final now = DateTime.now().timestamp;
+
     final bool hasFreeDraw = checkHasFreeGachaDraw(gacha);
 
     int drawNum;
@@ -84,35 +118,26 @@ class FakerRuntimeGacha extends FakerRuntimeBase {
     final FResponse resp;
 
     if (gacha.isFpGacha) {
-      final validSubs = gacha.gachaSubs.where((sub) {
-        if (sub.openedAt > now || sub.closedAt <= now) return false;
-        bool? condMatch = CommonRelease.check(sub.releaseConditions, (release) {
-          if (release.condType == CondType.questClear) {
-            return mstData.isQuestClear(release.condId);
-          } else if (release.condType == CondType.questNotClear) {
-            return !mstData.isQuestClear(release.condId);
-          } else if (release.condType == CondType.eventScriptPlay) {
-            final userEvent = mstData.userEvent[release.condId];
-            return userEvent != null && (userEvent.scriptFlag & (1 << release.condNum) != 0);
+      final targetSubId = getTargetGachaSubId(gacha);
+
+      final gachaSubId = option.gachaSubs[option.gachaId] ?? -1;
+      if (gachaSubId >= 0 && gachaSubId != targetSubId && !skipSubIdCheck) {
+        if (runtime.mounted) {
+          final confirm = await runtime.showLocalDialog(
+            SimpleConfirmDialog(
+              title: Text('Use Custom Sub Id?'),
+              content: Text('Supposed: $targetSubId\nSelected: $gachaSubId}'),
+            ),
+          );
+          if (confirm != true) {
+            throw SilentException('Expected gacha sub id $targetSubId, but got $gachaSubId');
           }
-          return null;
-        });
-        if (condMatch == false) return false;
-        return true;
-      }).toList();
-      final gachaSubId = option.gachaSubs[option.gachaId] ?? 0;
-      if (validSubs.isEmpty) {
-        if (gachaSubId != 0) {
-          throw SilentException('No valid gacha sub, gachaSubId should be 0');
-        }
-      } else {
-        int maxPriority = Maths.max(validSubs.map((e) => e.priority));
-        final validSub = validSubs.firstWhere((e) => e.priority == maxPriority);
-        if (gachaSubId != validSub.id) {
-          throw SilentException('Valid gacha sub id should be ${validSub.id}');
+        } else {
+          throw SilentException('Expected gacha sub id $targetSubId, but got $gachaSubId');
         }
       }
-      resp = await agent.gachaDraw(gachaId: option.gachaId, num: drawNum, gachaSubId: gachaSubId);
+
+      resp = await agent.gachaDraw(gachaId: option.gachaId, num: drawNum, gachaSubId: targetSubId);
     } else {
       final storyAdjustIds = gacha.storyAdjusts
           .where((adjust) {
@@ -156,10 +181,10 @@ class FakerRuntimeGacha extends FakerRuntimeBase {
     }
   }
 
-  Future<void> sellServant() async {
+  Future<void> sellServant({int limitGetDay = 2}) async {
     List<UserServantEntity> sellUserSvts = [];
     List<UserCommandCodeEntity> sellCommandCodes = [];
-    final timeLimit = DateTime.now().timestamp - 3600 * 36;
+    final timeLimit = DateTime.now().timestamp - kSecsPerDay * limitGetDay;
     sellUserSvts.addAll(
       mstData.userSvt.where((userSvt) {
         final entity = db.gameData.entities[userSvt.svtId];

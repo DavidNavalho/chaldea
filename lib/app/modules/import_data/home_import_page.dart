@@ -86,8 +86,25 @@ class _ImportPageHomeState extends State<ImportPageHome> {
           TileGroup(
             children: [
               ListTile(
+                leading: const Icon(Icons.table_view),
+                title: Text(S.current.import_csv_title),
+                subtitle: const Text('Edit in Excel/Google Sheet'),
+                trailing: const Icon(Icons.keyboard_arrow_right),
+                onTap: () {
+                  router.pushPage(const ImportCSVPage(), popDetail: true);
+                },
+              ),
+            ],
+          ),
+          TileGroup(
+            header: 'To be removed',
+            children: [
+              ListTile(
                 leading: const Icon(Icons.screenshot),
-                title: Text(S.current.import_item_screenshots),
+                title: Text(
+                  S.current.import_item_screenshots,
+                  style: const TextStyle(decoration: .lineThrough, fontStyle: .italic),
+                ),
                 subtitle: Text(S.current.import_item_hint),
                 trailing: const Icon(Icons.keyboard_arrow_right),
                 onTap: () {
@@ -96,7 +113,10 @@ class _ImportPageHomeState extends State<ImportPageHome> {
               ),
               ListTile(
                 leading: const Icon(Icons.screenshot),
-                title: Text(S.current.import_active_skill_screenshots),
+                title: Text(
+                  S.current.import_active_skill_screenshots,
+                  style: const TextStyle(decoration: .lineThrough, fontStyle: .italic),
+                ),
                 subtitle: Text("[${S.current.outdated}] ${S.current.import_active_skill_hint}"),
                 trailing: const Icon(Icons.keyboard_arrow_right),
                 onTap: () {
@@ -107,22 +127,16 @@ class _ImportPageHomeState extends State<ImportPageHome> {
               ),
               ListTile(
                 leading: const Icon(Icons.screenshot),
-                title: Text(S.current.import_append_skill_screenshots),
+                title: Text(
+                  S.current.import_append_skill_screenshots,
+                  style: const TextStyle(decoration: .lineThrough, fontStyle: .italic),
+                ),
                 subtitle: Text('[${S.current.outdated}] ${S.current.import_append_skill_hint}'),
                 trailing: const Icon(Icons.keyboard_arrow_right),
                 onTap: () {
                   if (checkDataRequiredVersion()) {
                     router.pushPage(ImportSkillScreenshotPage(isAppend: true), popDetail: true);
                   }
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.table_view),
-                title: Text(S.current.import_csv_title),
-                subtitle: const Text('Edit in Excel/Google Sheet'),
-                trailing: const Icon(Icons.keyboard_arrow_right),
-                onTap: () {
-                  router.pushPage(const ImportCSVPage(), popDetail: true);
                 },
               ),
             ],

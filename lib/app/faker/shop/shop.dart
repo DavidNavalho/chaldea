@@ -4,6 +4,8 @@ import 'package:flutter_easyloading/flutter_easyloading.dart';
 
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/modules/common/filter_group.dart';
+import 'package:chaldea/app/modules/common/filter_page_base.dart';
+import 'package:chaldea/app/modules/shop/filter.dart';
 import 'package:chaldea/app/modules/shop/shop.dart';
 import 'package:chaldea/app/modules/timer/base.dart';
 import 'package:chaldea/generated/l10n.dart';
@@ -11,6 +13,8 @@ import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
 import '../runtime.dart';
+
+enum _UserShopStatus { normal, unreleased, soldOut }
 
 class UserShopsPage extends StatefulWidget {
   final FakerRuntime runtime;
@@ -23,15 +27,23 @@ class UserShopsPage extends StatefulWidget {
   State<UserShopsPage> createState() => _UserShopsPageState();
 }
 
-class _UserShopsPageState extends State<UserShopsPage> with SingleTickerProviderStateMixin, FakerRuntimeStateMixin {
+class _UserShopsPageState extends State<UserShopsPage>
+    with SingleTickerProviderStateMixin, FakerRuntimeStateMixin, SearchableListState<NiceShop, UserShopsPage> {
   @override
   late final runtime = widget.runtime;
   late final shops = widget.shops.toList();
+  @override
+  Iterable<NiceShop> get wholeData => shops;
+
+  final filterData = ShopFilterData();
+  final Set<int> consumeItemIds = {};
   final shownConsumeItem = FilterRadioData<int>();
+  final shopStatus = FilterGroupData<_UserShopStatus>();
 
   @override
-  Widget build(BuildContext context) {
-    Set<int> consumeItemIds = {};
+  void initState() {
+    super.initState();
+
     for (final shop in shops) {
       if (shop.cost != null) {
         consumeItemIds.add(shop.cost!.itemId);
@@ -42,19 +54,29 @@ class _UserShopsPageState extends State<UserShopsPage> with SingleTickerProvider
         }
       }
     }
-    List<NiceShop> shownShops = shops;
-    if (shownConsumeItem.options.isNotEmpty) {
-      shownShops = shops
-          .where((shop) => shownConsumeItem.options.intersection(shop.getConsumeItems().keys.toSet()).isNotEmpty)
-          .toList();
-    }
-    shownShops.sortByList(
-      (shop) => <int>[isSoldOut(shop) ? 1 : 0, isShopReleased(shop) ? 0 : 1, shop.priority, shop.id],
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    filterShownList(
+      compare: (a, b) {
+        final aa = filterData.reversed ? b : a, bb = filterData.reversed ? a : b;
+        return ListX.compareByList<NiceShop, int>(aa, bb, (e) {
+          switch (filterData.sortType) {
+            case ShopSort.priority:
+              return [isSoldOut(e) ? 1 : 0, isShopReleased(e) ? 0 : 1, e.priority, -e.openedAt];
+            case ShopSort.openTime:
+              return [isSoldOut(e) ? 1 : 0, isShopReleased(e) ? 0 : 1, -e.openedAt, e.priority];
+          }
+        });
+      },
     );
 
-    return Scaffold(
+    return scrollListener(
+      useGrid: false,
       appBar: AppBar(
         title: Text(widget.title),
+        bottom: showSearchBar ? searchBar : null,
         actions: [
           if (widget.event != null)
             IconButton(
@@ -65,67 +87,75 @@ class _UserShopsPageState extends State<UserShopsPage> with SingleTickerProvider
               tooltip: S.current.event,
             ),
           runtime.buildMenuButton(context),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.separated(
-              itemBuilder: (context, index) => buildShop(shownShops[index]),
-              separatorBuilder: (context, _) => const Divider(),
-              itemCount: shownShops.length,
-            ),
-          ),
-          kDefaultDivider,
-          SafeArea(
-            child: ListTile(
-              title: Wrap(
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 4,
-                children: [
-                  runtime.buildCircularProgress(context: context),
-                  const SizedBox(width: 8),
-                  FilterGroup<int>(
-                    options: consumeItemIds.toList()..sort2((e) => -e),
-                    values: shownConsumeItem,
-                    shrinkWrap: true,
-                    constraints: const BoxConstraints(),
-                    optionBuilder: (itemId) => Item.iconBuilder(
-                      context: context,
-                      item: null,
-                      itemId: itemId,
-                      text: mstData.getItemOrSvtNum(itemId).format(),
-                      width: 42,
-                      jumpToDetail: false,
-                      padding: EdgeInsets.all(2),
-                    ),
-                    onFilterChanged: (_, _) {
-                      if (mounted) setState(() {});
-                    },
-                  ),
-                ],
-              ),
-            ),
+          searchIcon,
+          IconButton(
+            icon: const Icon(Icons.filter_alt),
+            tooltip: S.current.filter,
+            onPressed: () {
+              final purchaseTypes = <PurchaseType>{
+                for (final shop in shops) ...[shop.purchaseType, ...shop.itemSet.map((e) => e.purchaseType)],
+              };
+              FilterPage.show(
+                context: context,
+                builder: (context) => ShopFilter(
+                  filterData: filterData,
+                  onChanged: (_) {
+                    if (mounted) setState(() {});
+                  },
+                  purchaseTypes: purchaseTypes.toList(),
+                  extraFilters: (context, update) {
+                    return [
+                      FilterGroup<_UserShopStatus>(
+                        title: Text('User Shop Status'),
+                        options: _UserShopStatus.values,
+                        values: shopStatus,
+                        optionBuilder: (v) => Text(v.name),
+                        onFilterChanged: (value, _) {
+                          update();
+                          if (mounted) setState(() {});
+                        },
+                      ),
+                    ];
+                  },
+                ),
+              );
+            },
           ),
         ],
       ),
     );
   }
 
-  Widget buildShop(NiceShop shop) {
+  @override
+  Widget gridItemBuilder(NiceShop shop) => throw UnimplementedError();
+
+  @override
+  Widget listItemBuilder(NiceShop shop) {
     final reward = ShopHelper.purchases(context, shop, showSpecialName: true).firstOrNull;
     final userShop = mstData.userShop[shop.id];
-    final bool canBuy = !isSoldOut(shop) && isShopReleased(shop);
-    final TextStyle? textStyle = canBuy ? null : TextStyle(color: Theme.of(context).disabledColor);
+    final _soldOut = isSoldOut(shop), _released = isShopReleased(shop);
+    final bool canBuy = !_soldOut && _released;
+    final TextStyle? textStyle = canBuy
+        ? null
+        : _soldOut
+        ? TextStyle(color: Theme.of(context).hintColor)
+        : TextStyle(color: Theme.of(context).disabledColor);
     Widget? leading = reward?.$1;
     if (leading != null && !canBuy) {
       leading = Opacity(opacity: 0.5, child: leading);
     }
+
+    final coinText = getCoinSvtInfo(shop);
     return ListTile(
       key: Key('userShop-${shop.id}'),
       dense: true,
       leading: leading == null ? null : ConstrainedBox(constraints: BoxConstraints(maxWidth: 36), child: leading),
-      title: Text(shop.lName),
+      title: Text.rich(
+        TextSpan(
+          text: shop.lName,
+          children: [if (coinText != null) TextSpan(text: '\n$coinText')],
+        ),
+      ),
       subtitle: Text.rich(
         TextSpan(
           children: [
@@ -150,18 +180,25 @@ class _UserShopsPageState extends State<UserShopsPage> with SingleTickerProvider
         crossAxisAlignment: WrapCrossAlignment.center,
         spacing: 8,
         children: [
-          Text.rich(
-            TextSpan(
-              text: [userShop?.num ?? 0, shop.limitNum == 0 ? '∞' : shop.limitNum].join('/'),
-              children: [
-                if (shop.purchaseType == PurchaseType.item && shop.targetIds.length == 1)
-                  TextSpan(
-                    text: '\n${S.current.item_own} ${mstData.getItemOrSvtNum(shop.targetIds.single).format()}',
-                    style: canBuy ? Theme.of(context).textTheme.bodySmall : null,
-                  ),
-              ],
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text.rich(
+              TextSpan(
+                text: [userShop?.num ?? 0, shop.limitNum == 0 ? '∞' : shop.limitNum].join('/'),
+                children: [
+                  if (shop.purchaseType == PurchaseType.item && shop.targetIds.length == 1)
+                    TextSpan(
+                      text: [
+                        '\n${S.current.item_own} ${mstData.getItemOrSvtNum(shop.targetIds.single).format()}',
+                        if (mstData.isCurPlanUser)
+                          '${S.current.item_left} ${(db.itemCenter.itemLeft[shop.targetIds.single] ?? 0).format()}',
+                      ].join('\n'),
+                      style: canBuy ? Theme.of(context).textTheme.bodySmall : null,
+                    ),
+                ],
+              ),
+              textAlign: TextAlign.end,
             ),
-            textAlign: TextAlign.end,
           ),
           OutlinedButton(
             onPressed: canBuy ? () => buyShop(shop) : null,
@@ -174,6 +211,60 @@ class _UserShopsPageState extends State<UserShopsPage> with SingleTickerProvider
         ],
       ),
       onTap: () => shop.routeTo(region: runtime.region),
+    );
+  }
+
+  String? getCoinSvtInfo(NiceShop shop) {
+    if (shop.purchaseType != .item) return null;
+    final item = db.gameData.items[shop.targetIds.firstOrNull];
+    if (item == null || item.type != .svtCoin) return null;
+    final svtId = item.value;
+    int lv = mstData.userSvtCollection[svtId]?.maxLv ?? 0;
+    List<int> appendLvs = [];
+    for (final userSvt in mstData.userSvtAndStorage) {
+      if (userSvt.svtId == svtId) {
+        List<int> _appendLvs = mstData.getSvtAppendSkillLvs(userSvt);
+        if (Maths.sum(_appendLvs) > Maths.sum(appendLvs)) {
+          appendLvs = _appendLvs;
+        }
+      }
+    }
+
+    return 'Lv$lv  ${appendLvs.map((e) => e == 0 ? "-" : e).join('/')}';
+  }
+
+  @override
+  PreferredSizeWidget? get buttonBar {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(48),
+      child: ListTile(
+        title: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 4,
+          children: [
+            runtime.buildCircularProgress(context: context),
+            const SizedBox(width: 8),
+            FilterGroup<int>(
+              options: consumeItemIds.toList()..sort2((e) => -e),
+              values: shownConsumeItem,
+              shrinkWrap: true,
+              constraints: const BoxConstraints(),
+              optionBuilder: (itemId) => Item.iconBuilder(
+                context: context,
+                item: null,
+                itemId: itemId,
+                text: mstData.getItemOrSvtNum(itemId).format(),
+                width: 42,
+                jumpToDetail: false,
+                padding: EdgeInsets.all(2),
+              ),
+              onFilterChanged: (_, _) {
+                if (mounted) setState(() {});
+              },
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -248,6 +339,67 @@ class _UserShopsPageState extends State<UserShopsPage> with SingleTickerProvider
 
   bool isReleaseOpen(ShopRelease release) {
     return runtime.condCheck.isCondOpen2(release.condType, release.condValues, release.condNum) ?? true;
+  }
+
+  @override
+  Iterable<String?> getSummary(NiceShop shop) sync* {
+    Set<String> names = {shop.name};
+    if (shop.purchaseType == PurchaseType.equip) {
+      for (final targetId in shop.targetIds) {
+        final equip = db.gameData.mysticCodes[targetId];
+        if (equip != null) {
+          names.add(equip.name);
+          names.add(equip.lName.l);
+        }
+      }
+    } else if (shop.purchaseType == PurchaseType.costumeRelease) {
+      for (final targetId in shop.targetIds) {
+        final costume = db.gameData.servantsById[targetId ~/ 100]?.costume.values.firstWhereOrNull(
+          (e) => e.costumeCollectionNo == targetId % 100,
+        );
+        if (costume != null) {
+          names.add(costume.name);
+          names.add(costume.lName.l);
+        }
+      }
+    } else {
+      for (final targetId in shop.getItemAndCardIds()) {
+        final lName =
+            db.gameData.entities[targetId]?.lName ??
+            db.gameData.commandCodesById[targetId]?.lName ??
+            db.gameData.items[targetId]?.lName;
+        if (lName != null) {
+          names.add(lName.key);
+          names.add(lName.l);
+        }
+      }
+    }
+
+    yield* names;
+    yield shop.detail;
+  }
+
+  @override
+  bool filter(NiceShop shop) {
+    if (!filterData.filter(shop)) return false;
+
+    if (shownConsumeItem.options.isNotEmpty) {
+      if (shownConsumeItem.options.intersection(shop.getConsumeItems().keys.toSet()).isEmpty) {
+        return false;
+      }
+    }
+
+    if (shopStatus.isNotEmpty) {
+      final status = [
+        if (isSoldOut(shop)) _UserShopStatus.soldOut,
+        if (!isShopReleased(shop)) _UserShopStatus.unreleased,
+      ];
+      if (status.isEmpty) status.add(_UserShopStatus.normal);
+      if (!shopStatus.matchAny(status)) {
+        return false;
+      }
+    }
+    return true;
   }
 }
 

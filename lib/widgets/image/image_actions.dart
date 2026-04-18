@@ -160,9 +160,15 @@ class ImageActions {
               title: Text(S.current.save),
               onTap: () {
                 Navigator.pop(context);
-                final bytes = data ?? File(srcFp!).readAsBytesSync();
-                File(destFp).parent.createSync(recursive: true);
-                File(destFp).writeAsBytesSync(bytes);
+                try {
+                  final bytes = data ?? File(srcFp!).readAsBytesSync();
+                  File(destFp).parent.createSync(recursive: true);
+                  File(destFp).writeAsBytesSync(bytes);
+                } catch (e, s) {
+                  EasyLoading.showError(e.toString());
+                  logger.e('save image to file failed', e, s);
+                  return;
+                }
                 SimpleConfirmDialog(
                   showCancel: false,
                   title: Text(S.current.saved),

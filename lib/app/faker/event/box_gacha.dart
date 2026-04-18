@@ -267,21 +267,11 @@ class _BoxGachaDrawPageState extends State<BoxGachaDrawPage> with FakerRuntimeSt
   }
 
   Widget get buttonBar {
-    final buttonStyle = FilledButton.styleFrom(
-      minimumSize: const Size(64, 32),
-      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-    );
-
-    FilledButton buildButton({bool enabled = true, required VoidCallback onPressed, required String text}) {
-      return FilledButton.tonal(onPressed: enabled ? onPressed : null, style: buttonStyle, child: Text(text));
-    }
-
     final lottery = curEvent?.lottery;
 
     List<List<Widget>> btnGroups = [
       [
-        buildButton(
+        buildCompactButton(
           enabled: lottery != null && !runtime.runningTask.value,
           onPressed: () {
             if (runtime.runningTask.value) return;
@@ -292,7 +282,7 @@ class _BoxGachaDrawPageState extends State<BoxGachaDrawPage> with FakerRuntimeSt
           },
           text: 'draw',
         ),
-        buildButton(
+        buildCompactButton(
           enabled: loopCount.value > 0 && lottery != null,
           onPressed: () {
             SimpleConfirmDialog(
@@ -309,7 +299,7 @@ class _BoxGachaDrawPageState extends State<BoxGachaDrawPage> with FakerRuntimeSt
           },
           text: 'Loop ×${loopCount.value}',
         ),
-        buildButton(
+        buildCompactButton(
           onPressed: () {
             agent.network.stopFlag = true;
           },

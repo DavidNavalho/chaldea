@@ -41,6 +41,7 @@ int countAnyTraits(final Iterable<int> myTraits, final Iterable<int> requiredTra
       .length;
 }
 
+@Deprecated('Use `Individuality.checkSignedIndividualitiesPartialMatch` instead')
 bool checkSignedIndividualitiesPartialMatch({
   required final Iterable<int> myTraits,
   required final Iterable<int> requiredTraits,
@@ -56,20 +57,24 @@ bool checkSignedIndividualitiesPartialMatch({
   return !negativeMatchFunc(myTraits, negativeTargets);
 }
 
+@Deprecated(
+  'Use `Individuality.checkSignedIndividualities2/checkSignedIndivPartialMatch/checkSignedIndivAllMatch` instead',
+)
 bool checkSignedIndividualities2({
-  required final Iterable<int> myTraits,
-  required final Iterable<int> requiredTraits,
+  required final Iterable<int>? myTraits,
+  required final Iterable<int>? requiredTraits,
   final bool Function(Iterable<int>, Iterable<int>) positiveMatchFunc = partialMatch,
   final bool Function(Iterable<int>, Iterable<int>) negativeMatchFunc = partialMatch,
 }) {
   return Individuality.checkSignedIndividualities2(
-    self: myTraits.toList(),
-    signedTarget: requiredTraits.toList(),
+    self: myTraits?.toList(),
+    signedTarget: requiredTraits?.toList(),
     matchedFunc: positiveMatchFunc == partialMatch ? Individuality.isPartialMatchArray : Individuality.isMatchArray,
     mismatchFunc: positiveMatchFunc == partialMatch ? Individuality.isPartialMatchArray : Individuality.isMatchArray,
   );
 }
 
+@Deprecated('Use `Individuality.isPartialMatchArray` instead')
 bool partialMatch(final Iterable<int> myTraits, final Iterable<int> unsignedRequiredTraits) {
   final Set<int> myTraitsSet = myTraits.toSet();
   for (final trait in unsignedRequiredTraits) {
@@ -80,6 +85,7 @@ bool partialMatch(final Iterable<int> myTraits, final Iterable<int> unsignedRequ
   return false;
 }
 
+@Deprecated('Use `Individuality.isMatchArray` instead')
 bool allMatch(final Iterable<int> myTraits, final Iterable<int> unsignedRequiredTraits) {
   final Set<int> myTraitsSet = myTraits.toSet();
   for (final trait in unsignedRequiredTraits) {
@@ -121,8 +127,8 @@ class CheckTraitParameters {
   Iterable<int> requiredTraits;
   BattleServantData? actor;
   int? requireAtLeast; // overshadows positive & negative match
-  bool Function(Iterable<int>, Iterable<int>) positiveMatchFunction;
-  bool Function(Iterable<int>, Iterable<int>) negativeMatchFunction;
+  bool Function(List<int>?, List<int>?) positiveMatchFunction;
+  bool Function(List<int>?, List<int>?) negativeMatchFunction;
 
   bool checkActorTraits;
   bool checkActorBuffTraits;
@@ -147,7 +153,7 @@ class CheckTraitParameters {
     this.checkCurrentCardTraits = false,
     this.checkCurrentFuncTraits = false,
     this.checkQuestTraits = false,
-    this.positiveMatchFunction = partialMatch,
-    this.negativeMatchFunction = partialMatch,
+    this.positiveMatchFunction = Individuality.isPartialMatchArray,
+    this.negativeMatchFunction = Individuality.isPartialMatchArray,
   }) : requiredTraits = requiredTraits.toList();
 }

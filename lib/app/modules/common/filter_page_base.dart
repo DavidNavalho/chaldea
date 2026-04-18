@@ -5,11 +5,14 @@ import 'package:chaldea/packages/split_route/split_route.dart';
 import 'package:chaldea/widgets/widgets.dart';
 import '../../../models/models.dart';
 
+typedef ExtraFilterBuilder = List<Widget> Function(BuildContext context, VoidCallback update);
+
 abstract class FilterPage<T> extends StatefulWidget {
   final T filterData;
   final ValueChanged<T>? onChanged;
+  final ExtraFilterBuilder? extraFilters;
 
-  const FilterPage({super.key, required this.filterData, this.onChanged});
+  const FilterPage({super.key, required this.filterData, this.onChanged, this.extraFilters});
 
   static void show({required BuildContext context, required WidgetBuilder builder}) {
     if (SplitRoute.isSplit(context)) {

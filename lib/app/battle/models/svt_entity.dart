@@ -8,6 +8,7 @@ import 'package:chaldea/app/battle/utils/battle_logger.dart';
 import 'package:chaldea/app/battle/utils/battle_utils.dart';
 import 'package:chaldea/app/battle/utils/buff_utils.dart';
 import 'package:chaldea/generated/l10n.dart';
+import 'package:chaldea/models/gamedata/individuality.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'ai.dart';
@@ -1256,12 +1257,7 @@ class BattleServantData {
     return buffList.where((buff) {
       if (buff.vals.IgnoreIndividuality == 1 && !includeIgnoreIndiv) return false;
       if (ignoreIndivUnreleaseable && buff.irremovable) return false;
-      return checkSignedIndividualities2(
-        myTraits: buff.getTraits(),
-        requiredTraits: traits,
-        positiveMatchFunc: partialMatch,
-        negativeMatchFunc: partialMatch,
-      );
+      return Individuality.checkSignedIndivPartialMatch(self: buff.getTraits(), signedTarget: traits);
     }).toList();
   }
 
@@ -1590,6 +1586,14 @@ class BattleServantData {
     }
 
     return !isSkillSealed(skillIndex) && !isSkillCondFailed(battleData, skillIndex);
+  }
+
+  bool canSkillCoolDown(final BattleData battleData, final int skillIndex) {
+    if (skillInfoList.length <= skillIndex || skillIndex < 0) {
+      return false;
+    }
+
+    return skillInfoList[skillIndex].skill != null && canAttack() && !isSkillSealed(skillIndex);
   }
 
   bool canOrderChange() {
@@ -2578,7 +2582,7 @@ class BattleServantData {
     } else {
       for (int skillIdx = 0; skillIdx < skillInfoList.length; skillIdx++) {
         final skill = skillInfoList[skillIdx];
-        if (canUseSkillIgnoreCoolDown(battleData, skillIdx)) {
+        if (canSkillCoolDown(battleData, skillIdx)) {
           skill.turnEnd();
         }
       }
@@ -2622,11 +2626,15 @@ class BattleServantData {
       turnEndLog += ' - dot ${S.current.battle_damage}: $turnEndDamage';
     }
 
+    // check guts after dot (reduceHp)
     if (hp <= 0) {
       if (hasNextShift(battleData)) {
         hp = 1;
       } else {
-        resetLastHits();
+        final gutsActivated = await activateGuts(battleData);
+        if (!gutsActivated) {
+          resetLastHits();
+        }
       }
     }
 
@@ -2656,6 +2664,19 @@ class BattleServantData {
     final allBuffs = getAllBuffs(battleData);
     final delayedFunctions = collectBuffsPerType(allBuffs, BuffType.delayFunction);
     await activateBuff(battleData, BuffAction.functionSelfturnend);
+
+    // check guts after selfturnendFunction
+    if (hp <= 0) {
+      if (hasNextShift(battleData)) {
+        hp = 1;
+      } else {
+        final gutsActivated = await activateGuts(battleData);
+        if (!gutsActivated) {
+          resetLastHits();
+        }
+      }
+    }
+
     await activateDelayFunction(battleData, delayedFunctions.where((buff) => buff.logicTurn == 0));
 
     battleBuff.selfTurnPass();

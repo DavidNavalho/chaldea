@@ -194,6 +194,11 @@ MappingData _$MappingDataFromJson(Map json) => MappingData(
         (k, e) => MapEntry(int.parse(k as String), MappingBase<int>.fromJson(Map<String, dynamic>.from(e as Map))),
       ) ??
       const {},
+  svtTraitRelease:
+      (json['svt_trait_release'] as Map?)?.map(
+        (k, e) => MapEntry(int.parse(k as String), MappingList<int>.fromJson(Map<String, dynamic>.from(e as Map))),
+      ) ??
+      const {},
   enums: json['enums'] == null ? null : EnumMapping.fromJson(Map<String, dynamic>.from(json['enums'] as Map)),
   misc:
       (json['misc'] as Map?)?.map(
@@ -247,6 +252,7 @@ Map<String, dynamic> _$MappingDataToJson(MappingData instance) => <String, dynam
   'mc_release': instance.mcRelease.toJson(),
   'war_release': instance.warRelease.toJson(),
   'quest_release': instance.questRelease.map((k, e) => MapEntry(k.toString(), e.toJson())),
+  'svt_trait_release': instance.svtTraitRelease.map((k, e) => MapEntry(k.toString(), e.toJson())),
   'enums': instance.enums.toJson(),
   'misc': instance.misc.map((k, e) => MapEntry(k, e.map((k, e) => MapEntry(k, e.toJson())))),
 };

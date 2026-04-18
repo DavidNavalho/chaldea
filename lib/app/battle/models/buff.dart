@@ -67,12 +67,7 @@ class BattleBuff {
       (buff) =>
           (includeNoAct || !buff.checkState(BuffState.noAct)) &&
           (includeNoField || !buff.checkState(BuffState.noField)) &&
-          checkSignedIndividualities2(
-            myTraits: buff.getTraits(),
-            requiredTraits: [trait],
-            positiveMatchFunc: partialMatch,
-            negativeMatchFunc: partialMatch,
-          ),
+          Individuality.checkSignedIndivPartialMatch(self: buff.getTraits(), signedTarget: [trait]),
     );
   }
 
@@ -362,45 +357,25 @@ class BuffData {
     } else {
       final checkIndivType = buff.script.checkIndvType;
       if (checkIndivType == 1 || checkIndivType == 3) {
-        return checkSignedIndividualities2(
-              myTraits: selfTraits,
-              requiredTraits: buff.ckSelfIndv,
-              positiveMatchFunc: allMatch,
-              negativeMatchFunc: allMatch,
-            ) &&
-            checkSignedIndividualities2(
-              myTraits: opponentTraits ?? [],
-              requiredTraits: buff.ckOpIndv,
-              positiveMatchFunc: allMatch,
-              negativeMatchFunc: allMatch,
-            );
+        return Individuality.checkSignedIndivAllMatch(self: selfTraits, signedTarget: buff.ckSelfIndv) &&
+            Individuality.checkSignedIndivAllMatch(self: opponentTraits, signedTarget: buff.ckOpIndv);
       } else if (checkIndivType == 4) {
-        return checkSignedIndividualitiesPartialMatch(
-              myTraits: selfTraits,
-              requiredTraits: buff.ckSelfIndv,
-              positiveMatchFunc: partialMatch,
-              negativeMatchFunc: partialMatch,
+        return Individuality.checkSignedIndividualitiesPartialMatch(
+              selfs: selfTraits,
+              signedTargets: buff.ckSelfIndv,
+              matchedFunc: Individuality.isPartialMatchArray,
+              mismatchFunc: Individuality.isPartialMatchArray,
             ) &&
-            checkSignedIndividualitiesPartialMatch(
-              myTraits: opponentTraits ?? [],
-              requiredTraits: buff.ckOpIndv,
-              positiveMatchFunc: partialMatch,
-              negativeMatchFunc: partialMatch,
+            Individuality.checkSignedIndividualitiesPartialMatch(
+              selfs: opponentTraits ?? [],
+              signedTargets: buff.ckOpIndv,
+              matchedFunc: Individuality.isPartialMatchArray,
+              mismatchFunc: Individuality.isPartialMatchArray,
             );
       } else {
         // null, 0, 2
-        return checkSignedIndividualities2(
-              myTraits: selfTraits,
-              requiredTraits: buff.ckSelfIndv,
-              positiveMatchFunc: partialMatch,
-              negativeMatchFunc: partialMatch,
-            ) &&
-            checkSignedIndividualities2(
-              myTraits: opponentTraits ?? [],
-              requiredTraits: buff.ckOpIndv,
-              positiveMatchFunc: partialMatch,
-              negativeMatchFunc: partialMatch,
-            );
+        return Individuality.checkSignedIndivPartialMatch(self: selfTraits, signedTarget: buff.ckSelfIndv) &&
+            Individuality.checkSignedIndivPartialMatch(self: opponentTraits, signedTarget: buff.ckOpIndv);
       }
     }
   }
@@ -498,7 +473,7 @@ class BuffData {
   bool checkHpReduceToRegainIndiv(final List<int>? selfTraits) {
     final hpReduceToRegainIndiv = vals.HpReduceToRegainIndiv;
     return hpReduceToRegainIndiv == null ||
-        checkSignedIndividualities2(myTraits: selfTraits ?? [], requiredTraits: [hpReduceToRegainIndiv]);
+        Individuality.checkSignedIndivPartialMatch(self: selfTraits, signedTarget: [hpReduceToRegainIndiv]);
   }
 
   bool checkTargetFunctionIndividuality(final List<NiceFunction>? functions) {
@@ -509,12 +484,15 @@ class BuffData {
     }
 
     for (final NiceFunction function in functions ?? []) {
-      if (checkSignedIndividualities2(myTraits: function.getFuncIndividuality(), requiredTraits: targetFuncIndiv)) {
+      if (Individuality.checkSignedIndivPartialMatch(
+        self: function.getFuncIndividuality(),
+        signedTarget: targetFuncIndiv,
+      )) {
         if (targetBuffIndiv == null || !function.funcType.isAddState) {
           return true;
         }
 
-        if (checkSignedIndividualities2(myTraits: function.buff?.vals ?? [], requiredTraits: targetBuffIndiv)) {
+        if (Individuality.checkSignedIndivPartialMatch(self: function.buff?.vals, signedTarget: targetBuffIndiv)) {
           return true;
         }
       }
@@ -540,7 +518,7 @@ class BuffData {
     if (script.UpBuffRateBuffIndiv != null) {
       scriptCheck &=
           selfTraits != null &&
-          checkSignedIndividualities2(myTraits: selfTraits, requiredTraits: script.UpBuffRateBuffIndiv!);
+          Individuality.checkSignedIndivPartialMatch(self: selfTraits, signedTarget: script.UpBuffRateBuffIndiv!);
     }
 
     if (script.useFirstTimeInTurn == 1) {
@@ -810,14 +788,14 @@ class BuffData {
           .where(
             (svt) =>
                 svt != owner &&
-                checkSignedIndividualities2(
-                  myTraits: svt.getTraits(
+                Individuality.checkSignedIndivPartialMatch(
+                  self: svt.getTraits(
                     addTraits: svt.getBuffTraits(
                       includeIgnoreIndiv: includeIgnore,
                       ignoreIndivUnreleaseable: ignoreUnreleaseable,
                     ),
                   ),
-                  requiredTraits: [buffScript.TargetIndiv!],
+                  signedTarget: [buffScript.TargetIndiv!],
                 ),
           )
           .isEmpty;

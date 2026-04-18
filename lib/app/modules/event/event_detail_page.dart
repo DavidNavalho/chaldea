@@ -963,7 +963,7 @@ class _EventItemsOverviewState extends State<EventItemsOverview> {
                   releaseOverwrites.every((e) => e.startedAt == event.startedAt && e.endedAt == event.endedAt);
               List<Widget> releaseChildren = [];
               Widget fmtDateRange(int start, int end) => Text(
-                '${start.sec2date().toCustomString(second: false)} ~ ${start.sec2date().toCustomString(year: false, second: false)}',
+                '${start.sec2date().toCustomString(second: false)} ~ ${end.sec2date().toCustomString(year: false, second: false)}',
                 style: const TextStyle(fontSize: 12),
               );
               for (final (index, release) in releaseOverwrites.indexed) {

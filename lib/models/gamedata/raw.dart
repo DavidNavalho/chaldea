@@ -291,6 +291,7 @@ class RegionAssetBundle {
 
   factory RegionAssetBundle.fromJson(Map<dynamic, dynamic> json) => _$RegionAssetBundleFromJson(json);
   Map<String, dynamic> toJson() => _$RegionAssetBundleToJson(this);
+  RegionAssetBundle copy() => RegionAssetBundle.fromJson(toJson());
 }
 
 @JsonSerializable(createToJson: false)

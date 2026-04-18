@@ -14,25 +14,92 @@ class ShopFilterData with FilterDataMixin {
   final type = FilterGroupData<ShopType>();
   final purchaseType = FilterGroupData<PurchaseType>();
   final svtType = FilterGroupData<SvtType>();
+  final itemCategory = FilterGroupData<ItemCategory>();
   bool hasFreeCond = false;
 
   ShopSort sortType = ShopSort.openTime;
   bool reversed = false;
 
   @override
-  List<FilterGroupData> get groups => [type, permanent, opening, purchaseType, svtType];
+  List<FilterGroupData> get groups => [type, permanent, opening, purchaseType, svtType, itemCategory];
 
   @override
   void reset() {
     super.reset();
     hasFreeCond = false;
   }
+
+  bool filter(NiceShop shop) {
+    final filterData = this;
+    if (!filterData.type.matchOne(shop.shopType)) {
+      return false;
+    }
+    final now = DateTime.now().timestamp;
+    int openStatus = shop.closedAt < now ? 0 : (shop.openedAt <= now ? 1 : 2);
+    if (!filterData.opening.matchOne(openStatus)) {
+      return false;
+    }
+    if (!filterData.permanent.matchOne(shop.closedAt > kNeverClosedTimestamp)) {
+      return false;
+    }
+    if (filterData.hasFreeCond && !shop.hasFreeCond) {
+      return false;
+    }
+    if (!filterData.purchaseType.matchAny([shop.purchaseType, ...shop.itemSet.map((e) => e.purchaseType)])) {
+      return false;
+    }
+    if (filterData.svtType.isNotEmpty) {
+      Set<int> svtIds = {};
+      if (shop.purchaseType == PurchaseType.servant) {
+        svtIds.addAll(shop.targetIds);
+      }
+      for (final setitem in shop.itemSet) {
+        if (setitem.purchaseType == PurchaseType.servant) {
+          svtIds.add(setitem.targetId);
+        }
+        for (final gift in setitem.gifts) {
+          if (gift.type == GiftType.servant) {
+            svtIds.add(gift.objectId);
+          }
+        }
+      }
+      if (!filterData.svtType.matchAny(svtIds.map((e) => db.gameData.entities[e]?.type).whereType())) {
+        return false;
+      }
+    }
+    if (filterData.itemCategory.isNotEmpty) {
+      Set<int> itemIds = {};
+      if (shop.purchaseType == PurchaseType.item) {
+        itemIds.addAll(shop.targetIds);
+      }
+      for (final setitem in shop.itemSet) {
+        if (setitem.purchaseType == PurchaseType.item) {
+          itemIds.add(setitem.targetId);
+        }
+        for (final gift in setitem.gifts) {
+          if (gift.type == GiftType.item) {
+            itemIds.add(gift.objectId);
+          }
+        }
+      }
+      if (!filterData.itemCategory.matchAny(itemIds.map((e) => db.gameData.items[e]?.category).whereType())) {
+        return false;
+      }
+    }
+    return true;
+  }
 }
 
 class ShopFilter extends FilterPage<ShopFilterData> {
   final List<PurchaseType> purchaseTypes;
 
-  const ShopFilter({super.key, required super.filterData, super.onChanged, this.purchaseTypes = const []});
+  const ShopFilter({
+    super.key,
+    required super.filterData,
+    super.onChanged,
+    this.purchaseTypes = const [],
+    super.extraFilters,
+  });
 
   @override
   _ShopFilterState createState() => _ShopFilterState();
@@ -71,6 +138,7 @@ class _ShopFilterState extends FilterPageState<ShopFilterData, ShopFilter> {
               ),
             ],
           ),
+          ...?widget.extraFilters?.call(context, update),
           FilterGroup<bool>(
             title: Text(S.current.opening_time),
             options: const [true, false],
@@ -104,6 +172,15 @@ class _ShopFilterState extends FilterPageState<ShopFilterData, ShopFilter> {
                 : (widget.purchaseTypes.toList()..sort2((e) => e.index)),
             values: filterData.purchaseType,
             optionBuilder: (v) => Text(Transl.enums(v, (enums) => enums.purchaseType).l),
+            onFilterChanged: (value, _) {
+              update();
+            },
+          ),
+          FilterGroup<ItemCategory>(
+            title: const Text('Item Category'),
+            options: ItemCategory.values,
+            values: filterData.itemCategory,
+            optionBuilder: (v) => Text(Transl.enums(v, (enums) => enums.itemCategory).l),
             onFilterChanged: (value, _) {
               update();
             },

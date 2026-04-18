@@ -95,6 +95,9 @@ class FakerRuntimeEvent extends FakerRuntimeBase {
     }
     agent.user.curBattleOptionIndex = battleOptionIndex;
     final battleOption = agent.user.curBattleOption;
+    if (battleOption.useCampaignItem) {
+      throw SilentException('Don not use Teapot for random mission.');
+    }
     battleOption
       ..questId = quest.id
       ..questPhase = quest.phases.last
@@ -154,8 +157,14 @@ class FakerRuntimeEvent extends FakerRuntimeBase {
   }
 
   QuestPhase _findNextFreeQuest(List<QuestPhase> quests) {
+    quests = _randomMissionOption.enabledQuests.isEmpty
+        ? quests.where((e) => e.recommendLevel >= QuestLevel.k90pp).toList()
+        : quests.where((e) => _randomMissionOption.enabledQuests.contains(e.id)).toList();
+    if (quests.isEmpty) {
+      throw SilentException('No enabled/available quest.');
+    }
     final missionProgresses = mstData.randomMissionProgress;
-    final stats = quests.where((e) => e.recommendLevel >= QuestLevel.k90pp).map((quest) {
+    final stats = quests.map((quest) {
       int completeNum = 0;
       double score = 0.0, score2 = 0.0;
       for (final (missionId, progress) in missionProgresses.items) {

@@ -444,6 +444,12 @@ extension BaseFunctionX on BaseFunction {
     return [];
   }
 
+  List<List<int>> getResultTvalsList() {
+    List<List<int>> result = getOverwriteTvalsList();
+    if (result.isNotEmpty) return result;
+    return functvals.map((e) => [e]).toList();
+  }
+
   bool get isEventOnlyEffect {
     if (this is NiceFunction) {
       final vals = (this as NiceFunction).svals.firstOrNull;

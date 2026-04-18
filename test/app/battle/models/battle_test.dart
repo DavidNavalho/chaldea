@@ -5,6 +5,7 @@ import 'package:chaldea/app/api/atlas.dart';
 import 'package:chaldea/app/battle/interactions/_delegate.dart';
 import 'package:chaldea/app/battle/models/battle.dart';
 import 'package:chaldea/app/battle/utils/buff_utils.dart';
+import 'package:chaldea/models/gamedata/individuality.dart';
 import 'package:chaldea/models/models.dart';
 import '../../../test_init.dart';
 
@@ -2171,7 +2172,10 @@ void main() async {
 
       final card = battle.onFieldAllyServants[0]!.getCards()[0];
       card.critical = true;
-      expect(checkSignedIndividualities2(myTraits: card.traits, requiredTraits: [Trait.criticalHit.value]), true);
+      expect(
+        Individuality.checkSignedIndivPartialMatch(self: card.traits, signedTarget: [Trait.criticalHit.value]),
+        true,
+      );
     });
 
     // test('Combo related', () async {

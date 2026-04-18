@@ -6,6 +6,7 @@ import 'package:chaldea/widgets/widgets.dart';
 import '../ffo/ffo.dart';
 import 'pages/af23_grail_league.dart';
 import 'pages/af24_dream_striker.dart';
+import 'pages/af26.dart';
 
 class AprilFoolHome extends StatelessWidget {
   const AprilFoolHome({super.key});
@@ -16,6 +17,13 @@ class AprilFoolHome extends StatelessWidget {
       appBar: AppBar(title: Text(S.current.april_fool)),
       body: ListView(
         children: [
+          buildOne(
+            context: context,
+            title: "Fate/Grand Order",
+            subtitle: "JP 2026",
+            icon: null,
+            page: const AprilFool2026(),
+          ),
           // https://fategrandorder.fandom.com/wiki/Fate/Dream_Striker_Release_Campaign
           buildOne(
             context: context,
@@ -57,13 +65,13 @@ class AprilFoolHome extends StatelessWidget {
     required BuildContext context,
     required String title,
     required String? subtitle,
-    required String icon,
+    required String? icon,
     required Widget? page,
   }) {
     return ListTile(
       title: Text(title),
       subtitle: subtitle == null ? null : Text(subtitle),
-      leading: db.getIconImage(icon, width: 40, height: 40),
+      leading: db.getIconImage(icon ?? "https://www.fate-go.jp/assets/img/common/icon_game.png", width: 40, height: 40),
       trailing: Icon(DirectionalIcons.keyboard_arrow_forward(context)),
       enabled: page != null,
       onTap: page == null

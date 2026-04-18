@@ -31,6 +31,12 @@ abstract class FakerAgent<
     required bool isEnfoceRefresh,
   });
 
+  Future<FResponse> friendTop();
+  // {String message,String status, String title}, status: 0=ok,1=フレンド数上限
+  Future<FResponse> friendOffer({required int64_t targetUserId});
+  // Future<FResponse> friendRemove();
+  // Future<FResponse> friendCancel();
+
   Future<FResponse> itemRecover({required int32_t recoverId, required int32_t num});
 
   Future<FResponse> shopPurchase({required int32_t id, required int32_t num, int32_t anotherPayFlag = 0});

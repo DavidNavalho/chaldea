@@ -329,6 +329,7 @@ class MappingData {
   final MappingList<int> mcRelease;
   final MappingList<int> warRelease;
   final Map<int, MappingBase<int>> questRelease; // only svt related quests
+  final Map<int, MappingList<int>> svtTraitRelease;
   final EnumMapping enums;
   final Map<String, Map<String, MappingBase<String>>> misc;
 
@@ -372,6 +373,7 @@ class MappingData {
     MappingList<int>? mcRelease,
     MappingList<int>? warRelease,
     this.questRelease = const {},
+    this.svtTraitRelease = const {},
     EnumMapping? enums,
     this.misc = const {},
   }) : entityRelease = entityRelease ?? MappingList(),
@@ -436,6 +438,13 @@ class MappingData {
   }
 
   Map<String, dynamic> toJson() => _$MappingDataToJson(this);
+
+  bool isSvtTraitRelease({required int svtCollectionNo, required int trait, required Region region}) {
+    if (region.isJP) return true;
+    final releasedSvtIds = svtTraitRelease[trait]?.ofRegion(region);
+    if (releasedSvtIds == null) return true;
+    return releasedSvtIds.contains(svtCollectionNo);
+  }
 }
 
 /// Shortcut for [MappingBase]

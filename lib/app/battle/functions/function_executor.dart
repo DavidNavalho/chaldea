@@ -23,7 +23,6 @@ import 'package:chaldea/app/battle/functions/update_entry_positions.dart';
 import 'package:chaldea/app/battle/interactions/choose_targets.dart';
 import 'package:chaldea/app/battle/models/battle.dart';
 import 'package:chaldea/app/battle/utils/battle_utils.dart';
-import 'package:chaldea/app/battle/utils/buff_utils.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/db.dart';
 import 'package:chaldea/models/gamedata/gamedata.dart';
@@ -250,9 +249,9 @@ class FunctionExecutor {
         battleData.setFuncResult(target.uniqueId, false);
       }
 
-      final funcQuestTvalsMatch = checkSignedIndividualities2(
-        myTraits: battleData.getQuestIndividuality(),
-        requiredTraits: function.funcquestTvals,
+      final funcQuestTvalsMatch = Individuality.checkSignedIndivPartialMatch(
+        self: battleData.getQuestIndividuality(),
+        signedTarget: function.funcquestTvals,
       );
 
       if (!funcQuestTvalsMatch) {
@@ -805,9 +804,9 @@ class FunctionExecutor {
           final includeIgnoredIndiv = dataVals?.IncludeIgnoreIndividuality == 1;
           final targetIndivCheck =
               targetIndiv == null ||
-              checkSignedIndividualities2(
-                myTraits: svt.getTraits(addTraits: svt.getBuffTraits(includeIgnoreIndiv: includeIgnoredIndiv)),
-                requiredTraits: [targetIndiv],
+              Individuality.checkSignedIndivPartialMatch(
+                self: svt.getTraits(addTraits: svt.getBuffTraits(includeIgnoreIndiv: includeIgnoredIndiv)),
+                signedTarget: [targetIndiv],
               );
           return svt != activator && targetIndivCheck;
         });
@@ -821,9 +820,9 @@ class FunctionExecutor {
           final includeIgnoredIndiv = dataVals?.IncludeIgnoreIndividuality == 1;
           final targetIndivCheck =
               targetIndiv == null ||
-              checkSignedIndividualities2(
-                myTraits: svt.getTraits(addTraits: svt.getBuffTraits(includeIgnoreIndiv: includeIgnoredIndiv)),
-                requiredTraits: [targetIndiv],
+              Individuality.checkSignedIndivPartialMatch(
+                self: svt.getTraits(addTraits: svt.getBuffTraits(includeIgnoreIndiv: includeIgnoredIndiv)),
+                signedTarget: [targetIndiv],
               );
           return svt != activator && targetIndivCheck;
         });
@@ -1096,12 +1095,7 @@ class FunctionExecutor {
         );
         for (final List<int> requiredTraits in overwriteTvals) {
           // Currently assuming the first array is OR. Need more samples on this
-          final checkTrait = checkSignedIndividualities2(
-            myTraits: selfTraits,
-            requiredTraits: requiredTraits,
-            positiveMatchFunc: allMatch,
-            negativeMatchFunc: allMatch,
-          );
+          final checkTrait = Individuality.checkSignedIndivAllMatch(self: selfTraits, signedTarget: requiredTraits);
           if (checkTrait) {
             return true;
           }
@@ -1110,8 +1104,8 @@ class FunctionExecutor {
       });
     } else if (dataVals.FuncCheckTargetIndividualityTargetType == null) {
       targets.retainWhere(
-        (svt) => checkSignedIndividualities2(
-          myTraits: svt.getTraits(
+        (svt) => Individuality.checkSignedIndivPartialMatch(
+          self: svt.getTraits(
             addTraits: [
               ...addBuffs,
               ...svt.getBuffTraits(
@@ -1121,7 +1115,7 @@ class FunctionExecutor {
               ),
             ],
           ),
-          requiredTraits: function.functvals,
+          signedTarget: function.functvals,
         ),
       );
     } // else checked in funcCheckTargetIndividualityTargetType

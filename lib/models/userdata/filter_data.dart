@@ -233,6 +233,7 @@ class SvtFilterData with FilterDataMixin {
   final personality = FilterGroupData<ServantPersonality>(); //善 恶 中立 夏 狂...
   final gender = FilterGroupData<Gender>();
   final trait = FilterGroupData<Trait>();
+  final bondBonusCeIds = FilterGroupData<int>();
   final cardDeck = FilterGroupData<CardDeckType>();
 
   final effectScope = FilterGroupData<SvtEffectScope>(options: {SvtEffectScope.active, SvtEffectScope.td});
@@ -278,6 +279,7 @@ class SvtFilterData with FilterDataMixin {
     personality,
     gender,
     trait,
+    bondBonusCeIds,
     cardDeck,
     effectScope,
     effectTarget,

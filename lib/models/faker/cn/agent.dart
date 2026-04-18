@@ -409,6 +409,16 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
   }
 
   @override
+  Future<FResponse> friendTop() {
+    return _acPhp(key: 'friendtop', nid: 'friend_top');
+  }
+
+  @override
+  Future<FResponse> friendOffer({required int64_t targetUserId}) {
+    return _acPhp(key: 'friendoffer', nid: 'friend_offer', params3: {"targetUserId": targetUserId});
+  }
+
+  @override
   Future<FResponse> itemRecover({required int32_t recoverId, required int32_t num}) async {
     return _acPhp(key: 'itemrecover', nid: 'item_recover', params4: {"recoverId": recoverId, "num": num});
   }

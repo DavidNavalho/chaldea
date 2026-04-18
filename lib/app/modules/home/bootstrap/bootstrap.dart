@@ -143,7 +143,7 @@ class _BootstrapPageState extends State<BootstrapPage> with SingleTickerProvider
 
   Widget get languagePage {
     return _IntroPage(
-      icon: FontAwesomeIcons.earthAsia,
+      icon: FontAwesomeIcons.earthAsia.data,
       title: S.current.select_lang,
       content: ListView.separated(
         itemBuilder: (context, index) {
@@ -187,7 +187,7 @@ class _BootstrapPageState extends State<BootstrapPage> with SingleTickerProvider
     }
 
     return _IntroPage(
-      icon: FontAwesomeIcons.link,
+      icon: FontAwesomeIcons.link.data,
       title: 'Domains',
       content: ListView(
         children: [
@@ -229,7 +229,7 @@ class _BootstrapPageState extends State<BootstrapPage> with SingleTickerProvider
 
   Widget get darkModePage {
     return _IntroPage(
-      icon: FontAwesomeIcons.circleHalfStroke,
+      icon: FontAwesomeIcons.circleHalfStroke.data,
       title: S.current.dark_mode,
       content: ListView.separated(
         itemBuilder: (context, index) {
@@ -253,7 +253,7 @@ class _BootstrapPageState extends State<BootstrapPage> with SingleTickerProvider
 
   Widget get createAccountPage {
     return _IntroPage(
-      icon: FontAwesomeIcons.gamepad,
+      icon: FontAwesomeIcons.gamepad.data,
       title: 'Fate/GO',
       content: ListView(
         children: [
@@ -294,7 +294,7 @@ class _BootstrapPageState extends State<BootstrapPage> with SingleTickerProvider
   }
 
   Widget get dataPage {
-    return _IntroPage(icon: FontAwesomeIcons.database, title: S.current.database, content: _DatabaseIntro());
+    return _IntroPage(icon: FontAwesomeIcons.database.data, title: S.current.database, content: _DatabaseIntro());
   }
 
   Widget _bottom() {
@@ -559,7 +559,7 @@ class _IntroPage extends StatelessWidget {
         const SizedBox(height: 36),
         if (icon != null)
           FaIcon(
-            icon!,
+            FaIconData(icon!),
             size: 80,
             color: Theme.of(context).brightness == Brightness.dark ? null : AppTheme(context).tertiary,
           ),

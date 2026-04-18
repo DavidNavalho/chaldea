@@ -305,4 +305,6 @@ class AAFileManifest {
   factory AAFileManifest.fromJson(Map<String, dynamic> json) => _$AAFileManifestFromJson(json);
 
   Map<String, dynamic> toJson() => _$AAFileManifestToJson(this);
+
+  String resolveUrl(String base) => Uri.parse(base).resolve(fileName).toString();
 }
