@@ -25,31 +25,33 @@ Update it at the end of each working session.
 
 ## Last Session Snapshot
 - Date: 2026-04-19
-- Branch: codex/box-coverage-mvp
-- Last commit: 84ad103d1
-- Working tree status: dirty with local MVP implementation changes under `lib/custom/box_coverage/`, route wiring, gallery entry, tests, and this handoff update
-- Active feature(s): My Box Coverage MVP page integrated into the app home gallery
+- Branch: main
+- Last commit: 7b3d4fc9d
+- Working tree status: dirty with new repo-local upstream automation scripts under `scripts/fork/`, plus updates to `AGENTS.md` and this handoff file
+- Active feature(s): repo-local machine-friendly upstream sync script surface for sandbox automation
 - What is done:
-  - synced local `main` with `upstream/main`
-  - created feature branch `codex/box-coverage-mvp`
-  - implemented isolated models/service/page under `lib/custom/box_coverage/`
-  - added route `/my-box-coverage` and home gallery entry
-  - added focused service tests under `test/custom/box_coverage/`
-  - validated with `flutter test` and `flutter build macos --debug`
+  - added `scripts/fork/check_upstream_updates.sh`
+  - added `scripts/fork/prepare_upstream_sync_branch.sh`
+  - added `scripts/fork/validate_upstream_sync.sh`
+  - added `scripts/fork/push_upstream_sync_branch.sh`
+  - added `scripts/fork/open_upstream_sync_pr.sh`
+  - documented the machine-friendly fork automation surface in `AGENTS.md`
+  - validated the new shell scripts with `bash -n`
+  - smoke-tested upstream detection, branch preparation, validation exit behavior, and local push against temporary repos
 - What is next:
-  - manually review the new page UX in the running macOS app
-  - decide whether to tighten the table presentation further before commit/PR
-  - optionally add widget tests once the UI structure settles
+  - decide whether `scripts/sync_fork_pr.sh` should start delegating to the new `scripts/fork/` helpers
+  - wire the bounded agent apply step between branch preparation and push/PR creation
+  - decide whether `.fvmrc` should be removed after any human-facing docs are updated
 - Known blockers:
-  - `flutter analyze` still exits non-zero because of pre-existing info-level lints elsewhere in the fork; the new feature compiles cleanly
+  - no repo-local agent apply script exists yet by design; merge/apply remains the judgment-heavy step
 ## Files Touched In Current Workstream
-- `lib/custom/box_coverage/...`
-- `test/custom/box_coverage/...`
-- `lib/custom/team_search/...`
-- `lib/custom/shared_teams/...`
-- Thin integration points in:
-  - `lib/app/modules/home/elements/gallery_item.dart`
-  - `lib/app/routes/routes.dart`
+- `scripts/fork/check_upstream_updates.sh`
+- `scripts/fork/prepare_upstream_sync_branch.sh`
+- `scripts/fork/validate_upstream_sync.sh`
+- `scripts/fork/push_upstream_sync_branch.sh`
+- `scripts/fork/open_upstream_sync_pr.sh`
+- `AGENTS.md`
+- `HANDOFF.md`
 
 ## Validation Commands
 - `fvm flutter analyze`
@@ -58,6 +60,7 @@ Update it at the end of each working session.
 
 ## Notes For Safe Upstream Updates
 - Prefer `./scripts/sync_fork_pr.sh --open-pr` for protected-main syncs; use `./scripts/sync_fork.sh` only for manual/non-protected flows.
+- For machine-driven automation, prefer the new `scripts/fork/` entrypoints over the human wrapper when finer control is needed.
 - Resolve conflicts by preserving upstream behavior first, then re-apply custom
   integration hooks.
 - Re-check custom module wiring after any upstream UI changes in battle modules.

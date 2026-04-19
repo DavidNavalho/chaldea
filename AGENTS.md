@@ -37,6 +37,12 @@
 - Remotes expected:
   - `upstream` -> official `chaldea` repository
   - `origin` -> personal fork repository
+- Machine-friendly fork automation entrypoints live under `scripts/fork/`.
+- Automation-safe scripts under `scripts/fork/` should prefer:
+  - clean worktrees over auto-stashing,
+  - explicit environment-driven inputs,
+  - `key=value` stdout for machine parsing,
+  - and no hidden auth fallbacks.
 ## Current Focus: Laplace Auto 3T Search (v1.7b)
 - Goal: Automated 3-turn (3T) search in Laplace Battle Simulation that finds and replays a winning sequence (skills + Mystic Code + one-or-more NPs per turn) using the existing engine. Team Search orchestrates candidates and replays the first success.
 - Status: Stable. Team Search is the primary entry; single‑team Auto 3T was removed. Logs available from the menu.
