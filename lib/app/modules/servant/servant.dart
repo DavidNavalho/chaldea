@@ -335,7 +335,7 @@ class ServantDetailPageState extends State<ServantDetailPage> with SingleTickerP
           viewBuilder: (ctx) => db.onUserData((context, _) => SvtPlanTab(svt: svt)),
         );
       case SvtTab.skill:
-        if (svt.skills.isEmpty) return null;
+        if (svt.skills.isEmpty && svt.classPassive.isEmpty && svt.appendPassive.isEmpty) return null;
         return _SubTabInfo(
           tab: tab,
           tabBuilder: () => S.current.skill,

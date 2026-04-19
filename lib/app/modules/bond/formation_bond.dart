@@ -6,9 +6,9 @@ import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:chaldea/app/api/atlas.dart';
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/battle/models/user.dart';
-import 'package:chaldea/app/battle/utils/buff_utils.dart';
 import 'package:chaldea/app/modules/common/builders.dart';
 import 'package:chaldea/generated/l10n.dart';
+import 'package:chaldea/models/gamedata/individuality.dart' show Individuality;
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
@@ -157,14 +157,17 @@ class _FormationBondTabState extends State<FormationBondTab> {
 
       void checkAddFunctions(NiceSkill skill, bool isEquipSkill) {
         if (skill.actIndividuality.isNotEmpty &&
-            !checkSignedIndividualities2(myTraits: svtIndivs, requiredTraits: skill.actIndividuality)) {
+            !Individuality.checkSignedIndivPartialMatch(self: svtIndivs, signedTarget: skill.actIndividuality)) {
           return;
         }
         for (final func in skill.functions) {
           if (func.funcType != FuncType.servantFriendshipUp) continue;
           if (quest != null &&
               func.funcquestTvals.isNotEmpty &&
-              !checkSignedIndividualities2(myTraits: quest.questIndividuality, requiredTraits: func.funcquestTvals)) {
+              !Individuality.checkSignedIndivPartialMatch(
+                self: quest.questIndividuality,
+                signedTarget: func.funcquestTvals,
+              )) {
             continue;
           }
 
@@ -177,7 +180,7 @@ class _FormationBondTabState extends State<FormationBondTab> {
           if (vals.EventId != null && vals.EventId != 0 && vals.EventId != eventId) continue;
           final requipredIndiv = vals.Individuality ?? 0;
           if (requipredIndiv != 0 &&
-              !checkSignedIndividualities2(myTraits: svtIndivs, requiredTraits: [requipredIndiv])) {
+              !Individuality.checkSignedIndivPartialMatch(self: svtIndivs, signedTarget: [requipredIndiv])) {
             continue;
           }
           List<SvtBondBonusResult> targets = switch (func.funcTargetType) {
@@ -193,17 +196,12 @@ class _FormationBondTabState extends State<FormationBondTab> {
             final targetIndivs = targetDeckSvt?.svt?.getIndividuality(eventId, targetDeckSvt.limitCount) ?? [];
             if (funcOverwriteTvalsList.isNotEmpty) {
               if (funcOverwriteTvalsList.every((andVals) {
-                return !checkSignedIndividualities2(
-                  myTraits: targetIndivs,
-                  requiredTraits: andVals,
-                  positiveMatchFunc: allMatch,
-                  negativeMatchFunc: allMatch,
-                );
+                return !Individuality.checkSignedIndivAllMatch(self: targetIndivs, signedTarget: andVals);
               })) {
                 return false;
               }
             } else if (func.functvals.isNotEmpty) {
-              if (!checkSignedIndividualities2(myTraits: targetIndivs, requiredTraits: func.functvals)) {
+              if (!Individuality.checkSignedIndivPartialMatch(self: targetIndivs, signedTarget: func.functvals)) {
                 return false;
               }
             }

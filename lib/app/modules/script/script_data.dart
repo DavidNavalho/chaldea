@@ -338,7 +338,7 @@ class ScriptCommand extends ScriptComponent {
   String command;
   List<String> args;
   ScriptCommand(super.src, this.command, [this.args = const []]);
-  static final _csv = CsvCodec(fieldDelimiter: " ", dynamicTyping: false);
+  static final _csv = Csv(fieldDelimiter: " ", dynamicTyping: false);
 
   factory ScriptCommand.parse(String code) {
     if (code.startsWith('[') && code.endsWith(']')) {

@@ -394,6 +394,7 @@ class ChaldeaWorkerApi {
       '${HostsX.worker.cn}/proxy/github/api.github.com/repos/$owner/$repo/releases/${tag == null ? "latest" : "tags/$tag"}',
       (data) => Release.fromJson(data),
       expireAfter: expireAfter,
+      options: Options(headers: {'Accept': 'application/vnd.github.v3+json', 'X-GitHub-Api-Version': '2026-03-10'}),
     );
   }
 

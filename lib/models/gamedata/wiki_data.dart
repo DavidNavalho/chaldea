@@ -570,4 +570,5 @@ enum CEObtain {
   drop,
   regionSpecific,
   unknown,
+  davinciBondBonus, // special, not in data fields
 }

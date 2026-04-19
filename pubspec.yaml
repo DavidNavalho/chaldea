@@ -19,7 +19,7 @@ version: 2.5.26+988
 
 environment:
   sdk: ">=3.10.0 <4.0.0"
-  flutter: 3.38.9
+  flutter: 3.41.6
 
 dependencies:
   flutter:
@@ -41,7 +41,7 @@ dependencies:
   # crclib: ^3.0.0
   cross_file: ^0.3.3+5
   crypto: ^3.0.6
-  csv: ^7.0.0
+  csv: ^8.0.0
   cupertino_icons: ^1.0.6
   dart_des: ^1.0.2
   data_table_2: ^2.5.16
@@ -51,18 +51,18 @@ dependencies:
   dots_indicator: ^4.0.0
   encrypter_plus: ^5.1.0
   equatable: ^2.0.5
-  file_picker: ^10.1.7
+  file_picker: ^11.0.2
   fl_chart: ^1.0.0
   flutter_cache_manager: ^3.3.1
   flutter_easyloading: ^3.0.5
   flutter_hooks: ^0.21.2
-  flutter_local_notifications: ^20.0.0
+  flutter_local_notifications: ^21.0.0
   flutter_markdown_plus: ^1.0.7
   # flutter_qjs: ^0.3.7
   flutter_js: ^0.8.5
   flutter_svg: ^2.0.7
   flutter_timezone: ^5.0.0
-  font_awesome_flutter: ^10.6.0
+  font_awesome_flutter: ^11.0.0
   github: ^9.16.0
   hive: ^2.2.3
   home_widget: ^0.9.0
@@ -80,7 +80,7 @@ dependencies:
   logger: ^2.3.0
   lpinyin: ^2.0.3
   markdown: ^7.0.0
-  meta: ^1.17.0
+  meta: ">=1.17.0 <2.0.0"
   modal_bottom_sheet: ^3.0.0
   msgpack_dart: ^1.0.1
   octo_image: ^2.0.0
@@ -99,7 +99,7 @@ dependencies:
   smooth_page_indicator: ^2.0.1
   string_validator: ^1.0.0
   table_sticky_headers: ^2.0.1
-  timezone: ^0.10.0
+  timezone: ^0.11.0
   tray_manager: ^0.5.0
   tuple: ^2.0.1
   url_launcher: ^6.3.1
@@ -112,7 +112,7 @@ dependencies:
   # webview_flutter_web: ^0.2.2+1
   worker_manager: ^7.2.2
   window_manager: ^0.5.0
-  countly_flutter_np: 25.4.3
+  countly_flutter_np: ^26.1.0
   google_mobile_ads: ^7.0.0
   # admanager_web: ^0.0.4
 

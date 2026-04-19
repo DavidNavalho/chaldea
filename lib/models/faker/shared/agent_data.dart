@@ -9,7 +9,7 @@ class FakerAgentData {
   final mstData_ = MasterDataManager();
 
   // login result
-  final loginResultData = LoginResultData();
+  final loginResultHistory = <LoginResultData>[];
 
   LoginResultData? updateLoginResult(FateTopLogin resp) {
     LoginResultData? result;
@@ -20,7 +20,9 @@ class FakerAgentData {
         try {
           result = LoginResultData.fromJson(success);
           result.updateServerTime(resp.serverTime?.timestamp);
-          loginResultData.mergeLoginBonus(result);
+          if (result.isNotEmpty) {
+            loginResultHistory.insert(0, result);
+          }
         } catch (e) {
           logger.e('LoginResultData parse failed in nid [${response.nid}]');
         }
@@ -184,6 +186,7 @@ class _GachaDrawStatData {
 
 class _RandomMissionLoopStat {
   //
+  Event? event;
   List<int> randomMissionIds = [];
   Map<int, EventMission> eventMissions = {};
   List<int> itemIds = [];
@@ -208,6 +211,7 @@ class _RandomMissionLoopStat {
       }
     }
     if (event == null) return;
+    this.event = event;
     final maxRank = Maths.max(event.randomMissions.map((e) => e.condNum), 0);
     randomMissionIds = event.randomMissions.where((e) => e.condNum == maxRank).map((e) => e.missionId).toList();
     randomMissionIds.sort();

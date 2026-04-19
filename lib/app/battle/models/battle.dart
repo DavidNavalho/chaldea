@@ -1555,8 +1555,7 @@ class BattleData {
         continue;
       }
 
-      bool hasGuts = false;
-      await actor.activateGuts(this).then((value) => hasGuts = value);
+      bool hasGuts = await actor.activateGuts(this);
       if (!hasGuts) {
         await actor.death(this);
 

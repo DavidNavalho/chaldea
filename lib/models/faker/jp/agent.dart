@@ -4,6 +4,7 @@ import 'package:archive/archive.dart' show getCrc32;
 
 import 'package:chaldea/app/api/atlas.dart';
 import 'package:chaldea/models/gamedata/mst_data.dart';
+import 'package:chaldea/models/gamedata/raw.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/models/userdata/version.dart';
 import 'package:chaldea/packages/logger.dart';
@@ -54,9 +55,7 @@ class FakerAgentJP extends FakerAgent<FRequestJP, AutoLoginDataJP, NetworkManage
       if (dateVer > network.gameTop.dateVer) network.gameTop.dateVer = dateVer;
       if (assetbundle.isNotEmpty) {
         final assetbundleData = network.catMouseGame.mouseInfoMsgpack(base64Decode(assetbundle));
-        final String folderName = assetbundleData['folderName']!;
-        network.gameTop.assetbundleFolder = folderName;
-        // network.gameTop.assetbundle = assetbundle;
+        network.gameTop.assetbundle = RegionAssetBundle.fromJson(assetbundleData);
       }
       return fresp;
     } else {
@@ -104,6 +103,19 @@ class FakerAgentJP extends FakerAgent<FRequestJP, AutoLoginDataJP, NetworkManage
     request.addFieldInt32('questPhase', questPhase);
     request.addFieldInt32('refresh', isEnfoceRefresh ? 1 : 0);
     return request.beginRequestAndCheckError('follower_list');
+  }
+
+  @override
+  Future<FResponse> friendTop() {
+    final request = FRequestJP(network: network, path: '/friend/top');
+    return request.beginRequestAndCheckError('friend_top');
+  }
+
+  @override
+  Future<FResponse> friendOffer({required int64_t targetUserId}) {
+    final request = FRequestJP(network: network, path: '/friend/offer');
+    request.addFieldInt64('targetUserId', targetUserId);
+    return request.beginRequestAndCheckError('friend_offer');
   }
 
   @override

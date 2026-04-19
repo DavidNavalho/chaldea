@@ -314,17 +314,47 @@ mixin FakerRuntimeStateMixin<T extends StatefulWidget> on State<T> {
   FakerRuntime get runtime;
   FakerAgent get agent => runtime.agent;
   MasterDataManager get mstData => runtime.mstData;
+  bool get autoManageDependencies => true;
 
   @override
   void initState() {
     super.initState();
-    runtime.addDependency(this);
+    if (autoManageDependencies) runtime.addDependency(this);
   }
 
   @override
   void dispose() {
     super.dispose();
-    runtime.removeDependency(this);
+    if (autoManageDependencies) runtime.removeDependency(this);
+  }
+
+  final kFilledButtonCompactStyle = FilledButton.styleFrom(
+    minimumSize: const Size(64, 32),
+    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    padding: const EdgeInsets.symmetric(horizontal: 12),
+  );
+
+  FilledButton buildCompactButton({
+    bool enabled = true,
+    required VoidCallback? onPressed,
+    String? text,
+    InlineSpan? richText,
+    Color? foregroundColor,
+    Color? backgroundColor,
+  }) {
+    assert(text != null || richText != null);
+    var style = kFilledButtonCompactStyle;
+    if (foregroundColor != null || backgroundColor != null) {
+      style = style.copyWith(
+        foregroundColor: ButtonStyleButton.defaultColor(foregroundColor, null),
+        backgroundColor: ButtonStyleButton.defaultColor(backgroundColor, null),
+      );
+    }
+    return FilledButton.tonal(
+      onPressed: enabled ? onPressed : null,
+      style: style,
+      child: richText != null ? Text.rich(richText) : Text(text ?? "?"),
+    );
   }
 }
 

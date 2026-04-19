@@ -2,10 +2,10 @@ import 'dart:math';
 
 import 'package:chaldea/app/battle/models/battle.dart';
 import 'package:chaldea/app/battle/utils/battle_utils.dart';
-import 'package:chaldea/app/battle/utils/buff_utils.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/db.dart';
 import 'package:chaldea/models/gamedata/gamedata.dart';
+import 'package:chaldea/models/gamedata/individuality.dart';
 import 'package:chaldea/utils/utils.dart';
 import '../interactions/damage_adjustor.dart';
 import '../utils/battle_logger.dart';
@@ -123,7 +123,7 @@ class Damage {
 
           final useCorrection =
               damageNpSEDecision?.useCorrection ??
-              checkSignedIndividualities2(myTraits: target.getTraits(), requiredTraits: [dataVals.Target!]);
+              Individuality.checkSignedIndivPartialMatch(self: target.getTraits(), signedTarget: [dataVals.Target!]);
 
           if (useCorrection) {
             specificAttackRate = dataVals.Correction!;
@@ -143,9 +143,9 @@ class Damage {
 
           final useCorrection =
               damageNpSEDecision?.useCorrection ??
-              checkSignedIndividualities2(
-                myTraits: target.getBuffTraits(includeIgnoreIndiv: includeIgnoreIndividuality),
-                requiredTraits: [dataVals.Target!],
+              Individuality.checkSignedIndivPartialMatch(
+                self: target.getBuffTraits(includeIgnoreIndiv: includeIgnoreIndividuality),
+                signedTarget: [dataVals.Target!],
               );
 
           if (useCorrection) {
@@ -702,12 +702,7 @@ class Damage {
   static bool checkNotPierceIndividuality(final List<List<int>> notPierceIndividuality, final BuffData buff) {
     // Currently assuming the first array is OR. Need more samples on this
     for (final requiredTraits in notPierceIndividuality) {
-      final match = checkSignedIndividualities2(
-        myTraits: buff.getTraits(),
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: allMatch,
-        negativeMatchFunc: allMatch,
-      );
+      final match = Individuality.checkSignedIndivAllMatch(self: buff.getTraits(), signedTarget: requiredTraits);
       if (match) {
         return true;
       }
@@ -905,12 +900,7 @@ class Damage {
     for (final List<int> traitAndList in andListInOrList) {
       if (traitAndList.isEmpty) continue;
 
-      final andMatch = checkSignedIndividualities2(
-        myTraits: target.getTraits(),
-        requiredTraits: traitAndList,
-        positiveMatchFunc: allMatch,
-        negativeMatchFunc: allMatch,
-      );
+      final andMatch = Individuality.checkSignedIndivAllMatch(self: target.getTraits(), signedTarget: traitAndList);
 
       if (andMatch) {
         return andMatch;

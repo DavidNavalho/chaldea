@@ -308,6 +308,7 @@ AutoBattleOptions _$AutoBattleOptionsFromJson(Map json) => $checkedCreate('AutoB
       'skillShiftEnemyUniqueIds',
       (v) => (v as List<dynamic>?)?.map((e) => (e as num).toInt()).toList(),
     ),
+    sendFriendRequest: $checkedConvert('sendFriendRequest', (v) => v as bool? ?? false),
     recoverIds: $checkedConvert('recoverIds', (v) => (v as List<dynamic>?)?.map((e) => (e as num).toInt()).toList()),
     loopCount: $checkedConvert('loopCount', (v) => (v as num?)?.toInt() ?? 0),
     targetDrops: $checkedConvert(
@@ -350,6 +351,7 @@ Map<String, dynamic> _$AutoBattleOptionsToJson(AutoBattleOptions instance) => <S
   'customAliveUniqueId': instance.customAliveUniqueId,
   'enableSkillShift': instance.enableSkillShift,
   'skillShiftEnemyUniqueIds': instance.skillShiftEnemyUniqueIds,
+  'sendFriendRequest': instance.sendFriendRequest,
   'recoverIds': instance.recoverIds,
   'loopCount': instance.loopCount,
   'targetDrops': instance.targetDrops.map((k, e) => MapEntry(k.toString(), e)),

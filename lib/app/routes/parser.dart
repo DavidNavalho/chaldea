@@ -10,7 +10,7 @@ class AppRouteInformationParser extends RouteInformationParser<RouteConfiguratio
     if (uri.pathSegments.isEmpty || uri.path == Routes.home) {
       return RouteConfiguration.home();
     }
-    return RouteConfiguration.fromUri(uri: uri, detail: !Routes.masterRoutes.contains(uri.path));
+    return RouteConfiguration.fromUri(uri: uri, detail: !Routes.isMasterRoute(uri.path));
   }
 
   @override

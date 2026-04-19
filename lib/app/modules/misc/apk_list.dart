@@ -273,6 +273,15 @@ class _ApkListPageState extends State<ApkListPage> {
         trailing: Wrap(
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
+            if (data.region == null)
+              IconButton(
+                onPressed: () {
+                  launch('$kProjectHomepage/releases', external: true);
+                },
+                icon: const FaIcon(FontAwesomeIcons.github),
+                tooltip: 'Github',
+                iconSize: 18,
+              ),
             IconButton(
               onPressed: () {
                 final appname = data.region == null ? 'Chaldea' : 'fate-grand-order';

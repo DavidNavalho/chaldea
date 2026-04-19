@@ -347,6 +347,7 @@ class AutoBattleOptions {
   bool customAliveUniqueId;
   bool enableSkillShift;
   List<int> skillShiftEnemyUniqueIds;
+  bool sendFriendRequest;
 
   // loop
   List<int> recoverIds;
@@ -382,6 +383,7 @@ class AutoBattleOptions {
     this.customAliveUniqueId = false,
     this.enableSkillShift = true,
     List<int>? skillShiftEnemyUniqueIds,
+    this.sendFriendRequest = false,
     List<int>? recoverIds,
     this.loopCount = 0,
     Map<int, int>? targetDrops,
@@ -489,8 +491,8 @@ enum BattleWinResultType {
 class GachaOption {
   // gacha
   int gachaId;
-  Map<int, int> gachaSubs; // <gachaId, subId>
-  int get gachaSubId => gachaSubs[gachaId] ?? 0;
+  Map<int, int> gachaSubs; // <gachaId, subId>, default -1 means auto
+  int get gachaSubId => gachaSubs[gachaId] ?? -1;
   int loopCount;
   bool hundredDraw;
   // enhance

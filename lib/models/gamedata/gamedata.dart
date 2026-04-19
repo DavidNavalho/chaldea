@@ -4,6 +4,7 @@ import 'dart:convert';
 
 import 'package:archive/archive.dart';
 
+import 'package:chaldea/utils/basic.dart';
 import 'package:chaldea/utils/constants.dart';
 import 'package:chaldea/utils/extension.dart';
 import '../db.dart' show ConstData;
@@ -506,7 +507,7 @@ class GameTops {
 
   factory GameTops.fromJson(Map<String, dynamic> json) => _$GameTopsFromJson(json);
 
-  GameTop? of(Region region) {
+  GameTop of(Region region) {
     switch (region) {
       case Region.jp:
         return jp;
@@ -515,7 +516,7 @@ class GameTops {
       case Region.cn:
         return cn;
       default:
-        return null;
+        throw UnsupportedError('GameTop not support $region');
     }
   }
 
@@ -539,6 +540,7 @@ class GameTop extends GameAppVerCode {
   @RegionConverter()
   Region region;
   String gameServer;
+  String bundle;
   // String appVer;
   // String verCode;
   String hash;
@@ -548,12 +550,13 @@ class GameTop extends GameAppVerCode {
   int dataVer; // int32
   int dateVer; // int64
   RegionAssetBundle? assetbundle;
-  String assetbundleFolder;
+  String get assetbundleFolder => assetbundle?.folderName ?? "";
   String? unityVer;
 
   GameTop({
     required this.region,
     required this.gameServer,
+    this.bundle = "",
     required super.appVer,
     super.verCode,
     required this.hash,
@@ -563,7 +566,6 @@ class GameTop extends GameAppVerCode {
     required this.dataVer,
     this.dateVer = 0, // CN has no dateVer
     this.assetbundle,
-    this.assetbundleFolder = "",
     this.unityVer,
   });
 
@@ -591,17 +593,27 @@ class GameTop extends GameAppVerCode {
     if (other.dateVer > dateVer) dateVer = other.dateVer;
     if (other.dataVer > dataVer) {
       dataVer = other.dataVer;
-      assetbundleFolder = other.assetbundleFolder;
+      if (other.assetbundle != null) {
+        assetbundle = other.assetbundle!.copy();
+      }
     }
     unityVer = other.unityVer;
   }
 
   void updateFromRegionInfo(RegionInfo info) {
-    final dataVer = info.dataVer, dateVer = info.dateVer, folder = info.assetbundle?.folderName;
+    if (info.timestamp > timestamp) {
+      timestamp = info.timestamp;
+      hash = info.hash;
+    }
+    if (info.serverTimestamp > serverTimestamp) {
+      serverTimestamp = info.serverTimestamp;
+      serverHash = info.serverHash;
+    }
+    final dataVer = info.dataVer, dateVer = info.dateVer, assetbundle = info.assetbundle;
     if (dataVer != null && dataVer > this.dataVer) this.dataVer = dataVer;
     if (dateVer != null && dateVer > this.dateVer) this.dateVer = dateVer;
-    if (info.timestamp > timestamp && folder != null) {
-      assetbundleFolder = folder;
+    if (info.timestamp > timestamp && assetbundle != null) {
+      this.assetbundle = assetbundle.copy();
     }
   }
 }
@@ -620,6 +632,7 @@ class AssetBundleDecrypt {
 
 class _ProcessedData {
   final GameData gameData;
+  Map<int, ({CraftEssence ce, List<List<int>> traits, int rateCount})> bondBonusCes = {};
 
   Map<int, EnemyMasterBattle> enemyMasterBattles = {};
   Map<int, EventMission> eventMissions = {};
@@ -650,6 +663,17 @@ class _ProcessedData {
   Map<String, List<NiceGacha>> gachaGroups = {};
 
   _ProcessedData(this.gameData) {
+    for (final ce in gameData.craftEssencesById.values) {
+      final bondBonusData = ce.getBondBonusData();
+      if (bondBonusData != null) {
+        bondBonusCes[ce.id] = (ce: ce, traits: bondBonusData.traits, rateCount: bondBonusData.rateCount);
+      }
+    }
+    bondBonusCes = sortDict(
+      bondBonusCes,
+      compare: (a, b) => b.value.ce.collectionNo.compareTo(a.value.ce.collectionNo),
+    );
+
     for (final svt in gameData.servants.values) {
       for (final costume in svt.profile.costume.values) {
         costumeSvtMap[costume.battleCharaId] = svt;
@@ -811,6 +835,11 @@ class GameTimerData {
   Map<int, NiceShop> shops;
   Map<int, Item> items;
   GameConstants constants;
+
+  late final Map<int, EventMission> eventMissions = {
+    for (final mm in masterMissions.values)
+      for (final m in mm.missions) m.id: m,
+  };
 
   GameTimerData({
     this.updatedAt = 0,

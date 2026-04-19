@@ -223,6 +223,20 @@ class _MysticCodePageState extends State<MysticCodePage> {
       items.addAll([assets.item.female, assets.item.male]);
       masterFaces.addAll([assets.masterFace.female, assets.masterFace.male]);
       masterFigures.addAll([assets.masterFigure.female, assets.masterFigure.male]);
+      if (mysticCode.id > 0 && mysticCode.id <= 440) {
+        // AF2026
+        for (final group in [masterFaces, masterFigures]) {
+          for (final url in group.toList()) {
+            final url2 = url.replaceAllMapped(
+              RegExp(r'/JP/(MasterFace|MasterFigure)/equip(\d+)'),
+              (m) => '/JP/External/JP_AF_2026/${m.group(1)}/equipOther${m.group(2)}',
+            );
+            if (url2 != url) {
+              group.add(url2);
+            }
+          }
+        }
+      }
     }
     children.addAll(
       [

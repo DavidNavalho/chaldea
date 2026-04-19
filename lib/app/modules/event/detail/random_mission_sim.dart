@@ -8,13 +8,15 @@ import 'package:chaldea/app/api/atlas.dart';
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/modules/master_mission/solver/scheme.dart';
 import 'package:chaldea/app/modules/master_mission/solver/solver.dart';
+import 'package:chaldea/app/modules/quest/quest_list.dart';
+import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/packages/logger.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/simple_accordion.dart';
 
 const int kMaxMissionCount = 20;
-const int kAppleAp = 147;
+const int kAppleAp = 146;
 
 /// 假设：
 ///   - 无活动素材加成
@@ -23,7 +25,8 @@ const int kAppleAp = 147;
 ///
 class RandomMissionSimulationPage extends StatefulWidget {
   final Event event;
-  const RandomMissionSimulationPage({super.key, required this.event});
+  final Map<int, double>? itemWeights;
+  const RandomMissionSimulationPage({super.key, required this.event, this.itemWeights});
 
   @override
   State<RandomMissionSimulationPage> createState() => _RandomMissionSimulationPageState();
@@ -35,8 +38,15 @@ class _RandomMissionSimulationPageState extends State<RandomMissionSimulationPag
   final Map<int, EventMission> eventMissions = {};
   final Map<int, (int type, List<int> targetIds, int count)> missionConds = {};
   late final allQuests = db.gameData.wars[event.warIds.firstOrNull]?.quests ?? [];
-  // late final _cqs = allQuests.where((e) => e.consume == 5 && e.afterClear == QuestAfterClearType.repeatLast).toList();
-  late final _cqs = [db.gameData.quests[94064001]!];
+  late final _cqs = allQuests
+      .where(
+        (e) =>
+            e.consume == 5 &&
+            e.afterClear == QuestAfterClearType.repeatLast &&
+            e.flags.contains(QuestFlag.dropFirstTimeOnly),
+      )
+      .toList();
+  // late final _cqs = [db.gameData.quests[94064001]!];
   late final _fqs = allQuests.where((e) => e.isAnyFree && e.consume > 0).toList();
 
   // late final eventMissions = {for (final mission in event.missions) mission.id: mission};
@@ -76,25 +86,32 @@ class _RandomMissionSimulationPageState extends State<RandomMissionSimulationPag
               }
               try {
                 _running = true;
+                history.clear();
 
-                for (final x in range(3, 10)) {
+                for (final x in range(1, 8)) {
                   // for (final x in range(1, 11)) {
                   for (final y in range(2, 3)) {
                     if (_stopFlag) {
                       return;
                     }
                     final data = _SimStatData();
+                    if (widget.itemWeights != null) {
+                      data.itemScores = Map.of(widget.itemWeights!);
+                    }
                     data.discardLoop = x;
                     data.discardMissionMinLeftNum = y;
                     await _startSimulation(data);
                     history.sort2((data) {
-                      return -Maths.sum(
-                        data.giftItems.entries.where((e) => data.getScore(e.key) >= 2).map((e) => e.value),
-                      );
+                      double x = Maths.sum(
+                        data.giftItems.entries.where((e) => data.getScore(e.key) >= 1).map((e) => e.value),
+                      ).toDouble();
+                      // x += data.fqCount * 0.314; // free drops
+                      return -x;
                     });
                     if (mounted) setState(() {});
                   }
                 }
+                // history.insert(1, history.removeLast());
               } catch (e, s) {
                 logger.e('random mission monte carlo failed', e, s);
                 EasyLoading.showError(e.toString());
@@ -130,9 +147,27 @@ class _RandomMissionSimulationPageState extends State<RandomMissionSimulationPag
         ],
       ),
       body: ListView.builder(
-        itemCount: history.length,
+        itemCount: history.length + 1,
         itemBuilder: (context, index) {
-          final data = history[index];
+          if (index == 0) {
+            return Column(
+              mainAxisSize: .min,
+              children: [
+                for (final (title, quests) in [(S.current.high_difficulty_quest, _cqs), (S.current.free_quest, _fqs)])
+                  ListTile(
+                    dense: true,
+                    title: Text('${quests.length} $title'),
+                    subtitle: Text(quests.reversed.take(3).map((e) => e.lName.l.setMaxLines(1)).join(' / ')),
+                    trailing: Icon(DirectionalIcons.keyboard_arrow_forward(context)),
+                    onTap: () {
+                      router.pushPage(QuestListPage(quests: quests, title: title));
+                    },
+                  ),
+                kDefaultDivider,
+              ],
+            );
+          }
+          final data = history[index - 1];
           return SimpleAccordion(
             expanded: true,
             headerBuilder: (context, _) {
@@ -143,8 +178,10 @@ class _RandomMissionSimulationPageState extends State<RandomMissionSimulationPag
               return ListTile(
                 dense: true,
                 title: Text(
-                  '${data.cqCount} CQs ${data.fqCount} FQs. ${data.ap} AP. ${Maths.sum(data.missionCounts.values)} missions.'
-                  '\n$itemCount($importantItemCount) items. ${(itemCount / data.ap * kApPer).toStringAsFixed(3)} item/${kApPer}AP.',
+                  '$itemCount($importantItemCount) items. ${(itemCount / data.ap * kApPer).toStringAsFixed(3)} item/${kApPer}AP.',
+                ),
+                subtitle: Text(
+                  '${data.cqCount} CQs ${data.fqCount} FQs. ${data.ap} AP.\n+${Maths.sum(data.missionCounts.values)}-${data.cancelMissionCount} missions.',
                 ),
                 // subtitle: Text('${data.elapse.toStringX()}  ${data.startedAt.toTimeString()}'),
                 trailing: Text('l=${data.discardLoop}\nm=${data.discardMissionMinLeftNum}'),
@@ -161,11 +198,10 @@ class _RandomMissionSimulationPageState extends State<RandomMissionSimulationPag
                       spacing: 1,
                       runSpacing: 1,
                       children: [
-                        for (final (itemId, count) in Item.sortMapByPriority(
-                          data.giftItems,
-                          reversed: true,
-                          removeZero: false,
-                        ).items)
+                        for (final (itemId, int count) in {
+                          ...Item.sortMapByPriority(data.giftItems, reversed: true, removeZero: false),
+                          for (final (k, v) in data.dropItems.items) k: v.floor(),
+                        }.items)
                           Item.iconBuilder(
                             context: context,
                             item: null,
@@ -302,6 +338,7 @@ class _RandomMissionSimulationPageState extends State<RandomMissionSimulationPag
           .toList();
     }
     data.missionProgresses.removeWhere((e, v) => removeMissionIds.contains(e));
+    data.cancelMissionCount += removeMissionIds.length;
     return removeItemIds.length;
   }
 
@@ -357,6 +394,11 @@ class _RandomMissionSimulationPageState extends State<RandomMissionSimulationPag
       data.fqCount += 1;
     }
     data.ap += quest.consume;
+    for (final drop in quest.drops) {
+      if (drop.runs > 0 && drop.type == GiftType.item && db.gameData.items[drop.objectId]?.category == .normal) {
+        data.dropItems[drop.objectId] = (data.dropItems[drop.objectId] ?? 0) + drop.num * drop.dropCount / drop.runs;
+      }
+    }
   }
 
   QuestPhase findNextFreeQuest(List<QuestPhase> quests, _SimStatData data) {
@@ -409,14 +451,18 @@ class _SimStatData {
   int ap = 0;
   // item stat
   Map<int, int> giftItems = {};
+  Map<int, double> dropItems = {};
   // mission stat
   Map<int, int> missionCounts = {};
+  int cancelMissionCount = 0;
   // runtime;
   Map<int, int> missionProgresses = {};
+  Map<int, double> itemScores = Map.of(_itemScores);
 
   // config
   double getScore(int itemId) => itemScores[itemId] ?? 1.0;
-  final itemScores = <int, double>{
+
+  static const _itemScores = <int, double>{
     1: -2.0, // QP
     4: -1.0, // 友情点
     3: -3.0, // 魔力棱镜

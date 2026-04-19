@@ -24,7 +24,7 @@ class LoginResultPage extends StatefulWidget {
 
 class _LoginResultPageState extends State<LoginResultPage> {
   late final runtime = widget.runtime;
-  late final loginResultData = runtime.agentData.loginResultData;
+  late final loginResultHistory = runtime.agentData.loginResultHistory;
   final typeFilter = FilterGroupData<_LoginResultDataType>();
 
   Map<String, int> itemNames = {}; // item name -> item cache
@@ -67,15 +67,26 @@ class _LoginResultPageState extends State<LoginResultPage> {
 
   @override
   Widget build(BuildContext context) {
-    List<Widget> children = [
-      if (typeFilter.matchOne(_LoginResultDataType.campaign))
-        for (final bonus in loginResultData.campaignBonus) buildCampaignBonusData(bonus),
-      if (typeFilter.matchOne(_LoginResultDataType.totalLogin))
-        for (final bonus in loginResultData.totalLoginBonus) buildLoginBonusData(bonus, SaintLocalized.accLogin),
-      if (typeFilter.matchOne(_LoginResultDataType.seqLogin))
-        for (final bonus in loginResultData.seqLoginBonus) buildLoginBonusData(bonus, SaintLocalized.continuousLogin),
-      // for (final bonus in loginResultData.campaignDirectBonus) buildDirectBonusData(bonus),
-    ];
+    List<Widget> children = [];
+    for (final loginResult in loginResultHistory) {
+      if (loginResult.isEmpty) continue;
+      final tiles = [
+        if (typeFilter.matchOne(_LoginResultDataType.campaign))
+          for (final bonus in loginResult.campaignBonus) buildCampaignBonusData(bonus),
+        if (typeFilter.matchOne(_LoginResultDataType.totalLogin))
+          for (final bonus in loginResult.totalLoginBonus) buildLoginBonusData(bonus, SaintLocalized.accLogin),
+        if (typeFilter.matchOne(_LoginResultDataType.seqLogin))
+          for (final bonus in loginResult.seqLoginBonus) buildLoginBonusData(bonus, SaintLocalized.continuousLogin),
+        // for (final bonus in loginResultData.campaignDirectBonus) buildDirectBonusData(bonus),
+      ];
+      if (tiles.isEmpty) continue;
+      children.add(
+        DividerWithTitle(
+          title: loginResult.serverTime == 0 ? '???' : loginResult.serverTime.sec2date().toStringShort(),
+        ),
+      );
+      children.addAll(divideList(tiles, kIndentDivider));
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text('Login Bonus'),
@@ -83,7 +94,7 @@ class _LoginResultPageState extends State<LoginResultPage> {
           IconButton(
             onPressed: () {
               setState(() {
-                loginResultData.clear();
+                loginResultHistory.clear();
               });
             },
             icon: Icon(Icons.clear_all),
@@ -119,9 +130,9 @@ class _LoginResultPageState extends State<LoginResultPage> {
             ),
           ),
           Expanded(
-            child: ListView.separated(
+            child: ListView.builder(
               itemBuilder: (context, index) => children[index],
-              separatorBuilder: (_, _) => const Divider(),
+              // separatorBuilder: (_, _) => kIndentDivider,
               itemCount: children.length,
             ),
           ),
@@ -271,7 +282,7 @@ class _LoginResultPageState extends State<LoginResultPage> {
     ];
     files.sort((a, b) => b.path.compareTo(a.path));
     int loaded = 0;
-    for (final fp in files) {
+    for (final fp in files.reversed) {
       if (loaded >= maxLoadCount) break;
       try {
         final resp = FateTopLogin.fromJson(jsonDecode(await fp.readAsString()));

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:chaldea/app/battle/utils/buff_utils.dart';
 import 'package:chaldea/models/gamedata/const_data.dart';
+import 'package:chaldea/models/gamedata/individuality.dart';
 
 void main() {
   group('Test capBuffValue', () {
@@ -48,43 +49,35 @@ void main() {
   });
 
   group('checkSignedIndividualities2', () {
+    test('partialMatch null or empty', () {
+      final requiredTraits = [300, 100, -200, -400];
+
+      final myTraits1 = null;
+      final result1 = Individuality.checkSignedIndivPartialMatch(self: myTraits1, signedTarget: requiredTraits);
+      expect(result1, true);
+
+      final myTraits2 = <int>[];
+      final result2 = Individuality.checkSignedIndivPartialMatch(self: myTraits2, signedTarget: requiredTraits);
+      expect(result2, false);
+    });
+
     test('partialMatch positive only', () {
       final requiredTraits = [300, 100];
 
       final myTraits1 = [300, 100];
-      final result1 = checkSignedIndividualities2(
-        myTraits: myTraits1,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: partialMatch,
-        negativeMatchFunc: partialMatch,
-      );
+      final result1 = Individuality.checkSignedIndivPartialMatch(self: myTraits1, signedTarget: requiredTraits);
       expect(result1, true);
 
       final myTraits2 = [100, 200];
-      final result2 = checkSignedIndividualities2(
-        myTraits: myTraits2,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: partialMatch,
-        negativeMatchFunc: partialMatch,
-      );
+      final result2 = Individuality.checkSignedIndivPartialMatch(self: myTraits2, signedTarget: requiredTraits);
       expect(result2, true);
 
       final myTraits3 = [300, 200];
-      final result3 = checkSignedIndividualities2(
-        myTraits: myTraits3,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: partialMatch,
-        negativeMatchFunc: partialMatch,
-      );
+      final result3 = Individuality.checkSignedIndivPartialMatch(self: myTraits3, signedTarget: requiredTraits);
       expect(result3, true);
 
       final myTraits4 = [400, 200];
-      final result4 = checkSignedIndividualities2(
-        myTraits: myTraits4,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: partialMatch,
-        negativeMatchFunc: partialMatch,
-      );
+      final result4 = Individuality.checkSignedIndivPartialMatch(self: myTraits4, signedTarget: requiredTraits);
       expect(result4, false);
     });
 
@@ -93,79 +86,51 @@ void main() {
       final requiredTraits = [300, 100, -200, -400];
 
       final myTraits1 = [300, 100];
-      final result1 = checkSignedIndividualities2(
-        myTraits: myTraits1,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: partialMatch,
-        negativeMatchFunc: partialMatch,
-      );
+      final result1 = Individuality.checkSignedIndivPartialMatch(self: myTraits1, signedTarget: requiredTraits);
       expect(result1, true);
 
       final myTraits2 = [100, 200];
-      final result2 = checkSignedIndividualities2(
-        myTraits: myTraits2,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: partialMatch,
-        negativeMatchFunc: partialMatch,
-      );
+      final result2 = Individuality.checkSignedIndivPartialMatch(self: myTraits2, signedTarget: requiredTraits);
       expect(result2, false);
 
       final myTraits3 = [300, 400];
-      final result3 = checkSignedIndividualities2(
-        myTraits: myTraits3,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: partialMatch,
-        negativeMatchFunc: partialMatch,
-      );
+      final result3 = Individuality.checkSignedIndivPartialMatch(self: myTraits3, signedTarget: requiredTraits);
       expect(result3, false);
 
       final myTraits4 = [500, 600];
-      final result4 = checkSignedIndividualities2(
-        myTraits: myTraits4,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: partialMatch,
-        negativeMatchFunc: partialMatch,
-      );
+      final result4 = Individuality.checkSignedIndivPartialMatch(self: myTraits4, signedTarget: requiredTraits);
       expect(result4, false);
+    });
+
+    test('allMatch null or empty', () {
+      final requiredTraits = [300, 100, -200, -400];
+
+      final myTraits1 = null;
+      final result1 = Individuality.checkSignedIndivAllMatch(self: myTraits1, signedTarget: requiredTraits);
+      expect(result1, true);
+
+      final myTraits2 = <int>[];
+      final result2 = Individuality.checkSignedIndivAllMatch(self: myTraits2, signedTarget: requiredTraits);
+      expect(result2, false);
     });
 
     test('allMatch positive only', () {
       final requiredTraits = [300, 100];
 
       final myTraits1 = [300, 100, 200];
-      final result1 = checkSignedIndividualities2(
-        myTraits: myTraits1,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: allMatch,
-        negativeMatchFunc: allMatch,
-      );
+      final result1 = Individuality.checkSignedIndivAllMatch(self: myTraits1, signedTarget: requiredTraits);
       expect(result1, true);
 
       final myTraits2 = [100, 200];
-      final result2 = checkSignedIndividualities2(
-        myTraits: myTraits2,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: allMatch,
-        negativeMatchFunc: allMatch,
-      );
+      final result2 = Individuality.checkSignedIndivAllMatch(self: myTraits2, signedTarget: requiredTraits);
       expect(result2, false);
 
       final myTraits3 = [300, 200];
-      final result3 = checkSignedIndividualities2(
-        myTraits: myTraits3,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: allMatch,
-        negativeMatchFunc: allMatch,
-      );
+      final result3 = Individuality.checkSignedIndivAllMatch(self: myTraits3, signedTarget: requiredTraits);
       expect(result3, false);
 
       final myTraits4 = [400, 200];
-      final result4 = checkSignedIndividualities2(
-        myTraits: myTraits4,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: allMatch,
-        negativeMatchFunc: allMatch,
-      );
+      final result4 = Individuality.checkSignedIndivAllMatch(self: myTraits4, signedTarget: requiredTraits);
       expect(result4, false);
     });
 
@@ -174,72 +139,61 @@ void main() {
       final requiredTraits = [300, 100, -200, -400];
 
       final myTraits1 = [300, 100, 600];
-      final result1 = checkSignedIndividualities2(
-        myTraits: myTraits1,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: allMatch,
-        negativeMatchFunc: allMatch,
-      );
+      final result1 = Individuality.checkSignedIndivAllMatch(self: myTraits1, signedTarget: requiredTraits);
       expect(result1, true);
 
       final myTraits2 = [100, 200];
-      final result2 = checkSignedIndividualities2(
-        myTraits: myTraits2,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: allMatch,
-        negativeMatchFunc: allMatch,
-      );
+      final result2 = Individuality.checkSignedIndivAllMatch(self: myTraits2, signedTarget: requiredTraits);
       expect(result2, false);
 
       final myTraits3 = [100, 300, 400];
-      final result3 = checkSignedIndividualities2(
-        myTraits: myTraits3,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: allMatch,
-        negativeMatchFunc: allMatch,
-      );
+      final result3 = Individuality.checkSignedIndivAllMatch(self: myTraits3, signedTarget: requiredTraits);
       expect(result3, true);
 
       final myTraits4 = [500, 600];
-      final result4 = checkSignedIndividualities2(
-        myTraits: myTraits4,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: allMatch,
-        negativeMatchFunc: allMatch,
-      );
+      final result4 = Individuality.checkSignedIndivAllMatch(self: myTraits4, signedTarget: requiredTraits);
       expect(result4, false);
     });
   });
 
   group('checkSignedIndividualitiesPartialMatch', () {
     test('partialMatch', () {
-      // AND on positive, OR on negative
+      // OR on positive, OR on negative
       final requiredTraits = [300, 100, -200, -400];
 
       final myTraits1 = [300, 100, 600];
-      final result1 = checkSignedIndividualitiesPartialMatch(
-        myTraits: myTraits1,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: partialMatch,
-        negativeMatchFunc: partialMatch,
+      final result1 = Individuality.checkSignedIndividualitiesPartialMatch(
+        selfs: myTraits1,
+        signedTargets: requiredTraits,
+        matchedFunc: Individuality.isPartialMatchArray,
+        mismatchFunc: Individuality.isPartialMatchArray,
       );
       expect(result1, true);
 
       final myTraits2 = [100, 200];
-      final result2 = checkSignedIndividualitiesPartialMatch(
-        myTraits: myTraits2,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: partialMatch,
-        negativeMatchFunc: partialMatch,
+      final result2 = Individuality.checkSignedIndividualitiesPartialMatch(
+        selfs: myTraits2,
+        signedTargets: requiredTraits,
+        matchedFunc: Individuality.isPartialMatchArray,
+        mismatchFunc: Individuality.isPartialMatchArray,
       );
       expect(result2, true);
 
+      final myTraits3 = [200, 400];
+      final result3 = Individuality.checkSignedIndividualitiesPartialMatch(
+        selfs: myTraits3,
+        signedTargets: requiredTraits,
+        matchedFunc: Individuality.isPartialMatchArray,
+        mismatchFunc: Individuality.isPartialMatchArray,
+      );
+      expect(result3, false);
+
       final myTraits4 = [500, 600];
-      final result4 = checkSignedIndividualitiesPartialMatch(
-        myTraits: myTraits4,
-        requiredTraits: requiredTraits,
-        positiveMatchFunc: partialMatch,
-        negativeMatchFunc: partialMatch,
+      final result4 = Individuality.checkSignedIndividualitiesPartialMatch(
+        selfs: myTraits4,
+        signedTargets: requiredTraits,
+        matchedFunc: Individuality.isPartialMatchArray,
+        mismatchFunc: Individuality.isPartialMatchArray,
       );
       expect(result4, true);
     });

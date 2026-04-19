@@ -46,7 +46,12 @@ class _LoggerWrap {
 _LoggerWrap _logger = _LoggerWrap(
   Logger(
     filter: ProductionFilter(),
-    printer: _CustomPrettyPrinter(methodCount: 2, colors: false, printEmojis: false, printTime: true),
+    printer: _CustomPrettyPrinter(
+      methodCount: 2,
+      colors: false,
+      printEmojis: false,
+      dateTimeFormat: DateTimeFormat.dateAndTime,
+    ),
     level: Level.trace,
   ),
 );
@@ -75,7 +80,7 @@ extension LoggerUtils on Logger {
           errorMethodCount: 8,
           colors: false,
           printEmojis: false,
-          printTime: true,
+          dateTimeFormat: DateTimeFormat.dateAndTime,
         ),
         output: MultiOutput([ConsoleOutput(), if (!kIsWeb && fp != null) FileOutput(file: File(fp))]),
       ),
@@ -108,7 +113,7 @@ class _CustomPrettyPrinter extends PrettyPrinter {
     super.errorMethodCount = 8,
     super.colors = true,
     super.printEmojis = true,
-    super.printTime = false,
+    super.dateTimeFormat = DateTimeFormat.dateAndTime,
   });
 
   final _ignoredErrors = <String>{};

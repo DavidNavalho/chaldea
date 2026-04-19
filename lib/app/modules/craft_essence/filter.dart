@@ -9,9 +9,7 @@ import '../common/filter_page_base.dart';
 import '../effect_search/util.dart';
 
 class CraftFilterPage extends FilterPage<CraftFilterData> {
-  final List<Widget> Function(BuildContext context, VoidCallback update)? customFilters;
-
-  const CraftFilterPage({super.key, required super.filterData, super.onChanged, this.customFilters});
+  const CraftFilterPage({super.key, required super.filterData, super.onChanged, super.extraFilters});
 
   @override
   _CraftFilterPageState createState() => _CraftFilterPageState();
@@ -27,7 +25,11 @@ class CraftFilterPage extends FilterPage<CraftFilterData> {
         return false;
       }
     }
-    if (!filterData.obtain.matchAny([ce.obtain, if (ce.isRegionSpecific) CEObtain.regionSpecific])) {
+    if (!filterData.obtain.matchAny([
+      ce.obtain,
+      if (ce.isRegionSpecific) CEObtain.regionSpecific,
+      if (ce.getBondBonusData() != null) CEObtain.davinciBondBonus,
+    ])) {
       return false;
     }
     if (!filterData.atkType.matchOne(ce.atkType)) {
@@ -118,7 +120,7 @@ class _CraftFilterPageState extends FilterPageState<CraftFilterData, CraftFilter
                 ),
             ],
           ),
-          ...?widget.customFilters?.call(context, update),
+          ...?widget.extraFilters?.call(context, update),
           FilterGroup<int>(
             title: Text(S.current.rarity),
             options: const [1, 2, 3, 4, 5],
@@ -130,7 +132,7 @@ class _CraftFilterPageState extends FilterPageState<CraftFilterData, CraftFilter
           ),
           FilterGroup<CEObtain>(
             title: Text(S.current.filter_category),
-            options: CEObtain.values,
+            options: {CEObtain.davinciBondBonus, ...CEObtain.values}.toList(),
             values: filterData.obtain,
             optionBuilder: (v) => Text(Transl.ceObtain(v).l),
             onFilterChanged: (value, _) {

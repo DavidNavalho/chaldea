@@ -53,7 +53,7 @@ class _ImportCSVPageState extends State<ImportCSVPage> {
             final bytes = result?.files.getOrNull(0)?.bytes;
             if (bytes == null) return;
             try {
-              final rawData = CsvCodec(dynamicTyping: false).decode(utf8.decode(bytes));
+              final rawData = Csv(dynamicTyping: false).decode(utf8.decode(bytes));
               parsedRows = PlanDataSheetConverter().parseFromCSV([for (final v in rawData) v.cast()]);
             } catch (e, s) {
               logger.e('import chaldea csv failed', e, s);

@@ -258,7 +258,7 @@ class AppRouterDelegate extends RouterDelegate<RouteConfiguration>
 
   @override
   Future<void> setNewRoutePath(RouteConfiguration configuration) {
-    if (Routes.masterRoutes.contains(configuration.first)) {
+    if (Routes.isMasterRoute(configuration.first)) {
       configuration = configuration.copyWith(detail: false);
     }
     if (_history.isEmpty || _history.first.name != Routes.home) {

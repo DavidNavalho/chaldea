@@ -5,24 +5,29 @@ import UserNotifications
 import alarm
 
 @main
-@objc class AppDelegate: FlutterAppDelegate {
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     
-    FlutterLocalNotificationsPlugin.setPluginRegistrantCallback { (registry) in
-        GeneratedPluginRegistrant.register(with: registry)
-    }
     if #available(iOS 10.0, *) {
       UNUserNotificationCenter.current().delegate = self as UNUserNotificationCenterDelegate
     }
     
     SwiftAlarmPlugin.registerBackgroundTasks()
+    
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
 
-    let controller : FlutterViewController = window?.rootViewController as! FlutterViewController
+  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+
+    FlutterLocalNotificationsPlugin.setPluginRegistrantCallback { (registry) in
+        GeneratedPluginRegistrant.register(with: registry)
+    }
+
     let chaldeaChannel = FlutterMethodChannel(name: "chaldea.narumi.cc/chaldea",
-                                              binaryMessenger: controller.binaryMessenger)
+                                              binaryMessenger: engineBridge.applicationRegistrar.messenger())
     chaldeaChannel.setMethodCallHandler({
       (call: FlutterMethodCall, result: @escaping FlutterResult) -> Void in
       if call.method == "getCFNetworkVersion" {
@@ -32,9 +37,8 @@ import alarm
         return
       }
     })
-    
-    GeneratedPluginRegistrant.register(with: self)
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+
+    GeneratedPluginRegistrant.register(with: engineBridge.pluginRegistry)
   }
 }
 

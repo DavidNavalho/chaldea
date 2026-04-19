@@ -558,6 +558,7 @@ UserFollowerEntity _$UserFollowerEntityFromJson(Map json) => UserFollowerEntity(
       const [],
   userId: json['userId'],
   expireAt: json['expireAt'],
+  isDelete: json['isDelete'],
 );
 
 FollowerInfo _$FollowerInfoFromJson(Map json) => FollowerInfo(
@@ -626,6 +627,37 @@ ServantLeaderInfo _$ServantLeaderInfoFromJson(Map json) => ServantLeaderInfo(
   eventSvtPoint: json['eventSvtPoint'],
   grandSvt: json['grandSvt'],
   grandGraphId: json['grandGraphId'],
+);
+
+OtherUserGameEntity _$OtherUserGameEntityFromJson(Map json) => OtherUserGameEntity(
+  userId: json['userId'],
+  userName: json['userName'],
+  userLv: json['userLv'],
+  friendCode: json['friendCode'],
+  tutorial1: json['tutorial1'],
+  tutorial2: json['tutorial2'],
+  message: json['message'],
+  pushUserSvtId: json['pushUserSvtId'],
+  userSvtLeaderHash: (json['userSvtLeaderHash'] as List<dynamic>?)
+      ?.map((e) => ServantLeaderInfo.fromJson(Map<String, dynamic>.from(e as Map)))
+      .toList(),
+  eventUserSvtLeaderHash: (json['eventUserSvtLeaderHash'] as List<dynamic>?)
+      ?.map((e) => ServantLeaderInfo.fromJson(Map<String, dynamic>.from(e as Map)))
+      .toList(),
+  mainSupportDeckIds: json['mainSupportDeckIds'],
+  eventSupportDeckIds: json['eventSupportDeckIds'],
+  userSvtGrandHash: (json['userSvtGrandHash'] as List<dynamic>?)
+      ?.map((e) => ServantLeaderInfo.fromJson(Map<String, dynamic>.from(e as Map)))
+      .toList(),
+);
+
+TblFriendEntity _$TblFriendEntityFromJson(Map json) => TblFriendEntity(
+  userId: json['userId'],
+  friendId: json['friendId'],
+  status: json['status'],
+  flag: json['flag'],
+  updatedAt: json['updatedAt'],
+  createdAt: json['createdAt'],
 );
 
 UserAccountLinkageEntity _$UserAccountLinkageEntityFromJson(Map json) =>

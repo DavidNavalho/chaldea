@@ -146,14 +146,35 @@ class FakerCondCheck {
         final condDetailId = targetIds.firstOrNull ?? 0;
         return mstData.userEventMissionCondDetail[condDetailId]?.progressNum ?? 0;
       case CondType.eventMissionClear:
-        return targetIds.where((mid) {
-          final progressType = mstData.userEventMission[mid]?.missionProgressType;
-          return progressType == MissionProgressType.clear.value || progressType == MissionProgressType.achieve.value;
-        }).length;
       case CondType.eventMissionAchieve:
         return targetIds.where((mid) {
-          final progressType = mstData.userEventMission[mid]?.missionProgressType;
-          return progressType == MissionProgressType.achieve.value;
+          int? progressType;
+          final mission = runtime.gameData.timerData.eventMissions[mid];
+          if (mission != null && mission.type == .daily) {
+            for (final cond in mission.conds) {
+              if (cond.missionProgressType == .clear &&
+                  cond.condType == .missionConditionDetail &&
+                  cond.targetIds.isNotEmpty) {
+                final userCondDetail = mstData.userEventMissionCondDetail[cond.targetIds.first];
+                if (userCondDetail == null) continue;
+                if (runtime.region.getDateTimeByOffset(userCondDetail.updatedAt).day !=
+                    runtime.region.getDateTimeByOffset(DateTime.now().timestamp).day) {
+                  // not same day
+                  progressType = MissionProgressType.none.value;
+                } else {
+                  progressType = userCondDetail.progressNum >= cond.targetNum
+                      ? MissionProgressType.achieve.value
+                      : MissionProgressType.none.value;
+                }
+                break;
+              }
+            }
+          }
+          progressType ??= mstData.userEventMission[mid]?.missionProgressType;
+          if (progressType == null) return false;
+          if (progressType == MissionProgressType.achieve.value) return true;
+          if (progressType == MissionProgressType.clear.value && condType == .eventMissionClear) return true;
+          return false;
         }).length;
       case CondType.questClear:
         return targetIds.where(mstData.isQuestClear).length;

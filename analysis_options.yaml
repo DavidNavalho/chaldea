@@ -33,6 +33,8 @@ linter:
     no_leading_underscores_for_local_identifiers: false
     library_private_types_in_public_api: false
     dangling_library_doc_comments: false
+    always_declare_return_types: true
+    deprecated_member_use_from_same_package: true
     # unawaited_futures: true
 
 # Additional information about this file can be found at

@@ -29,6 +29,7 @@ import 'package:chaldea/app/modules/tools/myroom_assets_page.dart';
 import 'package:chaldea/app/modules/trait/trait.dart';
 import 'package:chaldea/app/modules/trait/trait_list.dart';
 import 'package:chaldea/app/modules/war/wars_page.dart';
+import 'package:chaldea/custom/custom_integration.dart';
 import 'package:chaldea/models/gamedata/common.dart';
 import 'package:chaldea/models/gamedata/event.dart';
 import '../../models/gamedata/ai.dart';
@@ -236,6 +237,10 @@ class Routes {
     skills,
     tds,
   ];
+
+  static bool isMasterRoute(String? url) {
+    return masterRoutes.contains(url) || CustomIntegration.isMasterRoute(url);
+  }
 }
 
 class RouteConfiguration {
@@ -316,7 +321,7 @@ class RouteConfiguration {
   SplitPage<T> createPage<T>() {
     return SplitPage(
       child: resolvedChild ?? NotFoundPage(configuration: this),
-      detail: detail ?? !Routes.masterRoutes.contains(url),
+      detail: detail ?? !Routes.isMasterRoute(url),
       name: url,
       arguments: this,
       key: UniqueKey(),
@@ -339,6 +344,8 @@ class RouteConfiguration {
 
   Widget? get resolvedChild {
     if (child != null) return child!;
+    final customChild = CustomIntegration.resolveRoute(first);
+    if (customChild != null) return customChild;
     int? _secondInt = second == null ? null : int.tryParse(second!);
     switch (first) {
       case Routes.home:

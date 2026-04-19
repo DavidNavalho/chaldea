@@ -84,6 +84,7 @@ enum _FilterType {
 
 class _ExtraFilterData {
   final ceStates = <int, _FilterType>{};
+  bool useCostumeTraitForRegion = false;
 }
 
 /// functvals: traits
@@ -101,6 +102,12 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
   @override
   void initState() {
     super.initState();
+    initData();
+  }
+
+  void initData() {
+    allCeData.clear();
+    allCeMatchSvtData.clear();
     // ce data
     for (final ce in db.gameData.craftEssencesById.values) {
       if (ce.collectionNo <= 0 || ce.isRegionSpecific) continue;
@@ -153,13 +160,15 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
 
     // hide unreleased ces
     for (final ceId in allCeData.keys) {
-      if (!isCeReleased(ceId)) {
+      if (!isCeReleased(ceId, db.curUser.region)) {
         extraFilterData.ceStates[ceId] = _FilterType.hide;
       }
     }
   }
 
   List<int> getMatchedLimitCounts(Servant svt, List<List<int>> bonusTraitsList) {
+    final region = svtFilterData.region.radioValue;
+
     final baseTraits = svt.traits;
     List<int> matchedLimitCounts = [];
     final allLimitCounts = _getSvtAllLimits(svt);
@@ -178,6 +187,18 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
           resultTraits.addAll(traitAdd.trait);
         }
       }
+      if (extraFilterData.useCostumeTraitForRegion &&
+          region != null &&
+          !region.isJP &&
+          resultTraits.contains(Trait.hasCostume.value)) {
+        if (!db.gameData.mappingData.isSvtTraitRelease(
+          svtCollectionNo: svt.collectionNo,
+          trait: Trait.hasCostume.value,
+          region: region,
+        )) {
+          resultTraits.removeWhere((e) => e == Trait.hasCostume.value);
+        }
+      }
 
       bool matched = false;
       for (final andTraits in bonusTraitsList) {
@@ -191,12 +212,14 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
         matchedLimitCounts.add(limitCount);
       }
     }
+    if (svt.collectionNo == 300) {
+      print('$bonusTraitsList, No.${svt.collectionNo}, matchedLimitCounts $matchedLimitCounts');
+    }
 
     return matchedLimitCounts;
   }
 
-  bool isCeReleased(int ceId) {
-    final region = db.curUser.region;
+  bool isCeReleased(int ceId, Region region) {
     if (region == Region.jp) return true;
     final releasedIds = db.gameData.mappingData.entityRelease.ofRegion(region);
     if (releasedIds != null && releasedIds.isNotEmpty) {
@@ -440,6 +463,18 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
             });
           },
         ),
+      if (svtFilterData.region.radioValue?.isJP == false)
+        FilterOption(
+          selected: extraFilterData.useCostumeTraitForRegion,
+          value: true,
+          child: Text('${S.current.costume}:${svtFilterData.region.radioValue?.localName}'),
+          onChanged: (value) {
+            setState(() {
+              extraFilterData.useCostumeTraitForRegion = value;
+              initData();
+            });
+          },
+        ),
     ];
     final List<Widget> ceBtns = ces.map((ce) {
       final curStatus = ce == null ? _FilterType.none : getCeState(ce.ce.id);
@@ -505,7 +540,7 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
                 selected: ce == null ? false : curStatus != _FilterType.none,
                 value: ce?.ce.id,
                 shrinkWrap: true,
-                constraints: BoxConstraints(),
+                constraints: const BoxConstraints(),
                 selectedColor: curStatus.color,
                 child:
                     ce?.ce.iconBuilder(context: context, jumpToDetail: false, height: 36, padding: EdgeInsets.all(3)) ??

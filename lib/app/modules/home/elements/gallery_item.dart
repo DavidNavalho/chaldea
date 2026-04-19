@@ -16,6 +16,7 @@ import 'package:chaldea/app/modules/tools/tool_list_page.dart';
 import 'package:chaldea/app/modules/trait/trait_list.dart';
 import 'package:chaldea/app/modules/war/wars_page.dart';
 import 'package:chaldea/app/routes/routes.dart';
+import 'package:chaldea/custom/custom_integration.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/db.dart';
 import 'package:chaldea/packages/app_info.dart';
@@ -88,7 +89,7 @@ class GalleryItem {
     return icon!.isFontAwesome
         ? Padding(
             padding: EdgeInsets.all(size * 0.05),
-            child: FaIcon(icon, size: size * 0.9, color: _iconColor),
+            child: FaIcon(FaIconData(icon!), size: size * 0.9, color: _iconColor),
           )
         : Icon(icon, size: size, color: _iconColor);
   }
@@ -104,7 +105,7 @@ class GalleryItem {
   static GalleryItem edit = GalleryItem(
     name: 'edit',
     titleBuilder: () => '',
-    icon: FontAwesomeIcons.penToSquare,
+    icon: FontAwesomeIcons.penToSquare.data,
     isDetail: false,
     persist: true,
   );
@@ -112,7 +113,7 @@ class GalleryItem {
   static GalleryItem done = GalleryItem(
     name: 'done',
     titleBuilder: () => '',
-    icon: FontAwesomeIcons.circleCheck,
+    icon: FontAwesomeIcons.circleCheck.data,
     isDetail: false,
     persist: true,
   );
@@ -130,6 +131,7 @@ class GalleryItem {
     classBoards,
     saintQuartz,
     mysticCodes,
+    ..._customItems,
     effectSearch,
     costumes,
     summons,
@@ -164,10 +166,25 @@ class GalleryItem {
     toolbox,
   ];
 
+  static List<GalleryItem> get _customItems =>
+      CustomIntegration.galleryItems.map(_fromCustomDefinition).toList(growable: false);
+
+  static GalleryItem _fromCustomDefinition(CustomGalleryItemDefinition definition) {
+    return GalleryItem(
+      name: definition.name,
+      titleBuilder: () => definition.title,
+      icon: definition.icon,
+      url: definition.url,
+      page: definition.page,
+      isDetail: definition.isDetail,
+      shownDefault: definition.shownDefault,
+    );
+  }
+
   static GalleryItem servants = GalleryItem(
     name: 'servants',
     titleBuilder: () => S.current.servant,
-    icon: FontAwesomeIcons.users,
+    icon: FontAwesomeIcons.users.data,
     url: Routes.servants,
     page: ServantListPage(),
     isDetail: false,
@@ -175,7 +192,7 @@ class GalleryItem {
   static GalleryItem craftEssences = GalleryItem(
     name: 'crafts',
     titleBuilder: () => S.current.craft_essence,
-    icon: FontAwesomeIcons.streetView,
+    icon: FontAwesomeIcons.streetView.data,
     url: Routes.craftEssences,
     page: CraftListPage(),
     isDetail: false,
@@ -183,7 +200,7 @@ class GalleryItem {
   static GalleryItem commandCodes = GalleryItem(
     name: 'cmd_codes',
     titleBuilder: () => S.current.command_code,
-    icon: FontAwesomeIcons.expand,
+    icon: FontAwesomeIcons.expand.data,
     url: Routes.commandCodes,
     page: CmdCodeListPage(),
     isDetail: false,
@@ -207,7 +224,7 @@ class GalleryItem {
   static GalleryItem wars = GalleryItem(
     name: 'wars',
     titleBuilder: () => S.current.war,
-    icon: FontAwesomeIcons.flagCheckered,
+    icon: FontAwesomeIcons.flagCheckered.data,
     url: Routes.wars,
     page: const WarsPage(),
     isDetail: false,
@@ -223,7 +240,7 @@ class GalleryItem {
   static GalleryItem freeCalculator = GalleryItem(
     name: 'free_calculator',
     titleBuilder: () => S.current.free_quest_calculator_short,
-    icon: FontAwesomeIcons.mapLocation,
+    icon: FontAwesomeIcons.mapLocation.data,
     url: Routes.freeCalc,
     page: FreeQuestCalcPage(),
     isDetail: true,
@@ -231,7 +248,7 @@ class GalleryItem {
   static GalleryItem masterMissions = GalleryItem(
     name: 'master_missions',
     titleBuilder: () => S.current.master_mission,
-    icon: FontAwesomeIcons.listCheck,
+    icon: FontAwesomeIcons.listCheck.data,
     url: Routes.masterMissions,
     page: MasterMissionListPage(),
     isDetail: true,
@@ -239,7 +256,7 @@ class GalleryItem {
   static GalleryItem classBoards = GalleryItem(
     name: 'class_boards',
     titleBuilder: () => S.current.class_board,
-    icon: FontAwesomeIcons.starOfDavid,
+    icon: FontAwesomeIcons.starOfDavid.data,
     url: Routes.classBoards,
     page: ClassBoardListPage(),
     isDetail: true,
@@ -247,7 +264,7 @@ class GalleryItem {
   static GalleryItem saintQuartz = GalleryItem(
     name: 'saint_quartz',
     titleBuilder: () => S.current.saint_quartz_plan,
-    icon: FontAwesomeIcons.gem,
+    icon: FontAwesomeIcons.gem.data,
     url: Routes.sqPlan,
     page: SaintQuartzPlanning(),
     isDetail: true,
@@ -255,7 +272,7 @@ class GalleryItem {
   static GalleryItem mysticCodes = GalleryItem(
     name: 'mystic_codes',
     titleBuilder: () => S.current.mystic_code,
-    icon: FontAwesomeIcons.personDotsFromLine,
+    icon: FontAwesomeIcons.personDotsFromLine.data,
     url: Routes.mysticCodes,
     page: MysticCodeListPage(),
     isDetail: false,
@@ -263,7 +280,7 @@ class GalleryItem {
   static GalleryItem effectSearch = GalleryItem(
     name: 'effect_search',
     titleBuilder: () => S.current.effect_search,
-    icon: FontAwesomeIcons.searchengin,
+    icon: FontAwesomeIcons.searchengin.data,
     url: Routes.effectSearch,
     page: EffectSearchPage(),
     isDetail: false,
@@ -271,7 +288,7 @@ class GalleryItem {
   static GalleryItem costumes = GalleryItem(
     name: 'costumes',
     titleBuilder: () => S.current.costume,
-    icon: FontAwesomeIcons.shirt,
+    icon: FontAwesomeIcons.shirt.data,
     url: Routes.costumes,
     page: CostumeListPage(),
     isDetail: false,
@@ -279,7 +296,7 @@ class GalleryItem {
   static GalleryItem summons = GalleryItem(
     name: 'summons',
     titleBuilder: () => S.current.summon_banner,
-    icon: FontAwesomeIcons.dice,
+    icon: FontAwesomeIcons.dice.data,
     url: Routes.summons,
     page: SummonListPage(),
     isDetail: false,
@@ -287,7 +304,7 @@ class GalleryItem {
   static GalleryItem enemyList = GalleryItem(
     name: 'enemy_list',
     titleBuilder: () => S.current.enemy_list,
-    icon: FontAwesomeIcons.dragon,
+    icon: FontAwesomeIcons.dragon.data,
     url: Routes.enemies,
     page: EnemyListPage(),
     isDetail: false,
@@ -295,7 +312,7 @@ class GalleryItem {
   static GalleryItem expCard = GalleryItem(
     name: 'exp_card',
     titleBuilder: () => S.current.exp_card_title,
-    icon: FontAwesomeIcons.breadSlice,
+    icon: FontAwesomeIcons.breadSlice.data,
     url: Routes.expCard,
     page: ExpCardCostPage(),
     isDetail: true,
@@ -303,14 +320,14 @@ class GalleryItem {
   static GalleryItem npCharge = GalleryItem(
     name: 'np_charge',
     titleBuilder: () => S.current.np_charge,
-    icon: FontAwesomeIcons.batteryHalf,
+    icon: FontAwesomeIcons.batteryHalf.data,
     page: const NpChargePage(),
     isDetail: false,
   );
   static GalleryItem bondBonus = GalleryItem(
     name: 'bond_bonus',
     titleBuilder: () => S.current.bond_bonus,
-    icon: FontAwesomeIcons.diamond,
+    icon: FontAwesomeIcons.diamond.data,
     page: const BondBonusHomePage(),
     isDetail: false,
   );
@@ -325,7 +342,7 @@ class GalleryItem {
   static GalleryItem fakeGrandOrder = GalleryItem(
     name: 'fake_grand_order',
     titleBuilder: () => 'Faker',
-    icon: FontAwesomeIcons.fishFins,
+    icon: FontAwesomeIcons.fishFins.data,
     url: null,
     page: const FakerAccountsPage(),
     isDetail: true,
@@ -348,7 +365,7 @@ class GalleryItem {
   static GalleryItem lostRoom = GalleryItem(
     name: 'lost_room',
     titleBuilder: () => 'LOSTROOM',
-    icon: FontAwesomeIcons.unity, // atom
+    icon: FontAwesomeIcons.unity.data, // atom
     page: const LostRoomPage(),
     isDetail: false,
     persist: true,
@@ -356,7 +373,7 @@ class GalleryItem {
   static GalleryItem apk = GalleryItem(
     name: 'apk',
     titleBuilder: () => db.settings.hideApple ? 'App' : 'APK',
-    icon: FontAwesomeIcons.android,
+    icon: FontAwesomeIcons.android.data,
     url: Routes.apk,
     page: const ApkListPage(),
     isDetail: true,
@@ -366,7 +383,7 @@ class GalleryItem {
   static GalleryItem shops = GalleryItem(
     name: 'shops',
     titleBuilder: () => S.current.shop,
-    icon: FontAwesomeIcons.shop,
+    icon: FontAwesomeIcons.shop.data,
     url: Routes.shopHome,
     page: const ShopListHome(),
     isDetail: true,
@@ -375,7 +392,7 @@ class GalleryItem {
   static GalleryItem scriptHome = GalleryItem(
     name: 'script_home',
     titleBuilder: () => S.current.script_story,
-    icon: FontAwesomeIcons.book,
+    icon: FontAwesomeIcons.book.data,
     url: Routes.scriptHome,
     page: const ScriptReaderEntryPage(),
     isDetail: true,
@@ -384,7 +401,7 @@ class GalleryItem {
   static GalleryItem bgms = GalleryItem(
     name: 'bgms',
     titleBuilder: () => S.current.bgm,
-    icon: FontAwesomeIcons.music,
+    icon: FontAwesomeIcons.music.data,
     url: Routes.bgms,
     page: BgmListPage(),
     isDetail: false,
@@ -393,7 +410,7 @@ class GalleryItem {
   static GalleryItem ffo = GalleryItem(
     name: 'ffo',
     titleBuilder: () => 'Freedom Order',
-    icon: FontAwesomeIcons.layerGroup,
+    icon: FontAwesomeIcons.layerGroup.data,
     url: Routes.ffo,
     page: FreedomOrderPage(),
     isDetail: true,
@@ -402,7 +419,7 @@ class GalleryItem {
   static GalleryItem aprilFool = GalleryItem(
     name: 'april-fool',
     titleBuilder: () => S.current.april_fool,
-    icon: FontAwesomeIcons.hatWizard,
+    icon: FontAwesomeIcons.hatWizard.data,
     url: Routes.aprilFool,
     page: const AprilFoolHome(),
     isDetail: true,
@@ -420,7 +437,7 @@ class GalleryItem {
   static GalleryItem illustratorList = GalleryItem(
     name: 'illustrator_list',
     titleBuilder: () => S.current.illustrator,
-    icon: FontAwesomeIcons.paintbrush,
+    icon: FontAwesomeIcons.paintbrush.data,
     url: Routes.illustrators,
     page: IllustratorListPage(),
     isDetail: true,
@@ -429,7 +446,7 @@ class GalleryItem {
   static GalleryItem charaList = GalleryItem(
     name: 'chara_list',
     titleBuilder: () => S.current.characters_in_card,
-    icon: FontAwesomeIcons.personRays,
+    icon: FontAwesomeIcons.personRays.data,
     url: Routes.characters,
     page: CharaListPage(),
     isDetail: true,
@@ -438,7 +455,7 @@ class GalleryItem {
   static GalleryItem enemyMasters = GalleryItem(
     name: 'enemy_masters',
     titleBuilder: () => S.current.enemy_master,
-    icon: FontAwesomeIcons.userSecret,
+    icon: FontAwesomeIcons.userSecret.data,
     url: Routes.enemyMasters,
     page: const EnemyMasterListPage(),
     isDetail: false,
@@ -447,7 +464,7 @@ class GalleryItem {
   static GalleryItem svtQuestTimeline = GalleryItem(
     name: 'svt_quest_timeline',
     titleBuilder: () => S.current.interlude_and_rankup,
-    icon: FontAwesomeIcons.timeline,
+    icon: FontAwesomeIcons.timeline.data,
     page: const SvtQuestTimeline(),
     isDetail: false,
     shownDefault: false,
@@ -455,7 +472,7 @@ class GalleryItem {
   static GalleryItem svtClass = GalleryItem(
     name: 'svt_class',
     titleBuilder: () => S.current.svt_class,
-    icon: FontAwesomeIcons.chessKing,
+    icon: FontAwesomeIcons.chessKing.data,
     url: Routes.svtClasses,
     page: const SvtClassListPage(),
     isDetail: false,
@@ -464,7 +481,7 @@ class GalleryItem {
   static GalleryItem traits = GalleryItem(
     name: 'traits',
     titleBuilder: () => S.current.trait,
-    icon: FontAwesomeIcons.diceD20,
+    icon: FontAwesomeIcons.diceD20.data,
     url: Routes.traits,
     page: TraitListPage(),
     isDetail: false,
@@ -473,7 +490,7 @@ class GalleryItem {
   static GalleryItem skills = GalleryItem(
     name: 'skills',
     titleBuilder: () => S.current.skill,
-    icon: FontAwesomeIcons.s,
+    icon: FontAwesomeIcons.s.data,
     url: Routes.skills,
     page: const SkillListPage(),
     isDetail: false,
@@ -482,7 +499,7 @@ class GalleryItem {
   static GalleryItem tds = GalleryItem(
     name: 'tds',
     titleBuilder: () => S.current.noble_phantasm,
-    icon: FontAwesomeIcons.n,
+    icon: FontAwesomeIcons.n.data,
     url: Routes.tds,
     page: const TdListPage(),
     isDetail: false,
@@ -491,7 +508,7 @@ class GalleryItem {
   static GalleryItem funcs = GalleryItem(
     name: 'funcs',
     titleBuilder: () => 'Functions',
-    icon: FontAwesomeIcons.f, // FontAwesomeIcons.hurricane
+    icon: FontAwesomeIcons.f.data, // FontAwesomeIcons.hurricane
     url: Routes.funcs,
     page: const FuncListPage(),
     isDetail: false,
@@ -500,7 +517,7 @@ class GalleryItem {
   static GalleryItem buffs = GalleryItem(
     name: 'buffs',
     titleBuilder: () => 'Buffs',
-    icon: FontAwesomeIcons.b, // FontAwesomeIcons.fire
+    icon: FontAwesomeIcons.b.data, // FontAwesomeIcons.fire
     url: Routes.buffs,
     page: const BuffListPage(),
     isDetail: false,
@@ -509,7 +526,7 @@ class GalleryItem {
   static GalleryItem myRoom = GalleryItem(
     name: 'myroom',
     titleBuilder: () => S.current.my_room,
-    icon: FontAwesomeIcons.bedPulse,
+    icon: FontAwesomeIcons.bedPulse.data,
     url: Routes.myroom,
     page: const MyRoomAssetsPage(),
     isDetail: true,
@@ -519,7 +536,7 @@ class GalleryItem {
   static GalleryItem appRoutes = GalleryItem(
     name: 'app_routes',
     titleBuilder: () => 'Routes',
-    icon: FontAwesomeIcons.route,
+    icon: FontAwesomeIcons.route.data,
     url: Routes.routes,
     page: const AppRouteEntrancePage(),
     isDetail: false,
@@ -529,7 +546,7 @@ class GalleryItem {
     name: 'toolbox',
     titleBuilder: () => 'Tools',
     url: null,
-    icon: FontAwesomeIcons.toolbox,
+    icon: FontAwesomeIcons.toolbox.data,
     page: const ToolListPage(),
     isDetail: false,
     shownDefault: false,
@@ -538,7 +555,7 @@ class GalleryItem {
     name: 'Mooncell',
     titleBuilder: () => 'Mooncell',
     url: null,
-    icon: FontAwesomeIcons.cube,
+    icon: FontAwesomeIcons.cube.data,
     page: const MooncellToolsPage(),
     isDetail: true,
     shownDefault: false,

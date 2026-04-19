@@ -241,7 +241,9 @@ class _FakerHistoryViewerState extends State<FakerHistoryViewer> {
                 [record.sendedAt, record.receivedAt].map((e) => e?.toTimeString(milliseconds: true)).join(' ~ '),
                 style: footerStyle,
               ),
-        trailing: serverTime == null ? null : Text('${serverTime.toTimeString()} (server)', style: footerStyle),
+        trailing: serverTime == null
+            ? null
+            : Text('${serverTime.toCustomString(year: false)} (server)', style: footerStyle),
       ),
       children: [
         if (record != null) ...[buildRequestData(record.request?.rawRequest?.data), const Divider(height: 2)],

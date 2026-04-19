@@ -2,9 +2,9 @@ import 'dart:math';
 
 import 'package:chaldea/app/battle/functions/function_executor.dart';
 import 'package:chaldea/app/battle/models/battle.dart';
-import 'package:chaldea/app/battle/utils/buff_utils.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/gamedata/gamedata.dart';
+import 'package:chaldea/models/gamedata/individuality.dart';
 
 class SubState {
   SubState._();
@@ -100,7 +100,7 @@ class SubState {
     final BattleServantData target, {
     final BuffData? substituteAddState,
   }) async {
-    if (!checkSignedIndividualities2(myTraits: buff.getTraits(), requiredTraits: affectTraits)) {
+    if (!Individuality.checkSignedIndivPartialMatch(self: buff.getTraits(), signedTarget: affectTraits)) {
       return false;
     }
 

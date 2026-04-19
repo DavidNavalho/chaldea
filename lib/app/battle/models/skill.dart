@@ -3,7 +3,6 @@ import 'dart:math';
 
 import 'package:chaldea/app/api/atlas.dart';
 import 'package:chaldea/app/battle/functions/function_executor.dart';
-import 'package:chaldea/app/battle/utils/buff_utils.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/gamedata/individuality.dart';
 import 'package:chaldea/models/models.dart';
@@ -160,9 +159,9 @@ class BattleSkillInfoData {
     }
     skillScript = curSkill.script;
 
-    final actorTraitMatch = checkSignedIndividualities2(
-      myTraits: activator?.getTraits() ?? [],
-      requiredTraits: curSkill.actIndividuality,
+    final actorTraitMatch = Individuality.checkSignedIndivPartialMatch(
+      self: activator?.getTraits(),
+      signedTarget: curSkill.actIndividuality,
     );
 
     final scriptCheck = checkSkillScript(battleData, activator, skillScript, skillLv);

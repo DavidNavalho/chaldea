@@ -236,6 +236,11 @@ final _$mstMasterSchemes = <String, (Type, DataMaster Function(String mstName))>
     UserFollowerEntity,
     (mstName) => DataMaster<int, UserFollowerEntity>(mstName, UserFollowerEntity.fromJson),
   ),
+  "otherUserGame": (
+    OtherUserGameEntity,
+    (mstName) => DataMaster<int, OtherUserGameEntity>(mstName, OtherUserGameEntity.fromJson),
+  ),
+  "tblFriend": (TblFriendEntity, (mstName) => DataMaster<String, TblFriendEntity>(mstName, TblFriendEntity.fromJson)),
 };
 
 final _$mstMasterSchemesByType = <Type, (String, DataMaster Function(String mstName))>{
@@ -401,6 +406,8 @@ abstract class MasterDataManagerBase {
 
   DataMaster<int, BattleEntity> get battles => get<int, BattleEntity>();
   DataMaster<int, UserFollowerEntity> get userFollower => get<int, UserFollowerEntity>();
+  DataMaster<int, OtherUserGameEntity> get otherUserGame => get<int, OtherUserGameEntity>();
+  DataMaster<String, TblFriendEntity> get tblFriend => get<String, TblFriendEntity>();
 
   // userGachaExtraCount,
   // userEventSuperBoss, userSvtVoicePlayed
@@ -2241,16 +2248,17 @@ class UserFollowerEntity with DataEntityBase<int> {
   List<FollowerInfo> followerInfo;
   int64_t userId;
   int64_t expireAt;
-  // bool isDelete; // CN
+  bool isDelete;
 
   @override
   int get primaryKey => userId;
 
   static int createPK(int userId) => userId;
 
-  UserFollowerEntity({this.followerInfo = const [], dynamic userId, dynamic expireAt})
+  UserFollowerEntity({this.followerInfo = const [], dynamic userId, dynamic expireAt, dynamic isDelete})
     : userId = _toInt(userId),
-      expireAt = _toInt(expireAt);
+      expireAt = _toInt(expireAt),
+      isDelete = _toBool(isDelete);
 
   factory UserFollowerEntity.fromJson(Map<String, dynamic> data) => _$UserFollowerEntityFromJson(data);
 }
@@ -2428,6 +2436,146 @@ class ServantLeaderInfo {
        grandGraphId = _toInt(grandGraphId);
 
   factory ServantLeaderInfo.fromJson(Map<String, dynamic> data) => _$ServantLeaderInfoFromJson(data);
+}
+
+@JsonSerializable(createToJson: false)
+class OtherUserGameEntity with DataEntityBase<int> {
+  int userId;
+  String userName;
+  int userLv;
+  String friendCode;
+  int tutorial1;
+  int tutorial2;
+  String message;
+  int pushUserSvtId;
+  List<ServantLeaderInfo> userSvtLeaderHash;
+  List<ServantLeaderInfo> eventUserSvtLeaderHash;
+  //  List<UserRecommendSupportInfo> userRecommendSupportHash;
+  List<int> mainSupportDeckIds;
+  List<int> eventSupportDeckIds;
+  //  List<ClassBoardInfo> userClassBoardInfo;
+  //  List<ClassStatisticsInfo> followerClassStatistics;
+  List<ServantLeaderInfo> userSvtGrandHash;
+
+  @override
+  int get primaryKey => userId;
+
+  static int createPK(int userId) => userId;
+
+  OtherUserGameEntity({
+    dynamic userId,
+    dynamic userName,
+    dynamic userLv,
+    dynamic friendCode,
+    dynamic tutorial1,
+    dynamic tutorial2,
+    dynamic message,
+    dynamic pushUserSvtId,
+    List<ServantLeaderInfo>? userSvtLeaderHash,
+    List<ServantLeaderInfo>? eventUserSvtLeaderHash,
+    //  List<UserRecommendSupportInfo>? userRecommendSupportHash,
+    dynamic mainSupportDeckIds,
+    dynamic eventSupportDeckIds,
+    //  List<ClassBoardInfo>? userClassBoardInfo,
+    //  List<ClassStatisticsInfo>? followerClassStatistics,
+    List<ServantLeaderInfo>? userSvtGrandHash,
+  }) : userId = _toInt(userId),
+       userName = userName.toString(),
+       userLv = _toInt(userLv),
+       friendCode = friendCode.toString(),
+       tutorial1 = _toInt(tutorial1),
+       tutorial2 = _toInt(tutorial2),
+       message = message.toString(),
+       pushUserSvtId = _toInt(pushUserSvtId),
+       userSvtLeaderHash = userSvtLeaderHash ?? [],
+       eventUserSvtLeaderHash = eventUserSvtLeaderHash ?? [],
+       userSvtGrandHash = userSvtGrandHash ?? [],
+       mainSupportDeckIds = _toIntList(mainSupportDeckIds),
+       eventSupportDeckIds = _toIntList(eventSupportDeckIds);
+
+  factory OtherUserGameEntity.fromJson(Map<String, dynamic> data) => _$OtherUserGameEntityFromJson(data);
+
+  int getUpdatedAt() => userSvtLeaderHash.firstOrNull?.updatedAt ?? 0;
+}
+
+enum TblFriendFlag {
+  none(1),
+  friendIdMesHide(2),
+  userIdMesHide(4),
+  toFriendidLock(8),
+  toUseridLock(16);
+
+  const TblFriendFlag(this.value);
+  final int value;
+
+  String get dispName => switch (this) {
+    // none => '',
+    // friendIdMesHide => '',
+    // userIdMesHide => '',
+    toFriendidLock => '🔐',
+    toUseridLock => '🔐ME',
+    _ => name,
+  };
+}
+
+enum FriendStatus {
+  unknown(-1),
+  search(0),
+  offer(1),
+  offered(2),
+  friend(3),
+  reject(4),
+  cancel(5),
+  remove(6),
+  friendHistory(7),
+  blacklist(8),
+  follow(9);
+  // sum(10);
+
+  const FriendStatus(this.value);
+  final int value;
+
+  static FriendStatus fromValue(int value) => values.firstWhereOrNull((e) => e.value == value) ?? unknown;
+}
+
+@JsonSerializable(createToJson: false)
+class TblFriendEntity with DataEntityBase<String> {
+  int userId;
+  int friendId;
+  int status;
+  int flag;
+  int updatedAt;
+  int createdAt;
+
+  @override
+  String get primaryKey => createPK(userId, friendId);
+
+  static String createPK(int userId, int friendId) => _createPK2(userId, friendId);
+
+  TblFriendEntity({
+    dynamic userId,
+    dynamic friendId,
+    dynamic status,
+    dynamic flag,
+    dynamic updatedAt,
+    dynamic createdAt,
+  }) : userId = _toInt(userId),
+       friendId = _toInt(friendId),
+       status = _toInt(status),
+       flag = _toInt(flag),
+       updatedAt = _toInt(updatedAt),
+       createdAt = _toInt(createdAt);
+
+  factory TblFriendEntity.fromJson(Map<String, dynamic> data) => _$TblFriendEntityFromJson(data);
+
+  int getIdNotMe(int myUserId) {
+    if (friendId != myUserId) return friendId;
+    return userId;
+  }
+
+  FriendStatus get status2 => FriendStatus.fromValue(status);
+
+  List<TblFriendFlag> get flags => TblFriendFlag.values.where((e) => e.value & flag != 0).toList();
 }
 
 @JsonSerializable(createToJson: false)
@@ -3153,6 +3301,8 @@ class GachaInfos extends MstGiftBase {
 
 @JsonSerializable(createToJson: false, createFieldMap: true)
 class LoginResultData {
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  int serverTime = 0;
   // List<LoginMessageData> loginMessages;
   List<LoginBonusData> totalLoginBonus;
   List<LoginBonusData> seqLoginBonus;
@@ -3189,6 +3339,7 @@ class LoginResultData {
 
   void updateServerTime(int? t) {
     if (t != null && t > 0) {
+      serverTime = t;
       for (final bonusList in getLists()) {
         for (final bonus in bonusList) {
           bonus.createdAt = t;
@@ -3199,7 +3350,9 @@ class LoginResultData {
 
   bool get isEmpty => getLists().every((e) => e.isEmpty);
   bool get isNotEmpty => !isEmpty;
+  int get length => Maths.sum(getLists().map((e) => e.length));
 
+  @Deprecated('')
   void mergeLoginBonus(LoginResultData target) {
     totalLoginBonus = [...totalLoginBonus, ...target.totalLoginBonus];
     seqLoginBonus = [...seqLoginBonus, ...target.seqLoginBonus];

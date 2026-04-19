@@ -14,6 +14,7 @@ import '../combine/svt_equip_combine.dart';
 import '../event/box_gacha.dart';
 import '../event/random_mission_loop.dart';
 import '../event/trade.dart';
+import '../friend/friend_list.dart';
 import '../gacha/gacha_draw.dart';
 import '../mission/mission_receive.dart';
 import '../runtime.dart';
@@ -121,7 +122,7 @@ class _FakerMenuDialogState extends State<FakerMenuDialog> with FakerRuntimeStat
             title: S.current.enhance,
             buttons: [
               _ButtonData(
-                icon: FontAwesomeIcons.dice,
+                icon: FontAwesomeIcons.dice.data,
                 name: S.current.gacha,
                 enabled: isLoggedIn,
                 onTap: () {
@@ -129,7 +130,7 @@ class _FakerMenuDialogState extends State<FakerMenuDialog> with FakerRuntimeStat
                 },
               ),
               _ButtonData(
-                icon: FontAwesomeIcons.listCheck,
+                icon: FontAwesomeIcons.listCheck.data,
                 name: S.current.master_mission,
                 enabled: isLoggedIn,
                 onTap: () {
@@ -137,7 +138,7 @@ class _FakerMenuDialogState extends State<FakerMenuDialog> with FakerRuntimeStat
                 },
               ),
               _ButtonData(
-                icon: FontAwesomeIcons.users,
+                icon: FontAwesomeIcons.users.data,
                 name: '从者强化',
                 enabled: isLoggedIn,
                 onTap: () {
@@ -145,7 +146,7 @@ class _FakerMenuDialogState extends State<FakerMenuDialog> with FakerRuntimeStat
                 },
               ),
               _ButtonData(
-                icon: FontAwesomeIcons.streetView,
+                icon: FontAwesomeIcons.streetView.data,
                 name: '礼装强化',
                 enabled: isLoggedIn,
                 onTap: () {
@@ -157,6 +158,14 @@ class _FakerMenuDialogState extends State<FakerMenuDialog> with FakerRuntimeStat
           buildGroup(
             title: S.current.event,
             buttons: [
+              _ButtonData(
+                icon: Icons.diversity_3,
+                name: 'Friends',
+                enabled: isLoggedIn,
+                onTap: () {
+                  router.pushPage(FriendListPage(runtime: runtime));
+                },
+              ),
               _ButtonData(
                 icon: Icons.shop,
                 name: S.current.shop,
@@ -214,7 +223,7 @@ class _FakerMenuDialogState extends State<FakerMenuDialog> with FakerRuntimeStat
                 child: Padding(
                   padding: const EdgeInsets.symmetric(vertical: 2),
                   child: button.icon.isFontAwesome
-                      ? FaIcon(button.icon, size: (y1 - 4) * 0.8, color: color)
+                      ? FaIcon(FaIconData(button.icon), size: (y1 - 4) * 0.8, color: color)
                       : Icon(button.icon, size: y1 - 4, color: color),
                 ),
               ),

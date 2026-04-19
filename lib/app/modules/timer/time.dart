@@ -57,7 +57,7 @@ class _RegionTimeTabState extends State<RegionTimeTab> {
     }
     list.addAll([
       divider,
-      buildItem(_RegionData(tzName: 'UTC', offset: Duration.zero, icon: FontAwesomeIcons.earthEurope)),
+      buildItem(_RegionData(tzName: 'UTC', offset: Duration.zero, icon: FontAwesomeIcons.earthEurope.data)),
     ]);
 
     return DecoratedBox(

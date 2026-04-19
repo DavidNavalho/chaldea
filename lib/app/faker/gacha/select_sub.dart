@@ -62,7 +62,7 @@ class _SelectGachaSubPageState extends State<SelectGachaSubPage> {
                       Navigator.pop(context);
                       widget.onSelected!(null);
                     },
-                    child: Text('Set Base 0'),
+                    child: Text('Set Default'),
                   ),
                 ],
               ),

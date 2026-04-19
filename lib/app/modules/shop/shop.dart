@@ -466,7 +466,7 @@ class ShopHelper {
         return;
       case PurchaseType.classBoardResetItem:
         final classBoard = db.gameData.classBoards[targetId];
-        onTapClassBoard() => router.push(url: Routes.classBoardI(targetId));
+        void onTapClassBoard() => router.push(url: Routes.classBoardI(targetId));
         if (classBoard == null) {
           yield (
             null,

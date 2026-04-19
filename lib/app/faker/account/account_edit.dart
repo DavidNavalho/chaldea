@@ -394,7 +394,7 @@ class _FakerAccountEditPageState extends State<FakerAccountEditPage> {
                 "Android OS ${info.version.release} / API-${info.version.sdkInt} (${info.id}/${info.version.incremental})";
         user.deviceInfo = "$deviceModel / $operatingSystem";
       } else if (PlatformU.isIOS) {
-        final gameTop = (await AtlasApi.gametops())?.of(user.region);
+        final gameTop = await AtlasApi.gametop(region: user.region);
         final info = await DeviceInfoPlugin().iosInfo;
         final cfNetworkVersion = await MethodChannelChaldea.getCFNetworkVersion() ?? "1474";
         user.userAgent = "FateGO/${gameTop?.appVer ?? 0} CFNetwork/$cfNetworkVersion Darwin/${info.utsname.release}";
@@ -421,7 +421,7 @@ class _FakerAccountEditPageState extends State<FakerAccountEditPage> {
         return;
       }
       if (PlatformU.isAndroid) {
-        final gameTop = (await AtlasApi.gametops())?.of(user.region);
+        final gameTop = await AtlasApi.gametop(region: user.region);
         final info = await DeviceInfoPlugin().androidInfo;
         user.userAgent = "UnityPlayer/${gameTop?.unityVer ?? '2022.3.28f1'} (UnityWebRequest/1.0, libcurl/8.4.0-DEV)";
         user.sysVer = info.version.release;

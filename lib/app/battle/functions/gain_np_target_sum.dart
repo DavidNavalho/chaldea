@@ -1,6 +1,6 @@
 import 'package:chaldea/app/battle/models/battle.dart';
-import 'package:chaldea/app/battle/utils/buff_utils.dart';
 import 'package:chaldea/models/gamedata/gamedata.dart';
+import 'package:chaldea/models/gamedata/individuality.dart';
 import 'gain_np.dart';
 
 class GainNpTargetSum {
@@ -25,15 +25,15 @@ class GainNpTargetSum {
 
         final count = countTargets
             .where(
-              (svt) => checkSignedIndividualities2(
-                myTraits: svt.getTraits(
+              (svt) => Individuality.checkSignedIndivPartialMatch(
+                self: svt.getTraits(
                   addTraits: svt.getBuffTraits(
                     activeOnly: dataVals.GainNpTargetPassiveIndividuality != 1,
                     ignoreIndivUnreleaseable: false,
                     includeIgnoreIndiv: false,
                   ),
                 ),
-                requiredTraits: targetTraits,
+                signedTarget: targetTraits,
               ),
             )
             .length;
