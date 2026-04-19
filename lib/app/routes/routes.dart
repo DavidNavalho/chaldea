@@ -29,7 +29,7 @@ import 'package:chaldea/app/modules/tools/myroom_assets_page.dart';
 import 'package:chaldea/app/modules/trait/trait.dart';
 import 'package:chaldea/app/modules/trait/trait_list.dart';
 import 'package:chaldea/app/modules/war/wars_page.dart';
-import 'package:chaldea/custom/box_coverage/box_coverage_page.dart';
+import 'package:chaldea/custom/custom_integration.dart';
 import 'package:chaldea/models/gamedata/common.dart';
 import 'package:chaldea/models/gamedata/event.dart';
 import '../../models/gamedata/ai.dart';
@@ -205,7 +205,6 @@ class Routes {
   static const String expCard = '/expCard';
   static const String sqPlan = '/sqPlan';
   static const String stats = '/stats';
-  static const String myBoxCoverage = '/my-box-coverage';
   static const String importData = '/import_data';
   static const String ffo = '/ffo';
   static const String aprilFool = '/april-fool';
@@ -231,7 +230,6 @@ class Routes {
     events,
     items,
     plans,
-    myBoxCoverage,
     summons,
     traits,
     funcs,
@@ -239,6 +237,10 @@ class Routes {
     skills,
     tds,
   ];
+
+  static bool isMasterRoute(String? url) {
+    return masterRoutes.contains(url) || CustomIntegration.isMasterRoute(url);
+  }
 }
 
 class RouteConfiguration {
@@ -319,7 +321,7 @@ class RouteConfiguration {
   SplitPage<T> createPage<T>() {
     return SplitPage(
       child: resolvedChild ?? NotFoundPage(configuration: this),
-      detail: detail ?? !Routes.masterRoutes.contains(url),
+      detail: detail ?? !Routes.isMasterRoute(url),
       name: url,
       arguments: this,
       key: UniqueKey(),
@@ -342,6 +344,8 @@ class RouteConfiguration {
 
   Widget? get resolvedChild {
     if (child != null) return child!;
+    final customChild = CustomIntegration.resolveRoute(first);
+    if (customChild != null) return customChild;
     int? _secondInt = second == null ? null : int.tryParse(second!);
     switch (first) {
       case Routes.home:
@@ -450,8 +454,6 @@ class RouteConfiguration {
         return const MyRoomAssetsPage();
       case Routes.stats:
         return GameStatisticsPage();
-      case Routes.myBoxCoverage:
-        return const BoxCoveragePage();
       case Routes.traits:
         return TraitListPage();
       case Routes.trait:

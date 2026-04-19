@@ -1,80 +1,70 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:chaldea/custom/box_coverage/box_coverage_data_source.dart';
 import 'package:chaldea/custom/box_coverage/box_coverage_models.dart';
+import 'package:chaldea/custom/box_coverage/box_coverage_np_gain.dart';
 import 'package:chaldea/custom/box_coverage/box_coverage_service.dart';
 import 'package:chaldea/models/gamedata/common.dart';
-import 'package:chaldea/models/gamedata/func.dart';
-import 'package:chaldea/models/gamedata/skill.dart';
-import 'package:chaldea/models/gamedata/vals.dart';
-
-import '../../test_init.dart';
 
 void main() {
-  setUpAll(() async {
-    await initiateForTest();
-  });
-
-  group('BoxCoverageNormalizer', () {
-    test('maxDirectNpGainForSkillVariants keeps the largest direct gainNp value at level 10', () {
-      final baseSkill = NiceSkill(
-        id: 1001,
-        type: SkillType.active,
-        skillSvts: [SkillSvt(svtId: 1, num: 1)],
-        functions: [_gainNpFunction(2000), _gainNpFunction(2500)],
-      );
-      final upgradedSkill = NiceSkill(
-        id: 1002,
-        type: SkillType.active,
-        skillSvts: [SkillSvt(svtId: 1, num: 1)],
+  group('BoxCoverageNpGainCalculator', () {
+    test('maxDirectNpGainForSkillVariants keeps the largest direct gain value at level 10', () {
+      final baseSkill = BoxCoverageSourceSkill(slot: 1, functions: [_gainFunction(2000), _gainFunction(2500)]);
+      final upgradedSkill = BoxCoverageSourceSkill(
+        slot: 1,
         functions: [
-          _gainNpFunction(3000),
-          _gainNpFunction(9000, funcType: FuncType.gainNpFromTargets),
+          _gainFunction(3000),
+          const BoxCoverageSourceFunction(kind: BoxCoverageSourceFunctionKind.other, levelValues: [9000]),
         ],
       );
 
-      expect(BoxCoverageNormalizer.maxDirectNpGainForSkillVariants([baseSkill, upgradedSkill]), 3000);
-      expect(BoxCoverageNormalizer.scaleNpGainRaw(3000), 30);
+      expect(BoxCoverageNpGainCalculator.maxDirectNpGainForSkillVariants([baseSkill, upgradedSkill]), 3000);
+      expect(BoxCoverageNpGainCalculator.scaleNpGainRaw(3000), 30);
     });
   });
 
   group('BoxCoverageAggregator', () {
     test('builds target coverage, capability, and multiplier tables from normalized snapshots', () {
       final aggregator = const BoxCoverageAggregator();
-      final model = aggregator.buildFromSnapshots([
-        _snapshot(
-          collectionNo: 1,
-          servantId: 101,
-          name: 'Euryale',
-          classId: SvtClass.archer.value,
-          rarity: 5,
-          npLevel: 2,
-          totalNpGain: 20,
-          npTarget: BoxCoverageNpTarget.aoe,
-          npCard: CardType.buster,
-        ),
-        _snapshot(
-          collectionNo: 2,
-          servantId: 102,
-          name: 'Gilgamesh',
-          classId: SvtClass.archer.value,
-          rarity: 5,
-          npLevel: 1,
-          totalNpGain: 30,
-          npTarget: BoxCoverageNpTarget.aoe,
-          npCard: CardType.arts,
-        ),
-        _snapshot(
-          collectionNo: 3,
-          servantId: 103,
-          name: 'Bedivere',
-          classId: SvtClass.saber.value,
-          rarity: 4,
-          npLevel: 5,
-          totalNpGain: 10,
-          npTarget: BoxCoverageNpTarget.single,
-          npCard: CardType.arts,
-        ),
-      ], const BoxCoverageRequest.defaults());
+      final model = aggregator.buildFromSnapshots(
+        [
+          _snapshot(
+            collectionNo: 1,
+            servantId: 101,
+            name: 'Euryale',
+            classId: SvtClass.archer.value,
+            rarity: 5,
+            npLevel: 2,
+            totalNpGain: 20,
+            npTarget: BoxCoverageNpTarget.aoe,
+            npCard: CardType.buster,
+          ),
+          _snapshot(
+            collectionNo: 2,
+            servantId: 102,
+            name: 'Gilgamesh',
+            classId: SvtClass.archer.value,
+            rarity: 5,
+            npLevel: 1,
+            totalNpGain: 30,
+            npTarget: BoxCoverageNpTarget.aoe,
+            npCard: CardType.arts,
+          ),
+          _snapshot(
+            collectionNo: 3,
+            servantId: 103,
+            name: 'Bedivere',
+            classId: SvtClass.saber.value,
+            rarity: 4,
+            npLevel: 5,
+            totalNpGain: 10,
+            npTarget: BoxCoverageNpTarget.single,
+            npCard: CardType.arts,
+          ),
+        ],
+        const BoxCoverageRequest.defaults(),
+        classRelationRaw: _stubClassRelation,
+      );
 
       final targetCoverageCell = _findCell(
         table: model.targetCoverageTable,
@@ -111,16 +101,10 @@ void main() {
   });
 }
 
-NiceFunction _gainNpFunction(int finalValue, {FuncType funcType = FuncType.gainNp}) {
-  return NiceFunction(
-    funcId: finalValue,
-    funcType: funcType,
-    funcTargetType: FuncTargetType.self,
-    svals: List.generate(
-      10,
-      (index) => DataVals({'Value': ((finalValue / 10).round()) * (index + 1)}),
-      growable: false,
-    ),
+BoxCoverageSourceFunction _gainFunction(int finalValue) {
+  return BoxCoverageSourceFunction(
+    kind: BoxCoverageSourceFunctionKind.directNpGain,
+    levelValues: List.generate(10, (index) => ((finalValue / 10).round()) * (index + 1), growable: false),
   );
 }
 
@@ -164,4 +148,14 @@ BoxCoverageCellModel _findCell({
     (column) => column.npTarget == npTarget && column.rarity == rarity && column.npCard == npCard,
   );
   return row.cells[columnIndex];
+}
+
+int _stubClassRelation(int attackerClassId, int defenderClassId) {
+  if (attackerClassId == SvtClass.archer.value && defenderClassId == SvtClass.saber.value) {
+    return 2000;
+  }
+  if (attackerClassId == defenderClassId) {
+    return 1000;
+  }
+  return 500;
 }

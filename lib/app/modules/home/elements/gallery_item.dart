@@ -16,7 +16,7 @@ import 'package:chaldea/app/modules/tools/tool_list_page.dart';
 import 'package:chaldea/app/modules/trait/trait_list.dart';
 import 'package:chaldea/app/modules/war/wars_page.dart';
 import 'package:chaldea/app/routes/routes.dart';
-import 'package:chaldea/custom/box_coverage/box_coverage_page.dart';
+import 'package:chaldea/custom/custom_integration.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/db.dart';
 import 'package:chaldea/packages/app_info.dart';
@@ -131,7 +131,7 @@ class GalleryItem {
     classBoards,
     saintQuartz,
     mysticCodes,
-    myBoxCoverage,
+    ..._customItems,
     effectSearch,
     costumes,
     summons,
@@ -165,6 +165,21 @@ class GalleryItem {
     // mooncell,
     toolbox,
   ];
+
+  static List<GalleryItem> get _customItems =>
+      CustomIntegration.galleryItems.map(_fromCustomDefinition).toList(growable: false);
+
+  static GalleryItem _fromCustomDefinition(CustomGalleryItemDefinition definition) {
+    return GalleryItem(
+      name: definition.name,
+      titleBuilder: () => definition.title,
+      icon: definition.icon,
+      url: definition.url,
+      page: definition.page,
+      isDetail: definition.isDetail,
+      shownDefault: definition.shownDefault,
+    );
+  }
 
   static GalleryItem servants = GalleryItem(
     name: 'servants',
@@ -307,14 +322,6 @@ class GalleryItem {
     titleBuilder: () => S.current.np_charge,
     icon: FontAwesomeIcons.batteryHalf.data,
     page: const NpChargePage(),
-    isDetail: false,
-  );
-  static GalleryItem myBoxCoverage = GalleryItem(
-    name: 'my_box_coverage',
-    titleBuilder: () => 'My Box Coverage',
-    icon: Icons.table_chart_outlined,
-    url: Routes.myBoxCoverage,
-    page: const BoxCoveragePage(),
     isDetail: false,
   );
   static GalleryItem bondBonus = GalleryItem(
