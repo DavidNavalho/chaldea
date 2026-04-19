@@ -7,6 +7,7 @@ Update it at the end of each working session.
 - This fork tracks upstream `chaldea` and adds automation-focused features:
   - Laplace Auto 3T team identification/search
   - Shared Teams "My Box" compatibility and batch simulation tools
+  - My Box Coverage overview page
 - Design constraint: keep upstream-core changes minimal and keep custom logic in
   `lib/custom/...` whenever possible.
 
@@ -23,19 +24,32 @@ Update it at the end of each working session.
    - `fvm flutter run -d macos`
 
 ## Last Session Snapshot
-- Date: 2026-03-05
-- Branch: automation/upstream-sync-2026-03-05
-- Last commit: 26d53eb62
-- Working tree status: clean on sync branch
-- Active feature(s): upstream sync PR workflow hardening + PR conflict resolution
-- What is done: rebuilt sync branch from origin/main, merged upstream/main, added scripts/sync_fork_pr.sh, updated AGENTS.md/HANDOFF.md workflow docs
-- What is next: review and merge PR #1, then run full flutter analyze/test in unrestricted local env
-- Known blockers: sandboxed automation environment has intermittent GitHub API/network and Flutter runtime restrictions
+- Date: 2026-04-19
+- Branch: codex/box-coverage-mvp
+- Last commit: 84ad103d1
+- Working tree status: dirty with local MVP implementation changes under `lib/custom/box_coverage/`, route wiring, gallery entry, tests, and this handoff update
+- Active feature(s): My Box Coverage MVP page integrated into the app home gallery
+- What is done:
+  - synced local `main` with `upstream/main`
+  - created feature branch `codex/box-coverage-mvp`
+  - implemented isolated models/service/page under `lib/custom/box_coverage/`
+  - added route `/my-box-coverage` and home gallery entry
+  - added focused service tests under `test/custom/box_coverage/`
+  - validated with `flutter test` and `flutter build macos --debug`
+- What is next:
+  - manually review the new page UX in the running macOS app
+  - decide whether to tighten the table presentation further before commit/PR
+  - optionally add widget tests once the UI structure settles
+- Known blockers:
+  - `flutter analyze` still exits non-zero because of pre-existing info-level lints elsewhere in the fork; the new feature compiles cleanly
 ## Files Touched In Current Workstream
+- `lib/custom/box_coverage/...`
+- `test/custom/box_coverage/...`
 - `lib/custom/team_search/...`
 - `lib/custom/shared_teams/...`
 - Thin integration points in:
-  - `lib/app/modules/battle/...`
+  - `lib/app/modules/home/elements/gallery_item.dart`
+  - `lib/app/routes/routes.dart`
 
 ## Validation Commands
 - `fvm flutter analyze`
