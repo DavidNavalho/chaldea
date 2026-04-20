@@ -86,7 +86,11 @@ chmod 700 "$askpass_file"
 
 push_args=(--set-upstream)
 if [[ "$push_force_with_lease" == "true" ]]; then
-  push_args+=(--force-with-lease)
+  remote_branch_ref="refs/heads/${push_branch}"
+  remote_branch_sha="$(
+    git ls-remote "$push_remote_url" "$remote_branch_ref" 2>/dev/null | awk 'NR == 1 { print $1 }'
+  )"
+  push_args+=("--force-with-lease=${remote_branch_ref}:${remote_branch_sha}")
 fi
 
 log "Pushing ${push_branch} to ${push_remote_url}"
