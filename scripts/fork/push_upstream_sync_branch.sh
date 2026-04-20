@@ -10,6 +10,7 @@ Environment:
   PUSH_REPO        required, e.g. DavidNavalho/chaldea
   PUSH_BRANCH      optional, defaults to current branch
   PUSH_REMOTE_URL  optional, defaults to https://github.com/${PUSH_REPO}.git
+  PUSH_FORCE_WITH_LEASE optional, default: true
 
 Exit codes:
   0  success
@@ -61,6 +62,7 @@ push_branch="${PUSH_BRANCH:-$(git branch --show-current)}"
 }
 
 push_remote_url="${PUSH_REMOTE_URL:-https://github.com/${PUSH_REPO}.git}"
+push_force_with_lease="${PUSH_FORCE_WITH_LEASE:-true}"
 
 tmp_dir="$(mktemp -d)"
 trap 'rm -rf "$tmp_dir"' EXIT
@@ -82,10 +84,15 @@ esac
 EOF
 chmod 700 "$askpass_file"
 
+push_args=(--set-upstream)
+if [[ "$push_force_with_lease" == "true" ]]; then
+  push_args+=(--force-with-lease)
+fi
+
 log "Pushing ${push_branch} to ${push_remote_url}"
 GIT_TERMINAL_PROMPT=0 \
 GIT_ASKPASS="$askpass_file" \
-git push --set-upstream "$push_remote_url" "HEAD:refs/heads/${push_branch}"
+git push "${push_args[@]}" "$push_remote_url" "HEAD:refs/heads/${push_branch}"
 
 emit status "branch-pushed"
 emit push_branch "$push_branch"
