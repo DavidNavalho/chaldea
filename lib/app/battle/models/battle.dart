@@ -336,7 +336,7 @@ class BattleData {
       onFieldAllyServants[nextIndex] = svt;
     }
 
-    onFieldEnemies = List.filled(enemyOnFieldCount, null);
+    onFieldEnemies = List.filled(enemyOnFieldCount, null, growable: true);
     for (int index = 0; index < backupEnemies.length; index += 1) {
       final enemy = backupEnemies[index];
       if (enemy == null) {
@@ -527,7 +527,7 @@ class BattleData {
 
     await _fetchWaveEnemies();
 
-    onFieldEnemies = List.filled(enemyOnFieldCount, null);
+    onFieldEnemies = List.filled(enemyOnFieldCount, null, growable: true);
     for (int index = 0; index < backupEnemies.length; index += 1) {
       final enemy = backupEnemies[index];
       if (enemy == null) {
@@ -1569,6 +1569,12 @@ class BattleData {
         }
         actorList[i] = null;
         actor.fieldIndex = -1;
+
+        if (actor.isEnemy && actor.niceEnemy?.enemyScript.leader == 1) {
+          backupEnemies.clear();
+          onFieldEnemies.clear();
+          return;
+        }
       }
     }
   }
