@@ -89,6 +89,7 @@ discover_existing_pr() {
 
   existing_pr_number="$(
     gh api "repos/${repo_slug}/pulls" \
+      -X GET \
       -f state=open \
       -f head="${owner}:${head_branch}" \
       -f base="${base_branch}" \
@@ -96,6 +97,7 @@ discover_existing_pr() {
   )"
   existing_pr_url="$(
     gh api "repos/${repo_slug}/pulls" \
+      -X GET \
       -f state=open \
       -f head="${owner}:${head_branch}" \
       -f base="${base_branch}" \
