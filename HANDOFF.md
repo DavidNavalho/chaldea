@@ -24,26 +24,20 @@ Update it at the end of each working session.
    - `fvm flutter run -d macos`
 
 ## Last Session Snapshot
-- Date: 2026-04-19
-- Branch: main
-- Last commit: 7b3d4fc9d
-- Working tree status: dirty with new repo-local upstream automation scripts under `scripts/fork/`, plus updates to `AGENTS.md` and this handoff file
-- Active feature(s): repo-local machine-friendly upstream sync script surface for sandbox automation
+- Date: 2026-04-20
+- Branch: automation/agent-remediation-smoke
+- Last commit: 85cc36f9d
+- Working tree status: dirty with smoke-test remediation docs only (`AUTOMATION_REMEDIATION_SMOKE.md`, `HANDOFF.md`)
+- Active feature(s): bounded upstream-sync remediation smoke validation on the prepared automation branch
 - What is done:
-  - added `scripts/fork/check_upstream_updates.sh`
-  - added `scripts/fork/prepare_upstream_sync_branch.sh`
-  - added `scripts/fork/validate_upstream_sync.sh`
-  - added `scripts/fork/push_upstream_sync_branch.sh`
-  - added `scripts/fork/open_upstream_sync_pr.sh`
-  - documented the machine-friendly fork automation surface in `AGENTS.md`
-  - validated the new shell scripts with `bash -n`
-  - smoke-tested upstream detection, branch preparation, validation exit behavior, and local push against temporary repos
+  - resumed the prepared remediation worktree on `automation/agent-remediation-smoke`
+  - ran `./scripts/fork/validate_upstream_sync.sh` successfully against current `origin/main` + upstream state
+  - confirmed the branch is mechanically clean relative to `origin/main` aside from the smoke-test branch docs
 - What is next:
-  - decide whether `scripts/sync_fork_pr.sh` should start delegating to the new `scripts/fork/` helpers
-  - wire the bounded agent apply step between branch preparation and push/PR creation
-  - decide whether `.fvmrc` should be removed after any human-facing docs are updated
+  - if this smoke branch is meant to persist, commit the smoke-test docs, push the branch, and open/update the PR
+  - otherwise delete the disposable smoke branch after automation verification is complete
 - Known blockers:
-  - no repo-local agent apply script exists yet by design; merge/apply remains the judgment-heavy step
+  - none at snapshot time; publish steps depend on GitHub credentials and remote availability
 ## Files Touched In Current Workstream
 - `scripts/fork/check_upstream_updates.sh`
 - `scripts/fork/prepare_upstream_sync_branch.sh`
