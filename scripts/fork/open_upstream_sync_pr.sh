@@ -81,6 +81,28 @@ apply_labels() {
   gh api "repos/${repo_slug}/issues/${pr_number}/labels" -X POST "${label_args[@]}" >/dev/null
 }
 
+discover_existing_pr() {
+  local repo_slug="$1"
+  local owner="$2"
+  local head_branch="$3"
+  local base_branch="$4"
+
+  existing_pr_number="$(
+    gh api "repos/${repo_slug}/pulls" \
+      -f state=open \
+      -f head="${owner}:${head_branch}" \
+      -f base="${base_branch}" \
+      --jq '.[0].number // ""'
+  )"
+  existing_pr_url="$(
+    gh api "repos/${repo_slug}/pulls" \
+      -f state=open \
+      -f head="${owner}:${head_branch}" \
+      -f base="${base_branch}" \
+      --jq '.[0].html_url // ""'
+  )"
+}
+
 if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   usage
   exit 0
@@ -121,9 +143,12 @@ pr_title="${PR_TITLE:-Sync fork with upstream ${base_branch} (${today_iso})}"
 pr_body="${PR_BODY:-Automated upstream sync branch prepared by repo-local fork automation.}"
 pr_labels="${PR_LABELS:-codex,codex-automation}"
 owner="${repo_slug%/*}"
+pr_create_attempts="${PR_CREATE_ATTEMPTS:-5}"
+pr_create_retry_delay_seconds="${PR_CREATE_RETRY_DELAY_SECONDS:-3}"
 
-existing_pr_number="$(gh api "repos/${repo_slug}/pulls" -f state=open -f head="${owner}:${head_branch}" -f base="${base_branch}" --jq '.[0].number // ""')"
-existing_pr_url="$(gh api "repos/${repo_slug}/pulls" -f state=open -f head="${owner}:${head_branch}" -f base="${base_branch}" --jq '.[0].html_url // ""')"
+existing_pr_number=""
+existing_pr_url=""
+discover_existing_pr "$repo_slug" "$owner" "$head_branch" "$base_branch"
 
 if [[ -n "$existing_pr_number" ]]; then
   log "Using existing PR #${existing_pr_number}"
@@ -135,8 +160,49 @@ if [[ -n "$existing_pr_number" ]]; then
 fi
 
 log "Creating PR from ${head_branch} to ${base_branch}"
-pr_url="$(gh api "repos/${repo_slug}/pulls" -X POST -f title="$pr_title" -f head="$head_branch" -f base="$base_branch" -f body="$pr_body" --jq '.html_url')"
-pr_number="$(gh api "repos/${repo_slug}/pulls" -f state=open -f head="${owner}:${head_branch}" -f base="${base_branch}" --jq '.[0].number // ""')"
+
+pr_url=""
+for attempt in $(seq 1 "$pr_create_attempts"); do
+  set +e
+  create_output="$(
+    gh api "repos/${repo_slug}/pulls" \
+      -X POST \
+      -f title="$pr_title" \
+      -f head="$head_branch" \
+      -f base="$base_branch" \
+      -f body="$pr_body" \
+      --jq '.html_url' 2>&1
+  )"
+  create_status=$?
+  set -e
+
+  if [[ "$create_status" -eq 0 ]]; then
+    pr_url="$create_output"
+    break
+  fi
+
+  discover_existing_pr "$repo_slug" "$owner" "$head_branch" "$base_branch"
+  if [[ -n "$existing_pr_number" ]]; then
+    log "PR became visible after create attempt ${attempt}; using existing PR #${existing_pr_number}"
+    apply_labels "$repo_slug" "$existing_pr_number" "$pr_labels"
+    emit pr_status "existing"
+    emit pr_number "$existing_pr_number"
+    emit pr_url "$existing_pr_url"
+    exit 0
+  fi
+
+  if [[ "$attempt" -lt "$pr_create_attempts" ]] && printf '%s\n' "$create_output" | grep -q 'Validation Failed'; then
+    log "PR create attempt ${attempt}/${pr_create_attempts} failed before branch propagation completed; retrying in ${pr_create_retry_delay_seconds}s"
+    sleep "$pr_create_retry_delay_seconds"
+    continue
+  fi
+
+  printf '%s\n' "$create_output" >&2
+  exit "$create_status"
+done
+
+discover_existing_pr "$repo_slug" "$owner" "$head_branch" "$base_branch"
+pr_number="$existing_pr_number"
 
 [[ -n "$pr_number" ]] || {
   log "PR was created but could not be re-discovered."
