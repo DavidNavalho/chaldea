@@ -1392,7 +1392,19 @@ enum CondType {
   useEventPassiveSkillGivenItem(270),
   notUseEventPassiveSkillGivenItem(271),
   selfIndividuality(272),
-  notSelfIndividuality(273);
+  notSelfIndividuality(273),
+  battleValueAbove(274),
+  battleValueBelow(275),
+  battleValueEqual(276),
+  battleValueNotEqual(277),
+  battlePointEqual(278),
+  battlePointNotEqual(279),
+  battleEntryPlayerTotalCountAbove(280),
+  battleEntryPlayerTotalCountBelow(281),
+  battleEntryPlayerTotalCountEqual(282),
+  battleEntryEnemyTotalCountAbove(283),
+  battleEntryEnemyTotalCountBelow(284),
+  battleEntryEnemyTotalCountEqual(285);
 
   const CondType(this.value);
   final int value;

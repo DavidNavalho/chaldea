@@ -57,7 +57,12 @@ class _RandomImageSurpriseState extends State<RandomImageSurprise> {
     List<(Servant?, String)> urls = [];
     for (final svt in db.gameData.servantsNoDup.values) {
       for (final url in svt.extra.aprilFoolAssets) {
-        if (url.contains('/FGL/Figure/figure_') || url.contains('/FDS/Figure/figure_') || url.contains('/FGOPoker/')) {
+        if (const [
+          '/FGL/Figure/figure_',
+          '/FDS/Figure/figure_',
+          '/FGOPoker/',
+          '/JP_AF_2026/CharaFigure/',
+        ].any(url.contains)) {
           urls.add((svt, url));
           break;
         }
@@ -73,19 +78,25 @@ class _RandomImageSurpriseState extends State<RandomImageSurprise> {
     return urls;
   }
 
+  void _updateNext() {
+    lastUpdated = DateTime.now();
+    final allData = getData();
+    if (allData.isNotEmpty) {
+      if (next == null) {
+        cur = allData[Random().nextInt(allData.length)];
+      } else {
+        cur = next;
+      }
+      next = allData[Random().nextInt(allData.length)];
+      cacheNext();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (cur == null || DateTime.now().difference(lastUpdated) > duration) {
-      lastUpdated = DateTime.now();
-      final allData = getData();
-      if (allData.isNotEmpty) {
-        if (next == null) {
-          cur = allData[Random().nextInt(allData.length)];
-        } else {
-          cur = next;
-        }
-        next = allData[Random().nextInt(allData.length)];
-        cacheNext();
+      if (ModalRoute.isCurrentOf(context) ?? true) {
+        _updateNext();
       }
     }
     if (cur == null) return const SizedBox.shrink();
@@ -96,7 +107,10 @@ class _RandomImageSurpriseState extends State<RandomImageSurprise> {
       child: AnimatedSwitcher(
         duration: const Duration(milliseconds: 1000),
         child: GestureDetector(
-          onDoubleTap: svt?.routeTo,
+          onDoubleTap: () {
+            _updateNext();
+            setState(() {});
+          },
           onLongPress: svt?.routeTo,
           child: CachedImage(
             key: Key(url),

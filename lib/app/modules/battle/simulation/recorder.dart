@@ -1212,7 +1212,7 @@ extension BattleSvtDataUI on BattleServantData {
     ImageWithTextOption? option,
     bool showGrandSvt = true,
   }) {
-    final icon = niceEnemy?.icon ?? niceSvt?.ascendIcon(limitCount, true) ?? Atlas.common.unknownEnemyIcon;
+    final icon = niceEnemy?.icon ?? niceSvt?.ascendIcon(limitCount) ?? Atlas.common.unknownEnemyIcon;
     onTap ??= () => router.pushPage(BattleSvtDetail(svt: this, battleData: battleData));
     option = ImageWithTextOption(
       errorWidget: (context, url, error) => CachedImage(imageUrl: Atlas.common.unknownEnemyIcon),

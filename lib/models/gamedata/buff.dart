@@ -551,9 +551,9 @@ enum BuffType {
   otherTreasureDevicePreBeforeFunction(240),
   attackPhaseStartFunction(241),
   treasureDevicePostAfterFunction(242),
-  buff243(243),
-  buff244(244),
-  buff245(245),
+  multiDeadFunction(243),
+  multiGutsFunction(244),
+  multiGutsBeforeFunction(245),
   limitMaxNp(246),
   limitMinNp(247),
 
@@ -637,7 +637,9 @@ final Map<BuffType, List<BuffValueTriggerType Function(DataVals)>> kBuffValueTri
     BuffType.otherTreasureDevicePreBeforeFunction,
     BuffType.attackPhaseStartFunction,
     BuffType.treasureDevicePostAfterFunction,
-    BuffType.buff245,
+    BuffType.multiDeadFunction,
+    BuffType.multiGutsFunction,
+    BuffType.multiGutsBeforeFunction,
   }) {
     types[type] = (v) => BuffValueTriggerType(buffType: type, skill: v.Value, level: v.Value2, rate: v.UseRate);
   }

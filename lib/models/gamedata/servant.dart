@@ -6,7 +6,6 @@ import '../../app/app.dart';
 import '../../app/tools/gamedata_loader.dart';
 import '../db.dart';
 import '../userdata/filter_data.dart';
-import '../userdata/remote_config.dart';
 import '../userdata/userdata.dart';
 import '_helper.dart';
 import 'common.dart';
@@ -23,7 +22,8 @@ part '../../generated/models/gamedata/servant.g.dart';
 
 const int kSuperAokoSvtId = 2501500;
 const int kHydeSvtId = 600710;
-const List<int> kPlayableTransformSvtIds = [kHydeSvtId, kSuperAokoSvtId];
+const int kFrancescaSvtId = 505700;
+const List<int> kPlayableTransformSvtIds = [kHydeSvtId, kSuperAokoSvtId, 1002100, kFrancescaSvtId];
 const String _kSuperAokoIcon = "https://static.wikia.nocookie.net/fategrandorder/images/1/15/S413NP1IconRaw.webp";
 const String _kSuperAokoBorderedIcon = "https://static.wikia.nocookie.net/fategrandorder/images/c/c2/S413NP1Icon.webp";
 
@@ -197,6 +197,12 @@ class Servant extends BasicServant {
   Map<int, LvlUpMaterial> skillMaterials;
   Map<int, LvlUpMaterial> appendSkillMaterials;
   Map<int, LvlUpMaterial> costumeMaterials;
+  Map<int, LvlUpMaterial> get costumeMaterialsForPlan {
+    final transformSvt = script?.transformInfo?.saveTransformSvt;
+    if (transformSvt == null || transformSvt.profile.costume.isEmpty) return costumeMaterials;
+    return {...transformSvt.costumeMaterials, ...costumeMaterials};
+  }
+
   ServantCoin? coin;
   ServantScript? script;
   List<SvtScript> charaScripts;
@@ -214,6 +220,11 @@ class Servant extends BasicServant {
   String get face => icon!;
   @override
   Map<int, NiceCostume> get costume => profile.costume;
+  Map<int, NiceCostume> get costumesForPlan {
+    final transformSvt = script?.transformInfo?.saveTransformSvt;
+    if (transformSvt == null || transformSvt.profile.costume.isEmpty) return profile.costume;
+    return {...costume, ...transformSvt.costume};
+  }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   final int originalCollectionNo;
@@ -461,6 +472,7 @@ class Servant extends BasicServant {
     if (id == kSuperAokoSvtId) return _kSuperAokoIcon;
 
     final _icons = <String>[
+      ...?extraAssets.faces.transformGroup?.values,
       ...?extraAssets.faces.ascension?.values,
       ...?extraAssets.faces.equip?.values,
       // ...?extraAssets.faces.cc?.values,
@@ -481,8 +493,9 @@ class Servant extends BasicServant {
       (type == SvtType.combineMaterial ||
           type == SvtType.statusUp ||
           className == SvtClass.uOlgaMarie ||
-          const [kHydeSvtId, kSuperAokoSvtId].contains(id) // transform servants
-          );
+          const [kHydeSvtId, kSuperAokoSvtId, 1002100, kFrancescaSvtId].contains(id) // transform servants
+          ) ||
+      (script?.transformInfo?.saveTransform ?? 0) > 0;
 
   String? get charaGraph => extraAssets.charaGraph.ascension?[1];
 
@@ -507,24 +520,30 @@ class Servant extends BasicServant {
       }
     }
 
-    _icon = extraAssets.faces.ascension?[ascension] ?? icon;
+    _icon = extraAssets.faces.transformGroup?[ascension] ?? extraAssets.faces.ascension?[ascension] ?? icon;
     if (db.gameData.isJustAddedCard(id)) return _icon;
     return bordered(_icon);
   }
 
   String? get aprilFoolIcon {
-    if (originalCollectionNo <= 0 || originalCollectionNo > 306) return null;
-    if ([83, 149, 151, 152, 168, 240].contains(originalCollectionNo)) {
-      return null;
-    }
-    final padded = originalCollectionNo.toString().padLeft(3, '0');
-    return '${HostsX.atlasAsset.kGlobal}/JP/FFO/Atlas/Sprite/icon_servant_$padded.png';
+    // JP 2021
+    // if (originalCollectionNo <= 0 || originalCollectionNo > 306) return null;
+    // if ([83, 149, 151, 152, 168, 240].contains(originalCollectionNo)) {
+    //   return null;
+    // }
+    // final padded = originalCollectionNo.toString().padLeft(3, '0');
+    // return '${HostsX.atlasAsset.kGlobal}/JP/FFO/Atlas/Sprite/icon_servant_$padded.png';
+    // return '${HostsX.atlasAsset.kGlobal}/JP/FFO/Atlas/Sprite_bordered/icon_servant_${padded}_bordered.png';
+
+    // JP 2026
+    if (originalCollectionNo <= 0 || originalCollectionNo > 466) return null;
+    return "https://static.atlasacademy.io/JP/External/JP_AF_2026/Faces/f_${id}4.png";
   }
 
   String? get aprilFoolBorderedIcon {
-    if (aprilFoolIcon == null) return null;
-    final padded = originalCollectionNo.toString().padLeft(3, '0');
-    return '${HostsX.atlasAsset.kGlobal}/JP/FFO/Atlas/Sprite_bordered/icon_servant_${padded}_bordered.png';
+    // final aprilFoolIcon = this.aprilFoolIcon;
+    // if (aprilFoolIcon == null) return null;
+    return bordered(aprilFoolIcon);
   }
 
   int battleCharaToLimitCount(int battleCharaId) {
@@ -536,17 +555,21 @@ class Servant extends BasicServant {
   }
 
   static int dispLimitCountToLimitCount(int dispLimitCount) {
-    return const <int, int>{0: 0, 1: 2, 2: 2, 3: 3, 4: 4}[dispLimitCount] ?? dispLimitCount;
+    return const <int, int>{0: 0, 1: 0, 2: 2, 3: 4, 4: 4}[dispLimitCount] ?? dispLimitCount;
+  }
+
+  static int dispLimitCountToMinLimitCount(int dispLimitCount) {
+    return const <int, int>{0: 0, 1: 0, 2: 1, 3: 3, 4: 4}[dispLimitCount] ?? dispLimitCount;
   }
 
   // not limitCount=0-4
-  String? ascendIcon(int ascOrCostumeIdOrCharaId, [bool bordered = true]) {
+  String? ascendIcon(int ascOrCostumeIdOrCharaId, {int? transformVal, bool bordered = true}) {
     if (id == kSuperAokoSvtId) {
       return bordered ? _kSuperAokoBorderedIcon : _kSuperAokoIcon;
     }
     final idx = ascOrCostumeIdOrCharaId;
-    final ascs = extraAssets.faces.ascension ?? {};
-    final costumes = extraAssets.faces.costume ?? {};
+    final ascs = extraAssets.faces.ascension ?? const {};
+    final costumes = extraAssets.faces.costume ?? const {};
     String? _icon;
     if (idx < 0) {
       return null;
@@ -563,7 +586,8 @@ class Servant extends BasicServant {
       _icon = costumes[charaId];
     }
     _icon ??= costumes[idx] ?? ascs.values.firstOrNull;
-    if (bordered && collectionNo > 0) _icon = this.bordered(_icon);
+
+    if (bordered && shouldBordered) _icon = this.bordered(_icon);
     return _fixEnemyFace(_icon);
   }
 
@@ -602,10 +626,15 @@ class Servant extends BasicServant {
     String? overrideIcon,
     String? name,
     bool showName = false,
+    int? transformVal,
   }) {
     option = ImageWithTextOption(
       errorWidget: (context, url, error) => CachedImage(imageUrl: Atlas.common.unknownEnemyIcon),
     ).merge(option);
+    if (transformVal == 1) {
+      overrideIcon ??= script?.transformInfo?.saveTransformSvt?.customIcon;
+    }
+    overrideIcon ??= customIcon;
     return super.iconBuilder(
       context: context,
       width: width,
@@ -617,7 +646,7 @@ class Servant extends BasicServant {
       option: option,
       jumpToDetail: jumpToDetail,
       popDetail: popDetail,
-      overrideIcon: overrideIcon ?? customIcon,
+      overrideIcon: overrideIcon,
       name: name,
       showName: showName,
     );
@@ -778,8 +807,15 @@ class Servant extends BasicServant {
     }
   }
 
-  SvtStatus get status => db.curUser.svtStatusOf(collectionNo);
-  SvtPlan get curPlan => db.curUser.svtPlanOf(collectionNo);
+  SvtStatus get status {
+    if (id == kFrancescaSvtId) return db.curUser.svtStatusOf(467);
+    return db.curUser.svtStatusOf(collectionNo);
+  }
+
+  SvtPlan get curPlan {
+    if (id == kFrancescaSvtId) return db.curUser.svtPlanOf(467);
+    return db.curUser.svtPlanOf(collectionNo);
+  }
 
   ({int total, int elapsed, int next, int curTotal, int nextTotal}) getCurLvExpData(int lv, int exp) {
     final curTotal = expGrowth.getOrNull(lv - 1) ?? 0, nextTotal = expGrowth.getOrNull(lv) ?? curTotal;
@@ -1067,8 +1103,17 @@ class ExtraAssetsUrl {
   final Map<int, String>? equip;
   final Map<int, String>? cc;
   final Map<String, String>? imagePartsGroup;
+  final Map<int, String>? transformGroup;
 
-  const ExtraAssetsUrl({this.ascension, this.story, this.costume, this.equip, this.cc, this.imagePartsGroup});
+  const ExtraAssetsUrl({
+    this.ascension,
+    this.story,
+    this.costume,
+    this.equip,
+    this.cc,
+    this.imagePartsGroup,
+    this.transformGroup,
+  });
 
   Iterable<String> get allUrls sync* {
     if (ascension != null) yield* ascension!.values;
@@ -1077,6 +1122,7 @@ class ExtraAssetsUrl {
     if (cc != null) yield* cc!.values;
     if (story != null) yield* story!.values;
     if (imagePartsGroup != null) yield* imagePartsGroup!.values;
+    if (transformGroup != null) yield* transformGroup!.values;
   }
 
   factory ExtraAssetsUrl.fromJson(Map<String, dynamic> json) => _$ExtraAssetsUrlFromJson(json);
@@ -1098,16 +1144,18 @@ class ExtraCCAssets {
 
 @JsonSerializable()
 class ExtraAssets extends ExtraCCAssets {
+  // ExtraAssetsUrl charaGraph; // 1,2,3,4
+  // ExtraAssetsUrl faces; // 1,2,3,4
   ExtraAssetsUrl charaGraphEx;
   ExtraAssetsUrl charaGraphName;
-  ExtraAssetsUrl narrowFigure;
-  ExtraAssetsUrl charaFigure;
+  ExtraAssetsUrl narrowFigure; // 1,2,3,4
+  ExtraAssetsUrl charaFigure; // 1,2,3: dispLimitCount
   Map<int, ExtraAssetsUrl> charaFigureForm;
   Map<int, ExtraAssetsUrl> charaFigureMulti;
   Map<int, ExtraAssetsUrl> charaFigureMultiCombine;
   Map<int, ExtraAssetsUrl> charaFigureMultiLimitUp;
-  ExtraAssetsUrl commands;
-  ExtraAssetsUrl status;
+  ExtraAssetsUrl commands; // 1,2,3: dispLimitCount
+  ExtraAssetsUrl status; // 1,2,3: dispLimitCount
   ExtraAssetsUrl equipFace;
   ExtraAssetsUrl image;
   ExtraAssetsUrl spriteModel;
@@ -1728,6 +1776,7 @@ class NiceLore {
   String cv;
   String illustrator;
   LoreStatus? stats;
+  @protected
   Map<int, NiceCostume> costume;
   List<LoreComment> comments;
   List<VoiceGroup> voices;
@@ -1757,13 +1806,36 @@ class ServantScript with DataScriptBase {
   Map<int, List<int>>? skillRankUp;
   bool? svtBuffTurnExtend;
   ExtraAssets? maleImage;
+  ServantTransformInfo? transformInfo;
   // List<ImagePartsGroup>? imagePartsGroup;
 
-  ServantScript({this.skillRankUp, this.svtBuffTurnExtend, this.maleImage});
+  ServantScript({this.skillRankUp, this.svtBuffTurnExtend, this.maleImage, this.transformInfo});
 
   factory ServantScript.fromJson(Map<String, dynamic> json) => _$ServantScriptFromJson(json)..setSource(json);
 
   Map<String, dynamic> toJson() => Map.from(source)..addAll(_$ServantScriptToJson(this));
+}
+
+@JsonSerializable()
+class ServantTransformInfo {
+  int? saveTransform;
+  int? saveTransformDefault;
+  // String? condSpriteColor;
+  // String? condLabelColor;
+  // String? condLabelTitle;
+  // int? isNotSkillChange;
+  // int? isNotClassSkillChange;
+  // int? isNotProfileParameterChange;
+
+  Servant? get saveTransformSvt => db.gameData.servantsById[saveTransform];
+  BasicServant? get saveTransformEntity =>
+      db.gameData.servantsById[saveTransform] ?? db.gameData.entities[saveTransform];
+
+  ServantTransformInfo({this.saveTransform, this.saveTransformDefault});
+
+  factory ServantTransformInfo.fromJson(Map<String, dynamic> json) => _$ServantTransformInfoFromJson(json);
+
+  Map<String, dynamic> toJson() => _$ServantTransformInfoToJson(this);
 }
 
 @JsonSerializable()

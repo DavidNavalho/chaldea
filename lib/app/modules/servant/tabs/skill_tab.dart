@@ -82,7 +82,7 @@ class _SvtSkillTabState extends State<SvtSkillTab> {
 
   @override
   Widget build(BuildContext context) {
-    final status = db.curUser.svtStatusOf(svt.collectionNo).cur;
+    final status = svt.status.cur;
     List<Widget> children = [];
     children.add(SHeader(S.current.active_skill));
     final groupedActiveSkills = widget.overwriteViewData?.activeSkills.isNotEmpty == true

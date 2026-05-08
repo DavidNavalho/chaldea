@@ -304,9 +304,19 @@ extension BattleTeamFormationX on BattleTeamFormation {
         final dbSvt = db.gameData.servantsById[userSvt?.svtId];
         if (userSvt == null) return null;
 
-        final appendId2Num = {
-          for (final passive in dbSvt?.appendPassive ?? <ServantAppendPassiveSkill>[]) passive.skill.id: passive.num,
+        Map<int, int> appendId2Num = {
+          if (dbSvt != null)
+            for (final passive in dbSvt.appendPassive) passive.skill.id: passive.num,
         };
+        if (appendId2Num.isEmpty && userSvt.appendPassiveSkillIds?.isNotEmpty == true) {
+          final transformDefault = dbSvt?.script?.transformInfo?.saveTransformDefault ?? 0;
+          if (transformDefault != 0 && userSvt.svtId != transformDefault) {
+            final transformDefaultSvt = db.gameData.servantsById[transformDefault];
+            if (transformDefaultSvt != null) {
+              appendId2Num = {for (final passive in transformDefaultSvt.appendPassive) passive.skill.id: passive.num};
+            }
+          }
+        }
         final appendPassive2Lvs = <int, int>{
           for (final (index, skillId) in (userSvt.appendPassiveSkillIds ?? <int>[]).indexed)
             if (appendId2Num.containsKey(skillId))
@@ -334,7 +344,8 @@ extension BattleTeamFormationX on BattleTeamFormation {
 
         return SvtSaveData(
           svtId: userSvt.svtId,
-          limitCount: userSvt.dispLimitCount,
+          limitCount: Servant.dispLimitCountToLimitCount(userSvt.dispLimitCount),
+          // transformVal: 0,
           skillLvs: [userSvt.skillLv1, userSvt.skillLv2, userSvt.skillLv3],
           skillIds: [userSvt.skillId1, userSvt.skillId2, userSvt.skillId3],
           appendLvs: kAppendSkillNums.map((skillNum) => appendPassive2Lvs[skillNum + 99] ?? 0).toList(),
@@ -420,7 +431,8 @@ extension BattleTeamFormationX on BattleTeamFormation {
 
       return SvtSaveData(
         svtId: userSvt.svtId,
-        limitCount: userSvt.dispLimitCount,
+        limitCount: userSvt.transformVal == 1 ? userSvt.dispIconLimitCount2 : userSvt.dispIconLimitCount,
+        transformVal: userSvt.transformVal ?? 0,
         skillLvs: [userSvt.skillLv1, userSvt.skillLv2, userSvt.skillLv3],
         skillIds: [null, null, null],
         appendLvs: mstData.getSvtAppendSkillLvs(userSvt),

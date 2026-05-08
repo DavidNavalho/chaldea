@@ -173,7 +173,7 @@ class ValDsc extends StatelessWidget {
     if (func.funcType.isAddState) {
       final buff = func.buff;
       if (buff != null) {
-        describeBuff(parts, func.buffs.first, vals, inList: inList, ignoreCount: ignoreCount);
+        describeBuff(parts, func.buffs.first, vals, originalVals: originVals, inList: inList, ignoreCount: ignoreCount);
       }
       if (vals.UseRate != null) {
         _addPercent(parts, vals.UseRate, 10, post: (v) => Transl.special.funcValActChance(v));
@@ -357,6 +357,7 @@ class ValDsc extends StatelessWidget {
     final List<String> parts,
     final Buff buff,
     final DataVals vals, {
+    final DataVals? originalVals,
     final bool inList = false,
     final bool ignoreCount = false,
   }) {
@@ -364,14 +365,21 @@ class ValDsc extends StatelessWidget {
     final triggers = kBuffValueTriggerTypes[buff.type];
 
     // b+kx
-    int? k = vals.ParamAdd ?? vals.ParamAddValue ?? vals.CondParamAddValue ?? vals.CondParamRangeMaxValue;
+    int? k =
+        vals.ParamAdd ??
+        vals.ParamAddValue ??
+        vals.SnapShotParamAddValue ??
+        vals.CondParamAddValue ??
+        vals.CondParamRangeMaxValue;
     bool isPercentK = (vals.CondParamRangeMaxValue ?? 0) != 0;
 
     if (base != null) {
       if (k != null) {
-        parts.add("${_toPercent(vals.Value, base)}%+${_toPercent(k, base)}%×${isPercentK ? 'p' : 'N'}");
+        parts.add(
+          "${_toPercent(originalVals?.Value ?? vals.Value, base)}%+${_toPercent(k, base)}%×${isPercentK ? 'p' : 'N'}",
+        );
       } else {
-        _addPercent(parts, vals.Value, base);
+        _addPercent(parts, originalVals?.Value ?? vals.Value, base);
       }
       // return;
     } else if (triggers != null) {

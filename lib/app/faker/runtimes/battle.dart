@@ -543,7 +543,12 @@ class FakerRuntimeBattle extends FakerRuntimeBase {
           if (dbSvt == null) continue;
 
           // grand duel etc.
-          final traits = dbSvt.getIndividuality(questPhaseEntity.logicEventId, svtInfo.dispLimitCount).toSet();
+          final traits = dbSvt
+              .getIndividuality(
+                questPhaseEntity.logicEventId,
+                Servant.dispLimitCountToLimitCount(svtInfo.dispLimitCount),
+              )
+              .toSet();
           if (!questPhaseEntity.restrictions.every((restriction) {
             if (restriction.restriction.type == RestrictionType.individuality) {
               return Restriction.checkSvtIndiv(

@@ -47,7 +47,9 @@ class ServantOptionEditPage extends StatefulWidget {
 
 class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
   PlayerSvtData get playerSvtData => widget.playerSvtData;
-  Servant get svt => playerSvtData.svt!;
+  Servant get _baseSvt => playerSvtData.svt!;
+  Servant get dispSvt =>
+      playerSvtData.transformVal ? (playerSvtData.transformSvt ?? playerSvtData.svt!) : playerSvtData.svt!;
   QuestPhase? get questPhase => widget.questPhase;
   SvtFilterData? get svtFilterData => widget.svtFilterData;
   bool get enableEdit => widget.onChange != null;
@@ -82,7 +84,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
   }
 
   Widget _buildSliderGroup() {
-    playerSvtData.lv = playerSvtData.lv.clamp(1, min(120, svt.atkGrowth.length));
+    playerSvtData.lv = playerSvtData.lv.clamp(1, min(120, _baseSvt.atkGrowth.length));
     final commonSliders = <Widget>[
       SliderWithPrefix(
         label: S.current.bond,
@@ -111,7 +113,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
       SliderWithPrefix(
         label: 'Lv',
         min: 1,
-        max: min(120, svt.atkGrowth.length),
+        max: min(120, _baseSvt.atkGrowth.length),
         value: playerSvtData.lv,
         onChange: (v) {
           _updateState(() {
@@ -222,8 +224,67 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
       includeZero: true,
       bondCheck: playerSvtData.bondLv,
     );
+    final saveTransformSvtId = _baseSvt.script?.transformInfo?.saveTransform ?? 0;
+    final transformSvt =
+        playerSvtData.transformSvt ??
+        db.gameData.servantsById[saveTransformSvtId] ??
+        db.gameData.entities[saveTransformSvtId];
     final List<Widget> children = [
       _header(context),
+      if (saveTransformSvtId > 0)
+        SwitchListTile.adaptive(
+          dense: true,
+          value: playerSvtData.transformVal,
+          secondary: Row(
+            mainAxisSize: .min,
+            children: [
+              for (final svtId in {_baseSvt.id, ?_baseSvt.script?.transformInfo?.saveTransform})
+                GameCardMixin.anyCardItemBuilder(
+                  context: context,
+                  id: svtId,
+                  width: 32,
+                  icon: db.gameData.servantsById[svtId]?.ascendIcon(playerSvtData.limitCount),
+                ),
+            ],
+          ),
+          title: Text("Transform Servant"),
+          subtitle: Text.rich(
+            TextSpan(
+              children: [
+                SharedBuilder.textButtonSpan(
+                  context: context,
+                  text: [_baseSvt.id, _baseSvt.lName.l].join(' '),
+                  onTap: _baseSvt.routeTo,
+                ),
+                TextSpan(text: ' -> '),
+                SharedBuilder.textButtonSpan(
+                  context: context,
+                  text: [saveTransformSvtId, ?transformSvt?.lName.l].join(' '),
+                  onTap: () {
+                    router.push(url: Routes.servantI(saveTransformSvtId));
+                  },
+                ),
+              ],
+            ),
+          ),
+          onChanged: (v) async {
+            try {
+              playerSvtData.transformVal = v;
+              await playerSvtData.loadTransformSvt(raiseIfNotFound: true);
+              playerSvtData.updateRankUps(region: widget.playerRegion, jpTime: questPhase?.jpOpenAt);
+            } catch (e) {
+              if (mounted) {
+                SimpleConfirmDialog(
+                  title: Text(S.current.error),
+                  content: Text("Set transform data failed! Retry!\n\n$e"),
+                  scrollable: true,
+                  showCancel: false,
+                ).showDialog(context);
+              }
+            }
+            setState(() {});
+          },
+        ),
       divider,
       Padding(padding: const EdgeInsetsDirectional.only(start: 16, end: 16), child: _buildSliderGroup()),
       tipsCard,
@@ -249,7 +310,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
         dense: true,
         value: playerSvtData.grandSvt,
         secondary: db.getIconImage(
-          SvtClassX.clsIcon(db.gameData.grandGraphDetails[svt.classId]?.grandClassId ?? svt.classId, 5),
+          SvtClassX.clsIcon(db.gameData.grandGraphDetails[dispSvt.classId]?.grandClassId ?? dispSvt.classId, 5),
           width: 24,
         ),
         onChanged: (v) async {
@@ -424,6 +485,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
                       _updateState(() {
                         playerSvtData.svt = null;
                         playerSvtData.equip1.ce = playerSvtData.equip2.ce = playerSvtData.equip3.ce = null;
+                        playerSvtData.resetAfterSvtChanged();
                       });
                     },
               style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
@@ -443,18 +505,18 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
   }
 
   Widget _header(final BuildContext context) {
-    final growCurve = svt.growCurveForLimit(playerSvtData.limitCount);
+    final growCurve = dispSvt.growCurveForLimit(playerSvtData.limitCount);
     final ascensionText =
-        svt.getCostume(playerSvtData.limitCount)?.lName.l ??
+        dispSvt.getCostume(playerSvtData.limitCount)?.lName.l ??
         '${S.current.ascension_stage_short} ${playerSvtData.limitCount}';
     final atk = (growCurve.atk.getOrNull(playerSvtData.lv - 1) ?? 0) + playerSvtData.atkFou,
         hp = (growCurve.hp.getOrNull(playerSvtData.lv - 1) ?? 0) + playerSvtData.hpFou;
     return CustomTile(
-      leading: svt.iconBuilder(
+      leading: _baseSvt.iconBuilder(
         context: context,
         height: 72,
         jumpToDetail: true,
-        overrideIcon: svt.ascendIcon(playerSvtData.limitCount),
+        overrideIcon: dispSvt.ascendIcon(playerSvtData.limitCount),
         option: ImageWithTextOption(
           errorWidget: (context, url, error) => CachedImage(imageUrl: Atlas.common.unknownEnemyIcon),
         ),
@@ -463,11 +525,11 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(svt.lBattleName(playerSvtData.limitCount).l),
+          Text(dispSvt.lBattleName(playerSvtData.limitCount).l),
           Text(
-            'No.${svt.collectionNo > 0 ? svt.collectionNo : svt.id}'
-            '  ${Transl.svtClassId(svt.classId).l}'
-            '  ${Transl.svtSubAttribute(svt.getAttribute(playerSvtData.limitCount)).l}',
+            'No.${dispSvt.collectionNo > 0 ? dispSvt.collectionNo : dispSvt.id}'
+            '  ${Transl.svtClassId(dispSvt.classId).l}'
+            '  ${Transl.svtSubAttribute(dispSvt.getAttribute(playerSvtData.limitCount)).l}',
           ),
           Text('ATK $atk  HP $hp'),
         ],
@@ -486,7 +548,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
               final List<Widget> children = [];
               void _addOne(final int limitCount, final String name, final String? icon) {
                 if (icon == null) return;
-                final borderedIcon = svt.bordered(icon);
+                final borderedIcon = dispSvt.shouldBordered ? dispSvt.bordered(icon) : icon;
                 children.add(
                   ListTile(
                     contentPadding: EdgeInsets.zero,
@@ -500,19 +562,19 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
                     onTap: () {
                       for (final skillNum in kActiveSkillNums) {
                         final List<NiceSkill> previousShownSkills = BattleUtils.getShownSkills(
-                          svt,
+                          dispSvt,
                           playerSvtData.limitCount,
                           skillNum,
                         );
-                        final List<NiceSkill> shownSkills = BattleUtils.getShownSkills(svt, limitCount, skillNum);
+                        final List<NiceSkill> shownSkills = BattleUtils.getShownSkills(dispSvt, limitCount, skillNum);
                         if (!listEquals(previousShownSkills, shownSkills)) {
                           playerSvtData.skills[skillNum - 1] = shownSkills.lastOrNull;
                           logger.d('Changing skill ID: ${playerSvtData.skills[skillNum - 1]?.id}');
                         }
                       }
 
-                      final List<NiceTd> previousShownTds = BattleUtils.getShownTds(svt, playerSvtData.limitCount);
-                      final List<NiceTd> shownTds = BattleUtils.getShownTds(svt, limitCount);
+                      final List<NiceTd> previousShownTds = BattleUtils.getShownTds(dispSvt, playerSvtData.limitCount);
+                      final List<NiceTd> shownTds = BattleUtils.getShownTds(dispSvt, limitCount);
                       playerSvtData.limitCount = limitCount;
                       if (!listEquals(previousShownTds, shownTds)) {
                         playerSvtData.td = shownTds.last;
@@ -525,17 +587,17 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
                 );
               }
 
-              final List<int> limitCounts = {0, ...?svt.extraAssets.faces.ascension?.keys}.toList();
+              final List<int> limitCounts = {0, ...?dispSvt.extraAssets.faces.ascension?.keys}.toList();
               for (final limitCount in limitCounts) {
-                _addOne(limitCount, '${S.current.ascension_stage} $limitCount', svt.ascendIcon(limitCount));
+                _addOne(limitCount, '${S.current.ascension_stage} $limitCount', dispSvt.ascendIcon(limitCount));
               }
 
-              final costumeCharaIds = svt.extraAssets.faces.costume?.keys.toList() ?? [];
+              final costumeCharaIds = dispSvt.extraAssets.faces.costume?.keys.toList() ?? [];
               for (final charaId in costumeCharaIds) {
                 _addOne(
                   charaId,
-                  svt.profile.costume[charaId]?.lName.l ?? '${S.current.costume} $charaId',
-                  svt.ascendIcon(charaId),
+                  dispSvt.costume[charaId]?.lName.l ?? '${S.current.costume} $charaId',
+                  dispSvt.ascendIcon(charaId),
                 );
               }
 
@@ -612,8 +674,8 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
   }
 
   Widget _buildClassBoard() {
-    final baseClassBoard = ClassBoard.getClassBoard(svt.classId);
-    final grandBoard = ClassBoard.getGrandClassBoard(svt.classId);
+    final baseClassBoard = ClassBoard.getClassBoard(dispSvt.classId);
+    final grandBoard = ClassBoard.getGrandClassBoard(dispSvt.classId);
 
     Widget _buildBoard(ClassBoard board, final List<int> squares) {
       final allSquares = [
@@ -677,7 +739,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
     }
 
     Widget _buildTypeVal(int type) {
-      final stat = playerSvtData.classBoardData.getClassStatistic(type, svt.classId);
+      final stat = playerSvtData.classBoardData.getClassStatistic(type, dispSvt.classId);
       Set<num> maxCounts = {};
       if (grandBoard != null) {
         for (final vals in valsList) {
@@ -728,7 +790,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
             indent: 16,
             titleWidget: Text.rich(
               TextSpan(
-                text: '${Transl.svtClassId(svt.classId).l} ${S.current.svt_class} ${S.current.statistics_title} ',
+                text: '${Transl.svtClassId(dispSvt.classId).l} ${S.current.svt_class} ${S.current.statistics_title} ',
                 style: Theme.of(context).textTheme.bodySmall,
                 children: [
                   SharedBuilder.textButtonSpan(
@@ -752,7 +814,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
 
   Widget _buildTdDescriptor(final BuildContext context) {
     final int ascension = playerSvtData.limitCount;
-    final List<NiceTd> shownTds = BattleUtils.getShownTds(svt, ascension);
+    final List<NiceTd> shownTds = BattleUtils.getShownTds(dispSvt, ascension);
     if (playerSvtData.td != null && !shownTds.contains(playerSvtData.td)) {
       // custom td
       shownTds.add(playerSvtData.td!);
@@ -826,7 +888,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
               ],
             ),
             if (playerSvtData.td != null)
-              TdDescriptor(td: playerSvtData.td!, showEnemy: !svt.isUserSvt, level: playerSvtData.tdLv),
+              TdDescriptor(td: playerSvtData.td!, showEnemy: !dispSvt.isUserSvt, level: playerSvtData.tdLv),
           ],
         );
       },
@@ -836,7 +898,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
   Widget _buildActiveSkill(final BuildContext context, final int skillNum) {
     final index = skillNum - 1;
     final int ascension = playerSvtData.limitCount;
-    final List<NiceSkill> shownSkills = BattleUtils.getShownSkills(svt, ascension, skillNum);
+    final List<NiceSkill> shownSkills = BattleUtils.getShownSkills(dispSvt, ascension, skillNum);
 
     if (playerSvtData.skills[index] != null && !shownSkills.contains(playerSvtData.skills[index])) {
       // custom skill
@@ -905,7 +967,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
             if (playerSvtData.skills[index] != null)
               SkillDescriptor(
                 skill: playerSvtData.skills[index]!,
-                showEnemy: !svt.isUserSvt,
+                showEnemy: !dispSvt.isUserSvt,
                 level: playerSvtData.skillLvs[index],
               ),
           ],
@@ -934,7 +996,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
       },
       contentBuilder: (context) {
         if (skill == null) return Center(child: Text('\n${S.current.not_found}\n'));
-        return SkillDescriptor(skill: skill, showEnemy: !svt.isUserSvt, level: playerSvtData.appendLvs[index]);
+        return SkillDescriptor(skill: skill, showEnemy: !dispSvt.isUserSvt, level: playerSvtData.appendLvs[index]);
       },
     );
   }
@@ -944,14 +1006,14 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
     int eventId = questPhase?.logicEventId ?? 0;
     if (eventId == 0) return children;
     for (final skillId
-        in db.gameData.constData.getSvtLimitHides(svt.id, playerSvtData.limitCount).expand((e) => e.addPassives)) {
+        in db.gameData.constData.getSvtLimitHides(dispSvt.id, playerSvtData.limitCount).expand((e) => e.addPassives)) {
       // 終局特異点
       if (skillId >= 960502 && skillId <= 960507) continue;
       final skill = playerSvtData.extraPassives.firstWhereOrNull((skill) => skill.id == skillId);
       if (skill == null) continue;
       if (!skill.shouldActiveSvtEventSkill(
         eventId: eventId,
-        svtId: svt.id,
+        svtId: dispSvt.id,
         includeZero: false,
         includeHidden: true,
         bondCheck: playerSvtData.bondLv,
@@ -1042,7 +1104,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
               elevation: 4,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: SkillDescriptor(skill: skill, showEnemy: !svt.isUserSvt),
+                child: SkillDescriptor(skill: skill, showEnemy: !dispSvt.isUserSvt),
               ),
             ),
           ],
@@ -1122,7 +1184,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
               elevation: 4,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                child: SkillDescriptor(skill: skill, showEnemy: !svt.isUserSvt, level: lv),
+                child: SkillDescriptor(skill: skill, showEnemy: !dispSvt.isUserSvt, level: lv),
               ),
             ),
           ],
@@ -1135,8 +1197,8 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
     int eventId = questPhase?.logicEventId ?? 0;
     final allowedPassives = db.gameData.constData.svtAllowedExtraPassives.where((allowInfo) {
       if (allowInfo.eventId != eventId) return false;
-      if (!allowInfo.svtIds.contains(svt.id) && !allowInfo.svtIds.contains(0)) return false;
-      if (allowInfo.fromPassive && svt.extraPassive.every((e) => e.id != allowInfo.skillId)) return false;
+      if (!allowInfo.svtIds.contains(dispSvt.id) && !allowInfo.svtIds.contains(0)) return false;
+      if (allowInfo.fromPassive && dispSvt.extraPassive.every((e) => e.id != allowInfo.skillId)) return false;
       return true;
     }).toList();
     if (allowedPassives.isEmpty) return SizedBox.shrink();
@@ -1196,7 +1258,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
                         onPressed: () => router.push(url: Routes.skillI(skillId)),
                         child: Text('Skill $skillId'),
                       )
-                    : SkillDescriptor(skill: skill, showEnemy: !svt.isUserSvt),
+                    : SkillDescriptor(skill: skill, showEnemy: !dispSvt.isUserSvt),
               ),
             );
           },
@@ -1216,12 +1278,12 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
           color: Theme.of(context).cardColor,
           child: Table(
             defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-            children: List.generate(svt.cards.length, (index) {
-              final card = svt.cards[index];
-              if (!svt.cardDetails.containsKey(card)) {
+            children: List.generate(dispSvt.cards.length, (index) {
+              final card = dispSvt.cards[index];
+              if (!dispSvt.cardDetails.containsKey(card)) {
                 return TableRow(
                   children: [
-                    Center(child: CommandCardWidget(card: svt.cards[index], width: 60)),
+                    Center(child: CommandCardWidget(card: dispSvt.cards[index], width: 60)),
                     const SizedBox(),
                     const SizedBox(),
                     const SizedBox(),
@@ -1231,7 +1293,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
               final code = playerSvtData.commandCodes[index];
               return TableRow(
                 children: [
-                  Center(child: CommandCardWidget(card: svt.cards[index], width: 60)),
+                  Center(child: CommandCardWidget(card: dispSvt.cards[index], width: 60)),
                   InkWell(
                     onTap: () {
                       if (!enableEdit) return;
@@ -1434,6 +1496,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
       ..classId = basicSvt.classId
       ..rarity = basicSvt.rarity
       ..attribute = basicSvt.attribute;
+    playerSvtData.resetAfterSvtChanged();
     playerSvtData
       ..supportType = SupportSvtType.npc
       ..limitCount = support.detail?.limit.useLimitCount ?? support.limit.limitCount
@@ -1515,7 +1578,7 @@ class _CraftEssenceOptionEditPageState extends State<CraftEssenceOptionEditPage>
   @override
   Widget build(final BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('[${S.current.edit}] ${playerSvtData.svt?.lName.l ?? ""}'), actions: [popupMenu]),
+      appBar: AppBar(title: Text('[${S.current.edit}] ${playerSvtData.dispSvt?.lName.l ?? ""}'), actions: [popupMenu]),
       body: Column(
         children: [
           Expanded(child: body),

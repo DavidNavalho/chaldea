@@ -273,13 +273,13 @@ class BattleRecordManager {
   }
 
   void _checkSvtEligible(PlayerSvtData svtData, QuestPhase questPhase) {
-    final svt = svtData.svt;
-    if (svt == null) return;
-    final svtName = svt.lName.l;
+    final baseSvt = svtData.svt;
+    if (baseSvt == null) return;
+    final svtName = baseSvt.lName.l;
     if (svtData.supportType == SupportSvtType.npc) {
       reasons.setReplay('Guest Support/NPC: $svtName');
     }
-    if (!svt.isUserSvt) {
+    if (!baseSvt.isUserSvt) {
       reasons.setUpload('Not player servant: $svtName');
     }
     if (svtData.customPassives.isNotEmpty) {
@@ -291,10 +291,17 @@ class BattleRecordManager {
     if (svtData.fixedAtk != null || svtData.fixedHp != null) {
       reasons.setReplay('Fixed HP or ATK (mainly Guest Support). If you see this msg, tell me the bug.');
     }
-    final dbSvt = db.gameData.servantsById[svt.id];
+    Servant? dbSvt = db.gameData.servantsById[baseSvt.id];
     if (dbSvt == null) {
-      reasons.setReplay('Servant not in database: ${svt.id}-${svt.lName.l}');
+      reasons.setReplay('Servant not in database: ${baseSvt.id}-${baseSvt.lName.l}');
       return;
+    }
+    final transformSvtId = dbSvt.script?.transformInfo?.saveTransform ?? 0;
+    if (svtData.transformVal && svtData.transformSvt?.id != transformSvtId) {
+      reasons.setUpload('Not valid transform svt: ${svtData.transformSvt?.id} (expected $transformSvtId)');
+    }
+    if (svtData.transformVal) {
+      dbSvt = svtData.transformSvt ?? dbSvt;
     }
     for (final skillNum in kActiveSkillNums) {
       final skillId = svtData.skills.getOrNull(skillNum - 1)?.id;
@@ -315,7 +322,7 @@ class BattleRecordManager {
     }
 
     if (questPhase.isUseGrandBoard) {
-      final svtIndivs = svt.getIndividuality(questPhase.logicEventId, svtData.limitCount);
+      final svtIndivs = baseSvt.getIndividuality(questPhase.logicEventId, svtData.limitCount);
       for (final restriction in questPhase.restrictions) {
         if (restriction.restriction.type == RestrictionType.individuality) {
           if (!Restriction.checkSvtIndiv(
@@ -342,15 +349,15 @@ class BattleRecordManager {
 
     // coin
     int requiredCoins = 0, maxCoins = 0;
-    int? summonCoin = svt.coin?.summonNum ?? 0;
-    if (summonCoin > 0 && svt.rarity >= 4 && svtData.tdLv < 5) {
+    int? summonCoin = baseSvt.coin?.summonNum ?? 0;
+    if (summonCoin > 0 && baseSvt.rarity >= 4 && svtData.tdLv < 5) {
       // 9th Anniversary
       maxCoins = summonCoin * svtData.tdLv + (questPhase.closedAt < DateTime(2024, 8, 4).timestamp ? 180 : 420);
       requiredCoins += max(((svtData.lv - 100) / 2).ceil() * 30, 0);
       requiredCoins += svtData.appendLvs.where((e) => e > 0).length * 120;
       if (requiredCoins > maxCoins) {
         reasons.setUpload(
-          '${S.current.servant_coin}(${svt.lName.l}): required $requiredCoins, '
+          '${S.current.servant_coin}($svtName): required $requiredCoins, '
           'but max $maxCoins at ${S.current.np_short}${svtData.tdLv} & ${S.current.bond}15 ',
         );
       }

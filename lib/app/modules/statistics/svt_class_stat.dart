@@ -54,7 +54,7 @@ class _StatisticServantTabState extends State<StatisticServantTab> {
   void _calcServantClass() {
     svtClassCount = {for (final v in kAllClasses) v: 0};
     for (final svt in db.gameData.servantsNoDup.values) {
-      final status = db.curUser.svtStatusOf(svt.collectionNo);
+      final status = svt.status;
       if (!status.favorite || !svt.isUserSvt) continue;
       if (raritySelected.contains(true) && !raritySelected[svt.rarity]) {
         continue;

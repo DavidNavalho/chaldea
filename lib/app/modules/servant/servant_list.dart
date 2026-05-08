@@ -286,7 +286,7 @@ class ServantListPageState extends State<ServantListPage> with SearchableListSta
   }
 
   Widget _getDetailTable(Servant svt) {
-    SvtStatus status = db.curUser.svtStatusOf(svt.collectionNo);
+    SvtStatus status = svt.status;
     SvtPlan cur = status.cur, target = db.curUser.svtPlanOf(svt.collectionNo);
     Widget _getRange(int _c, int _t, int? m) {
       TextStyle? style;
@@ -308,7 +308,7 @@ class ServantListPageState extends State<ServantListPage> with SearchableListSta
     if (!status.cur.favorite) {
       return Center(child: Text(S.current.svt_not_planned));
     }
-    final costumes = svt.profile.costumeCollections.values.toList();
+    final costumes = svt.costumesForPlan.values.where((e) => e.costumeCollectionNo > 0).toList();
     costumes.sort2((e) => e.id);
     Widget child = DefaultTextStyle.merge(
       style: TextStyle(fontSize: 12, color: Theme.of(context).textTheme.bodySmall?.color, fontFamily: kMonoFont),
@@ -371,7 +371,7 @@ class ServantListPageState extends State<ServantListPage> with SearchableListSta
   }
 
   bool isSvtFavorite(Servant svt) {
-    return db.curUser.svtStatusOf(svt.collectionNo).cur.favorite;
+    return svt.status.cur.favorite;
   }
 
   bool changeTarget = true;
@@ -559,7 +559,7 @@ class ServantListPageState extends State<ServantListPage> with SearchableListSta
 
   @override
   Widget gridItemBuilder(Servant svt) {
-    final status = db.curUser.svtStatusOf(svt.collectionNo);
+    final status = svt.status;
     Widget textBuilder(TextStyle style) {
       return Text.rich(
         TextSpan(
@@ -705,9 +705,7 @@ class ServantListPageState extends State<ServantListPage> with SearchableListSta
             _batchChange((svt, cur, target) {
               final costumes = changeTarget ? target.costumes : cur.costumes;
               costumes.clear();
-              costumes.addAll(
-                Map.fromIterable(svt.profile.costumeCollections.keys, value: (k) => _changedDress == true ? 1 : 0),
-              );
+              costumes.addAll(Map.fromIterable(svt.costumesForPlan.keys, value: (k) => _changedDress == true ? 1 : 0));
             });
           });
         },
@@ -867,7 +865,7 @@ class ServantListPageState extends State<ServantListPage> with SearchableListSta
   }
 
   Widget _usualListItemBuilder(Servant svt) {
-    final status = db.curUser.svtStatusOf(svt.collectionNo);
+    final status = svt.status;
     Widget? getStatusText(BuildContext context) {
       if (!status.cur.favorite) return null;
       Widget statusText = Column(
@@ -882,9 +880,7 @@ class ServantListPageState extends State<ServantListPage> with SearchableListSta
               mainAxisSize: MainAxisSize.min,
               children: [
                 db.getIconImage(Atlas.assetItem(Items.costumeIconId), width: 16, height: 16),
-                Text(
-                  svt.profile.costumeCollections.values.map((e) => status.cur.costumes[e.battleCharaId] ?? 0).join('/'),
-                ),
+                Text(svt.costumesForPlan.values.map((e) => status.cur.costumes[e.battleCharaId] ?? 0).join('/')),
               ],
             ),
           Text('${S.current.np_short}${status.cur.npLv}'),
@@ -980,7 +976,7 @@ class ServantListPageState extends State<ServantListPage> with SearchableListSta
   void _batchChange(void Function(Servant svt, SvtPlan cur, SvtPlan target) onChanged) {
     for (final svt in shownList) {
       if (isSvtFavorite(svt) && !hiddenPlanServants.contains(svt)) {
-        final cur = db.curUser.svtStatusOf(svt.collectionNo).cur, target = db.curUser.svtPlanOf(svt.collectionNo);
+        final cur = svt.status.cur, target = db.curUser.svtPlanOf(svt.collectionNo);
         onChanged(svt, cur, target);
       }
     }

@@ -61,7 +61,7 @@ part '../../generated/models/gamedata/gamedata.g.dart';
 
 @JsonSerializable(converters: [RegionConverter()], createToJson: false)
 class GameData with _GameDataExtra {
-  static final kMinCompatibleVer = DateTime.utc(2026, 1, 8);
+  static final kMinCompatibleVer = DateTime.utc(2026, 5, 2);
   DataVersion version;
   @protected
   Map<int, Servant> servants;
@@ -271,13 +271,13 @@ class GameData with _GameDataExtra {
       endedAt: kNeverClosedTimestamp,
     );
     costumes = {
-      for (final svt in servants.values)
-        for (final costume in svt.profile.costume.values)
+      for (final svt in servantsById.values)
+        for (final costume in svt.costume.values)
           if (costume.costumeCollectionNo != 0) costume.costumeCollectionNo: costume,
     };
     costumesByCharaId = {
-      for (final svt in servants.values)
-        for (final costume in svt.profile.costume.values) costume.battleCharaId: costume,
+      for (final svt in servantsById.values)
+        for (final costume in svt.costume.values) costume.battleCharaId: costume,
     };
     mainStories = {
       for (final war in wars.values)
@@ -320,7 +320,7 @@ class GameData with _GameDataExtra {
       }
     }
 
-    for (final svt in servants.values) {
+    for (final svt in servantsById.values) {
       svt.extraAssets.charaFigure.story?.keys.forEach((charaId) {
         storyCharaFigures[charaId ~/ 10] = svt.id;
       });
@@ -674,8 +674,8 @@ class _ProcessedData {
       compare: (a, b) => b.value.ce.collectionNo.compareTo(a.value.ce.collectionNo),
     );
 
-    for (final svt in gameData.servants.values) {
-      for (final costume in svt.profile.costume.values) {
+    for (final svt in gameData.servantsById.values) {
+      for (final costume in svt.costume.values) {
         costumeSvtMap[costume.battleCharaId] = svt;
       }
     }
@@ -763,7 +763,7 @@ class _ProcessedData {
   }
 
   void _initFuncBuff() {
-    for (final svt in gameData.servants.values) {
+    for (final svt in gameData.servantsById.values) {
       for (final skill in [
         ...svt.skills,
         ...svt.noblePhantasms,

@@ -119,6 +119,14 @@ class _SupportServantPageState extends State<SupportServantPage> {
         CustomTableRow.fromChildren(
           children: [SharedBuilder.traitList(context: context, traits: svt.traits2.toList()..sort2((e) => e.abs()))],
         ),
+        if (svt.flags.isNotEmpty) ...[
+          CustomTableRow.fromTexts(texts: ['NPC Servant Flags'], isHeader: true),
+          CustomTableRow.fromTexts(texts: [svt.flags.map((e) => e.name).join(' / ')]),
+        ],
+        if (svt.followerFlags.isNotEmpty) ...[
+          CustomTableRow.fromTexts(texts: ['NPC Entity Flags'], isHeader: true),
+          CustomTableRow.fromTexts(texts: [svt.followerFlags.map((e) => e.name).join(' / ')]),
+        ],
         if (svt.passiveSkills.isNotEmpty) CustomTableRow.fromTexts(texts: [S.current.extra_passive], isHeader: true),
         for (final passive in svt.passiveSkills)
           if (passive.skill != null)

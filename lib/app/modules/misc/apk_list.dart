@@ -24,7 +24,7 @@ class _ApkData {
   String? url32;
   // status
   bool loading = false;
-  dynamic error;
+  Object? error;
 
   _ApkData(this.region, this.packageId, this.bundleId, this.countryCode);
 }
@@ -59,9 +59,9 @@ class _ApkListPageState extends State<ApkListPage> {
     }
   }
 
-  void load() async {
+  void load({bool refresh = false}) async {
     List<Future> futures = [
-      ...apks.map((e) => _load(e, apkHost)),
+      ...apks.map((e) => _load(e, apkHost, refresh)),
       for (final region in ['jp', 'na']) _loadRs(region),
     ];
     await Future.wait(futures);
@@ -85,7 +85,7 @@ class _ApkListPageState extends State<ApkListPage> {
     bfgoVersions[region] = filename;
   }
 
-  Future<void> _load(_ApkData data, String host) async {
+  Future<void> _load(_ApkData data, String host, bool refresh) async {
     try {
       data.loading = true;
       data.error = null;
@@ -124,17 +124,21 @@ class _ApkListPageState extends State<ApkListPage> {
           }
         }
       } else if (data.region == null) {
-        final latestRelease = await ChaldeaWorkerApi.githubRelease('chaldea-center', 'chaldea', tag: null);
-        if (latestRelease != null) {
-          final ver = latestRelease.tagName!.trimCharLeft('v');
-          data.version = ver;
-          url = data.url = proxy
-              ? '${HostsX.worker.cn}/proxy/github/github.com/chaldea-center/chaldea/releases/download/v$ver/chaldea-$ver-'
-              : 'https://github.com/chaldea-center/chaldea/releases/download/v$ver/chaldea-$ver-';
+        if (refresh) {
+          final latestRelease = await ChaldeaWorkerApi.githubRelease('chaldea-center', 'chaldea', tag: null);
+          if (latestRelease != null) {
+            final ver = latestRelease.tagName!.trimCharLeft('v');
+            data.version = ver;
+            url = data.url = proxy
+                ? '${HostsX.worker.cn}/proxy/github/github.com/chaldea-center/chaldea/releases/download/v$ver/chaldea-$ver-'
+                : 'https://github.com/chaldea-center/chaldea/releases/download/v$ver/chaldea-$ver-';
+          }
+        } else {
+          data.error ??= S.current.refresh;
         }
       }
       if (url == null) {
-        data.error = 'Something went wrong';
+        data.error ??= 'Something went wrong';
       }
     } catch (e) {
       data.error = e;
@@ -160,7 +164,7 @@ class _ApkListPageState extends State<ApkListPage> {
             },
             icon: const Icon(Icons.help_outline),
           ),
-          IconButton(onPressed: load, icon: const Icon(Icons.refresh), tooltip: S.current.refresh),
+          IconButton(onPressed: () => load(refresh: true), icon: const Icon(Icons.refresh), tooltip: S.current.refresh),
         ],
       ),
       body: _hidden

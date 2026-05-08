@@ -30,6 +30,7 @@ class _AprilFool2026State extends State<AprilFool2026> with AprilFoolPageMixin {
       RegExp(r'CharaGraph/(\d+)\D'),
       RegExp(r'CharaFigure/(\d+)4_merged'),
       RegExp(r'Faces/f_(\d+)4\.png'),
+      RegExp(r'Faces/f_(\d+)4_bordered\.png'),
       RegExp(r'NarrowFigure/(\d+)\D'),
       RegExp(r'Status/(\d+)\D'),
     ];
@@ -40,6 +41,8 @@ class _AprilFool2026State extends State<AprilFool2026> with AprilFoolPageMixin {
       800190: 800100,
       //
     };
+    files = files.toList();
+    files.sort2((e) => e.size);
     for (final file in files) {
       int? svtId;
       for (final regexp in svtPatterns) {
@@ -78,13 +81,11 @@ class _AprilFool2026State extends State<AprilFool2026> with AprilFoolPageMixin {
     data.servants = servants.values.toList();
     data.servants.sortByList((e) => [e.svt == null ? 0 : 1, -(e.svt?.collectionNo ?? 999), -e.id]);
     for (final svt in data.servants) {
-      for (final asset in svt.assets) {
-        if (asset.contains('Faces/')) {
-          svt.icon = asset;
-          break;
-        }
+      final faces = svt.assets.where((e) => e.contains('Faces/')).toList();
+      if (faces.isNotEmpty) {
+        svt.icon = faces.firstWhereOrNull((e) => e.contains('_bordered')) ?? faces.first;
       }
-      svt.assets.sort();
+      // svt.assets.sort();
     }
     data.curSvt = data.servants.firstOrNull;
   }

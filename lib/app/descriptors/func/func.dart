@@ -1136,7 +1136,9 @@ class FuncDescriptor extends StatelessWidget {
     }
 
     if (func.funcType == FuncType.transformServant) {
-      final transformId = vals?.Value, transformLimit = vals?.SetLimitCount;
+      final transformId = vals?.Value,
+          transformLimit = vals?.SetLimitCount,
+          useUserSpecifiedLimitCount = vals?.UseUserSpecifiedLimitCount;
       if (transformId != null) {
         final transformSvt = db.gameData.servantsById[transformId] ?? db.gameData.entities[transformId];
         if (transformSvt != null) {
@@ -1157,7 +1159,9 @@ class FuncDescriptor extends StatelessWidget {
             context: context,
             text: transformLimit == null
                 ? ' $transformId '
-                : ' $transformId[${S.current.ascension_short}$transformLimit] ',
+                : useUserSpecifiedLimitCount == null
+                ? ' $transformId[${S.current.ascension_short}$transformLimit] '
+                : ' $transformId ', // limitCount unchanged
             onTap: () {
               router.push(url: Routes.servantI(transformId));
             },
@@ -1229,7 +1233,13 @@ class FuncDescriptor extends StatelessWidget {
     }
 
     // ParamAddIndiv
-    void _addParamAddIndiv(String targetText, {List<int>? traitIds, List<List<int>>? andCheckTraitIds}) {
+    final _addedParamAddTexts = <String>{};
+    void _addParamAddIndiv(
+      String targetText, {
+      List<int>? traitIds,
+      List<List<int>>? andCheckTraitIds,
+      bool isSnapShot = false,
+    }) {
       final targetType = vals?.ParamAddIndividualityTargetType;
       if (targetType != null) {
         final funcTargetType = FuncTargetType.fromId(targetType);
@@ -1244,8 +1254,10 @@ class FuncDescriptor extends StatelessWidget {
         traitIds = [2005, 2632, 2821, -10000];
       }
 
+      List<InlineSpan> _spans = [];
+
       if (traitIds != null && traitIds.isNotEmpty) {
-        _condSpans.add(
+        _spans.addAll(
           SharedBuilder.replaceSpan(
             Transl.special.funcTraitPerBuff(target: targetText),
             '{0}',
@@ -1253,7 +1265,7 @@ class FuncDescriptor extends StatelessWidget {
           ),
         );
       } else if (andCheckTraitIds != null && andCheckTraitIds.isNotEmpty) {
-        _condSpans.add(
+        _spans.addAll(
           SharedBuilder.replaceSpan(
             Transl.special.funcTraitPerBuff(target: targetText),
             '{0}',
@@ -1261,6 +1273,13 @@ class FuncDescriptor extends StatelessWidget {
           ),
         );
       }
+      if (_spans.isEmpty) return;
+      if (isSnapShot) _spans.insert(0, TextSpan(text: '[SnapShot] '));
+
+      final _text = TextSpan(children: _spans).getDebugFullText();
+      if (_addedParamAddTexts.contains(_text)) return;
+      _condSpans.add(_spans);
+      _addedParamAddTexts.add(_text);
     }
 
     _addParamAddIndiv(Transl.special.self, traitIds: vals?.ParamAddSelfIndividuality);
@@ -1269,6 +1288,24 @@ class FuncDescriptor extends StatelessWidget {
     _addParamAddIndiv(Transl.special.self, andCheckTraitIds: vals?.ParamAddSelfIndividualityAndCheck);
     _addParamAddIndiv(Transl.special.opposite, andCheckTraitIds: vals?.ParamAddOpIndividualityAndCheck);
     _addParamAddIndiv(Transl.special.field, andCheckTraitIds: vals?.ParamAddFieldIndividualityAndCheck);
+    _addParamAddIndiv(Transl.special.self, traitIds: vals?.SnapShotParamAddSelfIndv, isSnapShot: true);
+    _addParamAddIndiv(Transl.special.opposite, traitIds: vals?.SnapShotParamAddOpIndv, isSnapShot: true);
+    _addParamAddIndiv(Transl.special.field, traitIds: vals?.SnapShotParamAddFieldIndv, isSnapShot: true);
+    _addParamAddIndiv(
+      Transl.special.self,
+      andCheckTraitIds: vals?.SnapShotParamAddSelfIndividualityAndCheck,
+      isSnapShot: true,
+    );
+    _addParamAddIndiv(
+      Transl.special.opposite,
+      andCheckTraitIds: vals?.SnapShotParamAddOpIndividualityAndCheck,
+      isSnapShot: true,
+    );
+    _addParamAddIndiv(
+      Transl.special.field,
+      andCheckTraitIds: vals?.SnapShotParamAddFieldIndividualityAndCheck,
+      isSnapShot: true,
+    );
 
     // CondParamAdd
     final condParamType = vals?.CondParamRangeType ?? vals?.CondParamAddType ?? 0;

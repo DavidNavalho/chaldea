@@ -272,6 +272,7 @@ const _$EventOverwriteTypeEnumMap = {
   EventOverwriteType.name: 'name',
   EventOverwriteType.banner: 'banner',
   EventOverwriteType.noticeBanner: 'noticeBanner',
+  EventOverwriteType.eventLogo: 'eventLogo',
 };
 
 EventDetail _$EventDetailFromJson(Map json) => EventDetail(

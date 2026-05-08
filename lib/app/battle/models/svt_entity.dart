@@ -31,13 +31,14 @@ class BattleServantData {
 
   // performance issue,
   String? _battleNameCache;
-  int? _limitCountCache;
+  String? _battleNameCacheKey;
   String get lBattleName {
     if (isPlayer) {
-      if (_battleNameCache != null && _limitCountCache == playerSvtData!.limitCount) {
+      String battleNameCacheKey = "${niceSvt?.id}-${playerSvtData!.limitCount}";
+      if (_battleNameCache != null && _battleNameCacheKey == battleNameCacheKey) {
         return _battleNameCache!;
       } else {
-        _limitCountCache = playerSvtData!.limitCount;
+        _battleNameCacheKey = battleNameCacheKey;
         return _battleNameCache = niceSvt!.lBattleName(playerSvtData!.limitCount).l;
       }
     } else {
@@ -206,15 +207,22 @@ class BattleServantData {
     return svt;
   }
 
-  factory BattleServantData.fromPlayerSvtData(
-    final PlayerSvtData settings,
+  // Must handle error
+  static Future<BattleServantData> fromPlayerSvtData(
+    PlayerSvtData settings,
     final int uniqueId, {
     final int startingPosition = 0,
     required bool isUseGrandBoard,
-  }) {
-    final psvt = settings.svt;
+  }) async {
+    settings = settings.copy();
+    Servant? psvt = settings.svt;
     if (psvt == null) {
       throw BattleException('Invalid PlayerSvtData: null svt');
+    }
+    if (settings.transformVal) {
+      if (settings.transformSvt != null) {
+        psvt = settings.transformSvt!;
+      }
     }
 
     final growCurve = psvt.growCurveForLimit(settings.limitCount);
@@ -224,7 +232,7 @@ class BattleServantData {
       isUseGrandBoard: isUseGrandBoard,
     );
     svt
-      ..playerSvtData = settings.copy()
+      ..playerSvtData = settings
       ..uniqueId = uniqueId
       ..niceSvt = psvt
       ..svtId = psvt.id
@@ -479,11 +487,12 @@ class BattleServantData {
     }
 
     if (isPlayer) {
-      for (int index = 0; index < niceSvt!.appendPassive.length; index += 1) {
+      final appendPassives = playerSvtData!.svt?.appendPassive ?? [];
+      for (int index = 0; index < appendPassives.length; index += 1) {
         final appendLv = playerSvtData!.appendLvs.length > index ? playerSvtData!.appendLvs[index] : 0;
         if (appendLv > 0) {
           final skillInfo = BattleSkillInfoData(
-            niceSvt!.appendPassive[index].skill,
+            appendPassives[index].skill,
             type: SkillInfoType.svtOtherPassive,
             skillLv: appendLv,
           );
@@ -874,7 +883,7 @@ class BattleServantData {
         if (add.eventId == 0 || add.eventId == eventId) {
           if (add.limitCount < 0 ||
               add.limitCount == limitCount ||
-              add.limitCount == niceSvt?.profile.costume[limitCount]?.id) {
+              add.limitCount == niceSvt?.costume[limitCount]?.id) {
             // check startedAt/endedAt too?
             traits.addAll(add.trait);
           }
@@ -1420,7 +1429,11 @@ class BattleServantData {
     niceSvt = targetSvt;
     final limitCount = dataVals.SetLimitCount;
     if (limitCount != null) {
-      playerSvtData!.limitCount = limitCount;
+      if (dataVals.UseUserSpecifiedLimitCount == 1) {
+        // limitCount unchanged
+      } else {
+        playerSvtData!.limitCount = limitCount;
+      }
     }
 
     // build new skills
@@ -2721,7 +2734,7 @@ class BattleServantData {
     if (gutsToApply != null) {
       await activateBuff(battleData, BuffAction.functionGutsBefore, opponent: lastHitBy);
       for (final svt in battleData.nonnullActors) {
-        await svt.activateBuff(battleData, BuffAction.action171, opponent: this);
+        await svt.activateBuff(battleData, BuffAction.functionMultiGutsBefore, opponent: this);
       }
 
       gutsToApply.setUsed(this, battleData);

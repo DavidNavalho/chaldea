@@ -53,8 +53,12 @@ class FormationCard extends StatelessWidget {
     }
 
     final svt = db.gameData.servantsById[storedData?.svtId];
+    Servant? transformSvt;
+    if (storedData != null && storedData.transformVal > 0) {
+      transformSvt = db.gameData.servantsById[svt?.script?.transformInfo?.saveTransform];
+    }
     final basicSvt = db.gameData.entities[storedData?.svtId];
-    String? svtIconUrl = svt?.ascendIcon(storedData!.limitCount) ?? basicSvt?.icon;
+    String? svtIconUrl = (transformSvt ?? svt)?.ascendIcon(storedData!.limitCount) ?? basicSvt?.icon;
     if (storedData?.supportType == SupportSvtType.npc) svtIconUrl = GameCardMixin.unBordered(svtIconUrl);
     Widget svtIcon = GameCardMixin.cardIconBuilder(
       context: context,

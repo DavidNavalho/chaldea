@@ -12,7 +12,7 @@ jobs:
   deploy-web:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Extract branch name
         id: extract-branch-name
@@ -37,7 +37,7 @@ jobs:
           dart ./scripts/patch_web_build.dart
 
       - name: Publish to app repo ${{ steps.extract-branch-name.outputs.BRANCH_NAME }} branch
-        uses: crazy-max/ghaction-github-pages@v4
+        uses: crazy-max/ghaction-github-pages@v5
         with:
           repo: chaldea-center/app
           target_branch: ${{ steps.extract-branch-name.outputs.BRANCH_NAME }}

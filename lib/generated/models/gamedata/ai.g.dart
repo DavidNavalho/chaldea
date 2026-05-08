@@ -48,7 +48,6 @@ NiceAi _$NiceAiFromJson(Map json) => NiceAi(
       const {},
   infoText: json['infoText'] as String? ?? '',
   timing: (json['timing'] as num?)?.toInt(),
-  timingDescription: $enumDecodeNullable(_$AiTimingEnumMap, json['timingDescription']),
 );
 
 Map<String, dynamic> _$NiceAiToJson(NiceAi instance) => <String, dynamic>{
@@ -66,7 +65,6 @@ Map<String, dynamic> _$NiceAiToJson(NiceAi instance) => <String, dynamic>{
   'parentAis': instance.parentAis.map((k, e) => MapEntry(_$AiTypeEnumMap[k]!, e)),
   'infoText': instance.infoText,
   'timing': instance.timing,
-  'timingDescription': _$AiTimingEnumMap[instance.timingDescription],
 };
 
 const _$NiceAiActNumEnumMap = {
@@ -284,18 +282,6 @@ const _$NiceAiCondEnumMap = {
 };
 
 const _$AiTypeEnumMap = {AiType.svt: 'svt', AiType.field: 'field'};
-
-const _$AiTimingEnumMap = {
-  AiTiming.dead: 'dead',
-  AiTiming.unknown: 'unknown',
-  AiTiming.waveStart: 'waveStart',
-  AiTiming.turnStart: 'turnStart',
-  AiTiming.turnPlayerStart: 'turnPlayerStart',
-  AiTiming.turnPlayerEnd: 'turnPlayerEnd',
-  AiTiming.turnEnemyStart: 'turnEnemyStart',
-  AiTiming.turnEnemyEnd: 'turnEnemyEnd',
-  AiTiming.beforeWaveStartAnimation: 'beforeWaveStartAnimation',
-};
 
 NiceAiAct _$NiceAiActFromJson(Map json) => NiceAiAct(
   id: (json['id'] as num).toInt(),

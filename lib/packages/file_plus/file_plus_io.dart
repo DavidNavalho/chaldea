@@ -88,6 +88,8 @@ class FilePlusNative implements FilePlus {
       if (await exists()) await delete();
     } on PathNotFoundException catch (e, s) {
       logger.e('delete failed: $path', e, s);
+    } on PathAccessException catch (e, s) {
+      logger.e('delete failed: $path', e, s);
     }
   }
 }

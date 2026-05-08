@@ -104,6 +104,15 @@ abstract class FakerAgent<
     required int32_t randomSettingSupport,
     required int32_t limitCountSupport,
     required bool isPush,
+    required int imageLimitCount2,
+    required int dispLimitCount2,
+    required int commandCardLimitCount2,
+    required int iconLimitCount2,
+    required int portraitLimitCount2,
+    required int randomSettingOwn2,
+    required int randomSettingSupport2,
+    required int limitCountSupport2,
+    required int transformVal,
   });
 
   Future<FResponse> cardFavoriteWith({
@@ -122,6 +131,15 @@ abstract class FakerAgent<
     int32_t? randomSettingSupport,
     int32_t? limitCountSupport,
     bool? isPush,
+    int? imageLimitCount2,
+    int? dispLimitCount2,
+    int? commandCardLimitCount2,
+    int? iconLimitCount2,
+    int? portraitLimitCount2,
+    int? randomSettingOwn2,
+    int? randomSettingSupport2,
+    int? limitCountSupport2,
+    int? transformVal,
   }) {
     final userSvt = network.mstData.userSvt[targetUsrSvtId] ?? network.mstData.userSvtStorage[targetUsrSvtId];
     if (userSvt == null) {
@@ -149,6 +167,15 @@ abstract class FakerAgent<
       randomSettingSupport: randomSettingSupport ?? userSvt.randomLimitCountSupport,
       limitCountSupport: limitCountSupport ?? userSvt.limitCountSupport,
       isPush: isPush ?? targetUsrSvtId == userGame.pushUserSvtId,
+      imageLimitCount2: imageLimitCount2 ?? userSvt.imageLimitCount2 ?? 0,
+      dispLimitCount2: dispLimitCount2 ?? userSvt.dispLimitCount2 ?? 0,
+      commandCardLimitCount2: commandCardLimitCount2 ?? userSvt.commandCardLimitCount2 ?? 0,
+      iconLimitCount2: iconLimitCount2 ?? userSvt.iconLimitCount2 ?? 0,
+      portraitLimitCount2: portraitLimitCount2 ?? userSvt.portraitLimitCount2 ?? 0,
+      randomSettingOwn2: randomSettingOwn2 ?? userSvt.randomLimitCount2 ?? 0,
+      randomSettingSupport2: randomSettingSupport2 ?? userSvt.randomLimitCountSupport2 ?? 0,
+      limitCountSupport2: limitCountSupport2 ?? userSvt.limitCountSupport2 ?? 0,
+      transformVal: transformVal ?? userSvt.transformVal ?? 0,
     );
   }
 
@@ -229,6 +256,9 @@ abstract class FakerAgent<
     int32_t followerRandomLimitCount = 0, //?
     String choiceRandomLimitCounts = "{}",
     int32_t followerSpoilerProtectionLimitCount = 4, //?
+    int32_t followerTransformRandomLimitCount = 0,
+    String choiceTransformRandomLimitCounts = "{}",
+    int32_t followerTransformSpoilerProtectionLimitCount = 0,
     int32_t recommendSupportIdx = 0,
     required int32_t followerSupportDeckId,
     int32_t campaignItemId = 0,

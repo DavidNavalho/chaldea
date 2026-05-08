@@ -36,6 +36,12 @@ class _TraitSkillTabState extends State<TraitSkillTab> {
             ...?sval.ParamAddOpIndividualityAndCheck,
             ...?sval.ParamAddSelfIndividualityAndCheck,
             ...?sval.ParamAddFieldIndividualityAndCheck,
+            sval.SnapShotParamAddSelfIndv,
+            sval.SnapShotParamAddOpIndv,
+            sval.SnapShotParamAddFieldIndv,
+            ...?sval.SnapShotParamAddSelfIndividualityAndCheck,
+            ...?sval.SnapShotParamAddOpIndividualityAndCheck,
+            ...?sval.SnapShotParamAddFieldIndividualityAndCheck,
           ],
         ]) {
           if (val != null && val.toSet().containSubset(widget.ids.toSet())) {

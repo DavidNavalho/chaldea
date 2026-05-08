@@ -15,6 +15,8 @@ import 'package:chaldea/widgets/widgets.dart';
 import '../common/filter_page_base.dart';
 import '../servant/filter.dart';
 
+const _kExtraPlayableSvtIds = <int>[505700];
+
 typedef _GroupItem = ({int rateCount, List<int> ceIds, List<({Servant svt, List<int> limitCounts})> svts});
 
 class EquipBondBonusTab extends StatefulWidget {
@@ -99,13 +101,21 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
 
   _FilterType getCeState(int ceId) => extraFilterData.ceStates[ceId] ??= _FilterType.none;
 
+  List<Servant> getAllSvts() {
+    return _targetSvts.isNotEmpty
+        ? _targetSvts.values.toList()
+        : db.gameData.servantsById.values
+              .where((e) => e.collectionNo > 0 || _kExtraPlayableSvtIds.contains(e.id))
+              .toList();
+  }
+
   @override
   void initState() {
     super.initState();
-    initData();
+    initData(initFilters: true);
   }
 
-  void initData() {
+  void initData({bool initFilters = false}) {
     allCeData.clear();
     allCeMatchSvtData.clear();
     // ce data
@@ -146,9 +156,7 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
     sortDict(allCeData, inPlace: true, compare: (a, b) => a.value.ce.collectionNo.compareTo(b.value.ce.collectionNo));
 
     // ce mapping svt
-    final svts = _targetSvts.isNotEmpty
-        ? _targetSvts.values.toList()
-        : db.gameData.servantsById.values.where((e) => e.collectionNo > 0);
+    final svts = getAllSvts();
     for (final (:ce, :traits, rateCount: _) in allCeData.values) {
       final svtLimitsData = allCeMatchSvtData[ce.id] ??= {};
       for (final svt in svts) {
@@ -158,10 +166,12 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
       }
     }
 
-    // hide unreleased ces
-    for (final ceId in allCeData.keys) {
-      if (!isCeReleased(ceId, db.curUser.region)) {
-        extraFilterData.ceStates[ceId] = _FilterType.hide;
+    if (initFilters) {
+      // hide unreleased ces
+      for (final ceId in allCeData.keys) {
+        if (!isCeReleased(ceId, db.curUser.region)) {
+          extraFilterData.ceStates[ceId] = _FilterType.hide;
+        }
       }
     }
   }
@@ -212,9 +222,6 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
         matchedLimitCounts.add(limitCount);
       }
     }
-    if (svt.collectionNo == 300) {
-      print('$bonusTraitsList, No.${svt.collectionNo}, matchedLimitCounts $matchedLimitCounts');
-    }
 
     return matchedLimitCounts;
   }
@@ -229,8 +236,13 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
   }
 
   List<_GroupItem> getGroupData() {
+    final allSvts = getAllSvts();
+    final shownSvts = List.of(allSvts)..retainWhere((e) => ServantFilterPage.filter(svtFilterData, e));
+    final shownSvtIds = shownSvts.map((e) => e.id).toSet();
+    final hiddenSvtIds = shownSvtIds.toSet();
+
     final List<int> allCeIds = allCeData.keys
-        .where((e) => ![_FilterType.exclude, _FilterType.hide].contains(extraFilterData.ceStates[e]))
+        .where((e) => !const [_FilterType.exclude, _FilterType.hide].contains(extraFilterData.ceStates[e]))
         .toList();
     final List<int> excludeCeIds = extraFilterData.ceStates.keys
         .where((e) => extraFilterData.ceStates[e] == _FilterType.exclude)
@@ -257,9 +269,9 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
 
       List<({Servant svt, List<int> limitCounts})> svts = [];
       for (final svtId in sameSvtIds) {
+        if (!shownSvtIds.contains(svtId)) continue;
         final svt = _targetSvts[svtId] ?? db.gameData.servantsById[svtId];
         if (svt == null) continue;
-        if (!ServantFilterPage.filter(svtFilterData, svt)) continue;
         final sameLimitCounts = _intersectionSetList(
           usedCeIds.map((ceId) => allCeMatchSvtData[ceId]![svtId]?.toSet() ?? <int>{}).toList(),
         );
@@ -278,17 +290,43 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
     }
 
     // show svts with no bonus for all ces
-    if (_targetSvts.isEmpty) {
-      final bonusSvtIds = <int>{for (final v in allCeMatchSvtData.values) ...v.keys};
-      List<({Servant svt, List<int> limitCounts})> svts = [];
-      for (final svt in db.gameData.servantsById.values) {
-        if (!ServantFilterPage.filter(svtFilterData, svt)) continue;
-        if (svt.collectionNo > 0 && !bonusSvtIds.contains(svt.id)) {
-          svts.add((svt: svt, limitCounts: []));
+    final bonusSvtIds = <int>{for (final v in allCeMatchSvtData.values) ...v.keys};
+    List<({Servant svt, List<int> limitCounts})> noBonusSvts = [];
+    for (final svtId in shownSvtIds) {
+      if (!shownSvtIds.contains(svtId)) continue;
+      final svt = db.gameData.servantsById[svtId];
+      if (svt == null) continue;
+      if (!bonusSvtIds.contains(svt.id)) {
+        noBonusSvts.add((svt: svt, limitCounts: []));
+      }
+    }
+    resultData.add((ceIds: [], rateCount: 0, svts: noBonusSvts));
+
+    hiddenSvtIds.removeAll({
+      for (final v in resultData)
+        for (final svt in v.svts) svt.svt.id,
+    });
+    hiddenSvtIds.removeWhere((svtId) {
+      for (final ceId in excludeCeIds) {
+        final excludeLimitCounts = allCeMatchSvtData[ceId]![svtId] ?? [];
+        if (excludeLimitCounts.isNotEmpty) {
+          return true;
         }
       }
-      resultData.add((ceIds: [], rateCount: 0, svts: svts));
+      return false;
+    });
+
+    if (hiddenSvtIds.isNotEmpty) {
+      resultData.add((
+        ceIds: [],
+        rateCount: -1000,
+        svts: [
+          for (final svtId in hiddenSvtIds)
+            if (db.gameData.servantsById.containsKey(svtId)) (limitCounts: [], svt: db.gameData.servantsById[svtId]!),
+        ],
+      ));
     }
+
     for (final record in resultData) {
       record.svts.sort(
         (a, b) =>
@@ -335,6 +373,7 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
                 ),
                 child: Text(rateCount.format(percent: true, base: 10)),
               ),
+              if (rateCount < 0) Text(S.current.hide),
               ...ceIds
                   .map((ceId) {
                     final (:ce, :traits, :rateCount) = allCeData[ceId]!;
@@ -369,7 +408,7 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
                   // width: 32,
                   text: [
                     if (conditional) '${limitCounts.length}/${allLimitCounts.length}',
-                    svt.status.favorite ? 'Lv${svt.status.bond}${svt.status.isReachBondLImit ? "*" : ""}' : '',
+                    svt.status.favorite ? 'Lv${svt.status.bond}${svt.status.isReachBondLimit ? "*" : ""}' : '',
                   ].join('\n'),
                   option: ImageWithTextOption(fontSize: 12),
                   width: 48,

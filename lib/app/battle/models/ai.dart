@@ -29,12 +29,12 @@ class FieldAiManager with _AiManagerBase {
     fieldAis = ais;
   }
 
-  Future<void> actWaveStart(BattleData battleData) async {
+  Future<void> simpleAiAct(BattleData battleData, AiTiming timing) async {
     for (final aiCollection in fieldAis) {
       final mainAis = NiceAiCollection.sortedAis(aiCollection.mainAis);
       if (!hasOnlyOneSkill(mainAis)) continue;
       for (final ai in mainAis) {
-        if (ai.timingDescription != AiTiming.waveStart) continue;
+        if (ai.timing != timing.value) continue;
         if (ai.cond == NiceAiCond.none || (ai.cond == NiceAiCond.turn && ai.vals.firstOrNull == 1)) {
           if (ai.aiAct.type == NiceAiActType.skillId && ai.aiAct.target == NiceAiActTarget.random) {
             final skill = ai.aiAct.skill;
@@ -56,31 +56,20 @@ class FieldAiManager with _AiManagerBase {
     }
   }
 
+  Future<void> actWaveStart(BattleData battleData) async {
+    await simpleAiAct(battleData, AiTiming.waveStart);
+  }
+
   Future<void> actWaveStartAnimation(BattleData battleData) async {
-    for (final aiCollection in fieldAis) {
-      final mainAis = NiceAiCollection.sortedAis(aiCollection.mainAis);
-      if (!hasOnlyOneSkill(mainAis)) continue;
-      for (final ai in mainAis) {
-        if (ai.timing != AiTiming.beforeWaveStartAnimation.value) continue;
-        if (ai.cond == NiceAiCond.none || (ai.cond == NiceAiCond.turn && ai.vals.firstOrNull == 1)) {
-          if (ai.aiAct.type == NiceAiActType.skillId && ai.aiAct.target == NiceAiActTarget.random) {
-            final skill = ai.aiAct.skill;
-            if (skill == null) continue;
-            final skillInfo = BattleSkillInfoData(skill, type: SkillInfoType.fieldAi, skillLv: ai.aiAct.skillLv ?? 1);
-            await skillInfo.activate(battleData, defaultToPlayer: true);
-            battleData.recorder.skill(
-              prefix: 'FieldAI: ',
-              battleData: battleData,
-              activator: null,
-              skill: skillInfo,
-              fromPlayer: true,
-              uploadEligible: battleData.niceQuest?.isLaplaceNeedAi == true,
-            );
-            break;
-          }
-        }
-      }
+    await simpleAiAct(battleData, AiTiming.beforeWaveStartAnimation);
+  }
+
+  Future<void> actTurnStart(BattleData battleData) async {
+    if (battleData.turnCount > 0) {
+      // since no real AI logic yet
+      return;
     }
+    await simpleAiAct(battleData, AiTiming.turnStart);
   }
 }
 

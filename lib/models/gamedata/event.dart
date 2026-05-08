@@ -2109,7 +2109,7 @@ class EventSvtScript {
   Map<String, dynamic> toJson() => _$EventSvtScriptToJson(this);
 }
 
-enum EventOverwriteType { unknown, bgImage, bgm, name, banner, noticeBanner }
+enum EventOverwriteType { unknown, bgImage, bgm, name, banner, noticeBanner, eventLogo }
 
 enum EventFlag {
   typePoint,

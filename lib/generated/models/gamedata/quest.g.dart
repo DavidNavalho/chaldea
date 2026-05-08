@@ -671,6 +671,11 @@ SupportServant _$SupportServantFromJson(Map json) => SupportServant(
           .toList() ??
       const [],
   noblePhantasm: SupportServantTd.fromJson(Map<String, dynamic>.from(json['noblePhantasm'] as Map)),
+  flags:
+      (json['flags'] as List<dynamic>?)
+          ?.map((e) => $enumDecode(_$NpcServantFollowerFlagEnumMap, e, unknownValue: NpcServantFollowerFlag.unknown))
+          .toList() ??
+      const [],
   followerFlags:
       (json['followerFlags'] as List<dynamic>?)
           ?.map((e) => $enumDecode(_$NpcFollowerEntityFlagEnumMap, e, unknownValue: NpcFollowerEntityFlag.none))
@@ -706,6 +711,7 @@ Map<String, dynamic> _$SupportServantToJson(SupportServant instance) => <String,
   'skills': instance.skills.toJson(),
   'passiveSkills': instance.passiveSkills.map((e) => e.toJson()).toList(),
   'noblePhantasm': instance.noblePhantasm.toJson(),
+  'flags': instance.flags.map((e) => _$NpcServantFollowerFlagEnumMap[e]!).toList(),
   'followerFlags': instance.followerFlags.map((e) => _$NpcFollowerEntityFlagEnumMap[e]!).toList(),
   'equips': instance.equips.map((e) => e.toJson()).toList(),
   'script': instance.script?.toJson(),

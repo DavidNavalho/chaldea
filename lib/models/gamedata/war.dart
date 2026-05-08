@@ -673,6 +673,7 @@ enum WarOverwriteType {
   recommendSupportHeaderImgId,
   bgObject,
   recommendSupportParentWar,
+  folderHeaderId,
 }
 
 enum WarStartType { none, script, quest }

@@ -66,7 +66,7 @@ class ServantSelector extends StatelessWidget {
     }
     Widget svtIcon = GameCardMixin.cardIconBuilder(
       context: context,
-      icon: playerSvtData.svt?.ascendIcon(playerSvtData.limitCount) ?? Atlas.common.emptySvtIcon,
+      icon: playerSvtData.dispSvt?.ascendIcon(playerSvtData.limitCount) ?? Atlas.common.emptySvtIcon,
       width: 80,
       aspectRatio: 132 / 144,
       text: svtInfo,
@@ -119,7 +119,9 @@ class ServantSelector extends StatelessWidget {
             );
           },
           onTapClear: () {
-            playerSvtData.svt = null;
+            playerSvtData
+              ..svt = null
+              ..resetAfterSvtChanged();
             onChanged();
           },
           iconSize: 16,
@@ -150,7 +152,7 @@ class ServantSelector extends StatelessWidget {
       SizedBox(
         height: 18,
         child: AutoSizeText(
-          playerSvtData.svt?.lBattleName(playerSvtData.limitCount).l ?? S.current.servant,
+          playerSvtData.dispSvt?.lBattleName(playerSvtData.limitCount).l ?? S.current.servant,
           maxLines: 1,
           minFontSize: 10,
           textAlign: TextAlign.center,
@@ -212,7 +214,7 @@ class ServantSelector extends StatelessWidget {
                   onChanged();
                 },
                 filterData: craftFilterData,
-                pinged: db.curUser.battleSim.pingedCEsWithEventAndBond(questPhase, playerSvtData.svt).toList(),
+                pinged: db.curUser.battleSim.pingedCEsWithEventAndBond(questPhase, playerSvtData.dispSvt).toList(),
               ),
               detail: true,
             );

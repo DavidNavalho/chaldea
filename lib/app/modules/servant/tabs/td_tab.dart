@@ -19,7 +19,7 @@ class SvtTdTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     List<Widget> children = [];
-    final status = db.curUser.svtStatusOf(svt.collectionNo).cur;
+    final status = svt.status.cur;
     final overrideData = OverrideTDData.fromAscensionAdd(svt.ascensionAdd);
 
     void addOneGroup(int tdNum, List<NiceTd> tds) {
@@ -215,10 +215,7 @@ class SvtTdTab extends StatelessWidget {
           if (ascensions.isNotEmpty) Text('${S.current.ascension_short} ${ascensions.join('&')}'),
           if (costumes.isNotEmpty)
             Text(
-              [
-                '${S.current.costume}:',
-                for (final c in costumes) svt.profile.costume[c]?.lName.l ?? c.toString(),
-              ].join(' '),
+              ['${S.current.costume}:', for (final c in costumes) svt.costume[c]?.lName.l ?? c.toString()].join(' '),
             ),
           if (jpTime != null) Text('JP: ${jpTime.sec2date().toDateString()}'),
           if (db.curUser.region != Region.jp && localTime != null)

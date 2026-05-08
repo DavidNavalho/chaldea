@@ -9,7 +9,7 @@ import 'package:chaldea/packages/logger.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
 import '../../modules/battle/formation/formation_card.dart';
-import '../_shared/svt_select.dart';
+import '../_shared/select_svt.dart';
 import '../runtime.dart';
 
 class SvtCombinePage extends StatefulWidget {
@@ -28,6 +28,7 @@ class _SvtCombinePageState extends State<SvtCombinePage> with FakerRuntimeStateM
 
   @override
   Widget build(BuildContext context) {
+    final baseUserSvt = mstData.userSvt[options.baseUserSvtId];
     return Scaffold(
       appBar: AppBar(
         title: Text('从者强化'),
@@ -45,7 +46,11 @@ class _SvtCombinePageState extends State<SvtCombinePage> with FakerRuntimeStateM
           IconButton(
             onPressed: selectBaseUserSvt,
             icon:
-                mstData.userSvt[options.baseUserSvtId]?.dbSvt?.iconBuilder(context: context, jumpToDetail: false) ??
+                baseUserSvt?.dbSvt?.iconBuilder(
+                  context: context,
+                  jumpToDetail: false,
+                  overrideIcon: baseUserSvt.icon,
+                ) ??
                 Icon(Icons.change_circle),
           ),
           runtime.buildHistoryButton(context),
@@ -86,7 +91,9 @@ class _SvtCombinePageState extends State<SvtCombinePage> with FakerRuntimeStateM
         minTileHeight: 48,
         visualDensity: VisualDensity.compact,
         minLeadingWidth: 20,
-        leading: svt?.iconBuilder(context: context) ?? db.getIconImage(Atlas.common.emptySvtIcon),
+        leading:
+            svt?.iconBuilder(context: context, overrideIcon: baseUserSvt?.icon) ??
+            db.getIconImage(Atlas.common.emptySvtIcon),
         subtitle: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -660,7 +667,7 @@ class _SvtCombinePageState extends State<SvtCombinePage> with FakerRuntimeStateM
         DividerWithTitle(title: '${S.current.ascension_stage} (battle model)'),
         ListTile(
           dense: true,
-          leading: db.getIconImage(svt.ascendIcon(Servant.dispLimitCountToLimitCount(baseUserSvt.dispLimitCount))),
+          leading: db.getIconImage(svt.ascendIcon(Servant.dispLimitCountToMinLimitCount(baseUserSvt.dispLimitCount))),
           title: Text('${S.current.current_}: ${S.current.ascension_stage} ${baseUserSvt.dispLimitCount}'),
           subtitle: Text(validDispLimitCounts.join(' / ')),
         ),
@@ -677,7 +684,7 @@ class _SvtCombinePageState extends State<SvtCombinePage> with FakerRuntimeStateM
                     children: [
                       CenterWidgetSpan(
                         child: db.getIconImage(
-                          svt.ascendIcon(Servant.dispLimitCountToLimitCount(dispLimitCount)),
+                          svt.ascendIcon(Servant.dispLimitCountToMinLimitCount(dispLimitCount)),
                           width: 32,
                         ),
                       ),

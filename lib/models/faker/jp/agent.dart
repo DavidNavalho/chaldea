@@ -298,6 +298,15 @@ class FakerAgentJP extends FakerAgent<FRequestJP, AutoLoginDataJP, NetworkManage
     required int32_t randomSettingSupport,
     required int32_t limitCountSupport,
     required bool isPush,
+    required int imageLimitCount2,
+    required int dispLimitCount2,
+    required int commandCardLimitCount2,
+    required int iconLimitCount2,
+    required int portraitLimitCount2,
+    required int randomSettingOwn2,
+    required int randomSettingSupport2,
+    required int limitCountSupport2,
+    required int transformVal,
   }) {
     final request = FRequestJP(network: network, path: '/card/favorite');
     request.addFieldInt64("userSvtId", targetUsrSvtId);
@@ -315,6 +324,15 @@ class FakerAgentJP extends FakerAgent<FRequestJP, AutoLoginDataJP, NetworkManage
     request.addFieldInt32("randomLimitCountSupport", randomSettingSupport);
     request.addFieldInt32("limitCountSupport", limitCountSupport);
     request.addFieldInt32("isPush", isPush.toInt());
+    request.addFieldInt32("imageLimitCount2", imageLimitCount2);
+    request.addFieldInt32("dispLimitCount2", dispLimitCount2);
+    request.addFieldInt32("commandCardLimitCount2", commandCardLimitCount2);
+    request.addFieldInt32("iconLimitCount2", iconLimitCount2);
+    request.addFieldInt32("portraitLimitCount2", portraitLimitCount2);
+    request.addFieldInt32("randomLimitCount2", randomSettingOwn2);
+    request.addFieldInt32("randomLimitCountSupport2", randomSettingSupport2);
+    request.addFieldInt32("limitCountSupport2", limitCountSupport2);
+    request.addFieldInt32("transformVal", transformVal);
     return request.beginRequestAndCheckError('card_favorite');
   }
 
@@ -553,6 +571,9 @@ class FakerAgentJP extends FakerAgent<FRequestJP, AutoLoginDataJP, NetworkManage
     int32_t followerRandomLimitCount = 0, //?
     String choiceRandomLimitCounts = "{}",
     int32_t followerSpoilerProtectionLimitCount = 4, //?
+    int32_t followerTransformRandomLimitCount = 0,
+    String choiceTransformRandomLimitCounts = "{}",
+    int32_t followerTransformSpoilerProtectionLimitCount = 0,
     int32_t recommendSupportIdx = 0,
     required int32_t followerSupportDeckId,
     int32_t campaignItemId = 0,
@@ -576,6 +597,10 @@ class FakerAgentJP extends FakerAgent<FRequestJP, AutoLoginDataJP, NetworkManage
     request.addFieldStr("choiceRandomLimitCounts", choiceRandomLimitCounts);
     request.addFieldInt32("followerRandomLimitCount", followerRandomLimitCount);
     request.addFieldInt32("followerSpoilerProtectionLimitCount", followerSpoilerProtectionLimitCount);
+    if (choiceTransformRandomLimitCounts.isEmpty) choiceTransformRandomLimitCounts = "{}";
+    request.addFieldStr("choiceTransformRandomLimitCounts", choiceTransformRandomLimitCounts);
+    request.addFieldInt32("followerTransformRandomLimitCount", followerTransformRandomLimitCount);
+    request.addFieldInt32("followerTransformSpoilerProtectionLimitCount", followerTransformSpoilerProtectionLimitCount);
     request.addFieldInt32("recommendSupportIdx", recommendSupportIdx);
     request.addFieldInt32("followerSupportDeckId", followerSupportDeckId);
     request.addFieldInt32("campaignItemId", campaignItemId);

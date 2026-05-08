@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout chaldea code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - uses: subosito/flutter-action@v2
         with:
@@ -36,7 +36,7 @@ jobs:
           flutter doctor -v
 
       - name: Checkout chaldea data
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: chaldea-center/chaldea-data
           path: data/

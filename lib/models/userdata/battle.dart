@@ -17,13 +17,14 @@ import 'userdata.dart' show ClassBoardPlan;
 
 part '../../generated/models/userdata/battle.g.dart';
 
-void _removeEmptyList(
-  Map<String, dynamic> data,
-  List<String> keys, {
+void _removeEmptyListOrDefault(
+  Map<String, dynamic> data, {
+  required List<String> checkEmptyListKeys,
   bool removeAllNull = false,
   bool removeAllZero = false,
+  required Map<String, Object> checkDefaultValueKeys,
 }) {
-  for (final key in keys) {
+  for (final key in checkEmptyListKeys) {
     if (!data.containsKey(key)) continue;
     final value = data[key];
     bool remove = false;
@@ -39,6 +40,14 @@ void _removeEmptyList(
       }
     }
     if (remove) {
+      data.remove(key);
+    }
+  }
+
+  for (final (key, defaultValue) in checkDefaultValueKeys.items) {
+    if (!data.containsKey(key)) continue;
+    final value = data[key];
+    if (value == defaultValue) {
       data.remove(key);
     }
   }
@@ -422,6 +431,7 @@ class BattleTeamFormation {
 class SvtSaveData {
   int? svtId;
   int limitCount;
+  int transformVal;
   List<int?> skillIds;
   List<int> skillLvs;
   List<int> appendLvs;
@@ -461,6 +471,7 @@ class SvtSaveData {
   SvtSaveData({
     this.svtId,
     this.limitCount = 4,
+    this.transformVal = 0,
     List<int>? skillLvs,
     List<int?>? skillIds,
     List<int>? appendLvs,
@@ -509,9 +520,9 @@ class SvtSaveData {
       classBoardData = null;
     }
     final data = _$SvtSaveDataToJson(this);
-    _removeEmptyList(
+    _removeEmptyListOrDefault(
       data,
-      [
+      checkEmptyListKeys: [
         'appendLvs',
         'cardStrengthens',
         'commandCodeIds',
@@ -522,6 +533,7 @@ class SvtSaveData {
       ],
       removeAllNull: true,
       removeAllZero: true,
+      checkDefaultValueKeys: {"transformVal": 0, "grandSvt": false},
     );
     return data;
   }

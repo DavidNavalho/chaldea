@@ -182,124 +182,83 @@ class BuffData {
 
   int getValue(final BattleServantData self, [final BattleServantData? opponent, final BattleData? battleData]) {
     int addValue = 0;
-    if (vals.ParamAddValue != null) {
+    final paramAddValue = vals.ParamAddValue ?? vals.SnapShotParamAddValue;
+    if (paramAddValue != null) {
       int addCount = 0;
       final includeIgnoreIndividuality = vals.IncludeIgnoreIndividuality == 1;
       final ignoreUnreleaseable = vals.IgnoreIndivUnreleaseable == 1;
 
-      final selfAndCheck = vals.ParamAddSelfIndividualityAndCheck;
-      final oppAndCheck = vals.ParamAddOpIndividualityAndCheck;
-      final fieldAndCheck = vals.ParamAddFieldIndividualityAndCheck;
-      final addIndividualityTargetType = vals.ParamAddIndividualityTargetType;
-      final targetOverride = addIndividualityTargetType != null
-          ? FuncTargetType.fromId(addIndividualityTargetType)
+      final targetType = vals.ParamAddIndividualityTargetType != null
+          ? FuncTargetType.fromId(vals.ParamAddIndividualityTargetType!)
           : null;
-      if (selfAndCheck != null) {
-        final List<BattleServantData> targetList = targetOverride != null && battleData != null
-            ? FunctionExecutor.acquireSimpleFunctionTarget(
-                battleData,
-                targetOverride,
-                self,
-                targetedAlly: battleData.getTargetedAlly(self),
-                targetedEnemy: battleData.getTargetedEnemy(self),
-              )
-            : [self];
-        for (final target in targetList) {
-          final traits = target.getTraits(
-            addTraits: target.getBuffTraits(
-              ignoreIndivUnreleaseable: ignoreUnreleaseable,
-              includeIgnoreIndiv: includeIgnoreIndividuality,
-            ),
-          );
-          addCount += Individuality.getSignedMatchedTotalCountMultiIndividuality(traits, selfAndCheck);
-        }
+      final paramAddMaxCount = vals.ParamAddMaxCount ?? vals.SnapShotParamAddMaxCount;
+      final paramAddMaxValue = vals.ParamAddMaxValue ?? vals.SnapShotParamAddMaxValue;
+
+      var selfAndCheck = vals.ParamAddSelfIndividualityAndCheck ?? vals.SnapShotParamAddSelfIndividualityAndCheck;
+      final oppAndCheck = vals.ParamAddOpIndividualityAndCheck ?? vals.SnapShotParamAddOpIndividualityAndCheck;
+      final fieldAndCheck = vals.ParamAddFieldIndividualityAndCheck ?? vals.SnapShotParamAddFieldIndividualityAndCheck;
+      var selfCheck = vals.ParamAddSelfIndividuality ?? vals.SnapShotParamAddSelfIndv;
+      final oppCheck = vals.ParamAddOpIndividuality ?? vals.SnapShotParamAddOpIndv;
+      final fieldCheck = vals.ParamAddFieldIndividuality ?? vals.SnapShotParamAddFieldIndv;
+
+      final List<BattleServantData> allTargets = targetType != null && battleData != null
+          ? FunctionExecutor.acquireSimpleFunctionTarget(
+              battleData,
+              targetType,
+              self,
+              targetedAlly: battleData.getTargetedAlly(self),
+              targetedEnemy: battleData.getTargetedEnemy(self),
+            )
+          : [self, ?opponent];
+      if (targetType != null) {
+        // not sure
+        selfCheck ??= oppCheck;
+        selfAndCheck ??= oppAndCheck;
       }
-      if (oppAndCheck != null) {
-        final List<BattleServantData> targetList = targetOverride != null && battleData != null
-            ? FunctionExecutor.acquireSimpleFunctionTarget(
-                battleData,
-                targetOverride,
-                self,
-                targetedAlly: battleData.getTargetedAlly(self),
-                targetedEnemy: battleData.getTargetedEnemy(self),
-              )
-            : opponent != null
-            ? [opponent]
-            : [];
-        for (final target in targetList) {
-          final traits = target.getTraits(
-            addTraits: target.getBuffTraits(
-              ignoreIndivUnreleaseable: ignoreUnreleaseable,
-              includeIgnoreIndiv: includeIgnoreIndividuality,
-            ),
-          );
-          addCount += Individuality.getSignedMatchedTotalCountMultiIndividuality(traits, oppAndCheck);
-        }
-      }
-      if (fieldAndCheck != null && battleData != null) {
-        addCount += Individuality.getSignedMatchedTotalCountMultiIndividuality(
-          battleData.getQuestIndividuality(),
-          fieldAndCheck,
+      for (final target in allTargets) {
+        final traits = target.getTraits(
+          addTraits: target.getBuffTraits(
+            ignoreIndivUnreleaseable: ignoreUnreleaseable,
+            includeIgnoreIndiv: includeIgnoreIndividuality,
+          ),
         );
-      }
-
-      final selfChecks = vals.ParamAddSelfIndividuality;
-      final oppoChecks = vals.ParamAddOpIndividuality;
-      final fieldIndiv = vals.ParamAddFieldIndividuality;
-      if (selfChecks != null) {
-        final List<BattleServantData> targetList = targetOverride != null && battleData != null
-            ? FunctionExecutor.acquireSimpleFunctionTarget(
-                battleData,
-                targetOverride,
-                self,
-                targetedAlly: battleData.getTargetedAlly(self),
-                targetedEnemy: battleData.getTargetedEnemy(self),
-              )
-            : [self];
-        for (final target in targetList) {
-          final traits = target.getTraits(
-            addTraits: target.getBuffTraits(
-              ignoreIndivUnreleaseable: ignoreUnreleaseable,
-              includeIgnoreIndiv: includeIgnoreIndividuality,
-            ),
-          );
-          addCount += Individuality.getMatchedTotalCount(selfs: traits, targets: selfChecks);
+        if (target.uniqueId == self.uniqueId) {
+          if (selfAndCheck != null) {
+            addCount += Individuality.getSignedMatchedTotalCountMultiIndividuality(traits, selfAndCheck);
+          }
+          if (selfCheck != null) {
+            addCount += Individuality.getMatchedTotalCount(selfs: traits, targets: selfCheck);
+          }
+        } else {
+          if (oppAndCheck != null) {
+            addCount += Individuality.getSignedMatchedTotalCountMultiIndividuality(traits, oppAndCheck);
+          }
+          if (oppCheck != null) {
+            addCount += Individuality.getMatchedTotalCount(selfs: traits, targets: oppCheck);
+          }
         }
       }
-      if (oppoChecks != null) {
-        final List<BattleServantData> targetList = targetOverride != null && battleData != null
-            ? FunctionExecutor.acquireSimpleFunctionTarget(
-                battleData,
-                targetOverride,
-                self,
-                targetedAlly: battleData.getTargetedAlly(self),
-                targetedEnemy: battleData.getTargetedEnemy(self),
-              )
-            : opponent != null
-            ? [opponent]
-            : [];
-        for (final target in targetList) {
-          final traits = target.getTraits(
-            addTraits: target.getBuffTraits(
-              ignoreIndivUnreleaseable: ignoreUnreleaseable,
-              includeIgnoreIndiv: includeIgnoreIndividuality,
-            ),
+
+      if (battleData != null) {
+        if (fieldAndCheck != null) {
+          addCount += Individuality.getSignedMatchedTotalCountMultiIndividuality(
+            battleData.getQuestIndividuality(),
+            fieldAndCheck,
           );
-          addCount += Individuality.getMatchedTotalCount(selfs: traits, targets: oppoChecks);
+        }
+        if (fieldCheck != null) {
+          addCount += countAnyTraits(battleData.getQuestIndividuality(), fieldCheck);
         }
       }
-      if (fieldIndiv != null && battleData != null) {
-        addCount += countAnyTraits(battleData.getQuestIndividuality(), fieldIndiv);
+
+      if (paramAddMaxCount != null) {
+        addCount = min(addCount, paramAddMaxCount);
       }
 
-      if (vals.ParamAddMaxCount != null) {
-        addCount = min(addCount, vals.ParamAddMaxCount!);
-      }
+      addValue += addCount * paramAddValue;
 
-      addValue = addCount * vals.ParamAddValue!;
-
-      if (vals.ParamAddMaxValue != null) {
-        addValue = min(addValue, vals.ParamAddMaxValue!);
+      if (paramAddMaxValue != null) {
+        addValue = min(addValue, paramAddMaxValue);
       }
     }
 
