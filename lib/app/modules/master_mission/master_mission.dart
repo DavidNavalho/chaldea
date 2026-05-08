@@ -472,7 +472,7 @@ class __ViewEnemyMissionTargetPageState extends State<_ViewEnemyMissionTargetPag
       if (enemy.limitCount < 10) {
         return assetUrl.face(enemy.svtId, enemy.limitCount);
       } else if (svt != null) {
-        String? icon = svt.ascendIcon(enemy.limitCount, true);
+        String? icon = svt.ascendIcon(enemy.limitCount);
         if (icon != null) return GameCardMixin.makeBordered(icon)!;
       }
       return assetUrl.face(enemy.svtId, enemy.limitCount);

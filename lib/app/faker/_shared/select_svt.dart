@@ -231,6 +231,7 @@ class _SelectUserSvtPageState extends State<SelectUserSvtPage> {
                   child = svt.iconBuilder(
                     context: context,
                     text: status,
+                    overrideIcon: userSvt.icon,
                     jumpToDetail: false,
                     option: ImageWithTextOption(padding: EdgeInsets.fromLTRB(4, 0, 4, 2), fontSize: 12),
                   );

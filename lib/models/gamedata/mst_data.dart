@@ -378,7 +378,7 @@ class MasterDataManager extends MasterDataManagerBase {
     final svtId = userSvt.svtId;
     final svt = db.gameData.servantsById[svtId];
     if (svt == null || svt.collectionNo == 0) return SvtStatus();
-    final status0 = db.curUser.svtStatusOf(svt.collectionNo);
+    final status0 = svt.status;
     final collection = userSvtCollection[svtId];
     SvtStatus status = SvtStatus(
       cur: SvtPlan(

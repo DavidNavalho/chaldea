@@ -145,9 +145,11 @@ class TransformSvtProfileTabber extends StatelessWidget {
         TextSpan(
           children: [
             CenterWidgetSpan(
-              child: overwriteData?.icon != null
-                  ? db.getIconImage(overwriteData?.icon, width: 24)
-                  : svt.iconBuilder(context: context, width: 24),
+              child: svt.iconBuilder(
+                context: context,
+                width: 24,
+                overrideIcon: overwriteData?.icon ?? svt.borderedIcon,
+              ),
             ),
             TextSpan(text: ' $name'),
           ],

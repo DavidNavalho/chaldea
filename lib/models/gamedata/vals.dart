@@ -428,7 +428,9 @@ class DataVals {
   int? get ExecuteWhenHideText => _get('ExecuteWhenHideText');
   int? get SkipCheckAlive => _get('SkipCheckAlive');
   int? get CallServantPosition => _get('CallServantPosition');
-
+  int? get NotActIfAlreadyAvoidStateBuff => _get('NotActIfAlreadyAvoidStateBuff');
+  int? get AvoidFieldBuff => _get('AvoidFieldBuff');
+  int? get UseUserSpecifiedLimitCount => _get('UseUserSpecifiedLimitCount');
   //
   int? get Individuality => _get('Individuality');
   int? get EventId => _get('EventId');

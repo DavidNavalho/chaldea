@@ -535,20 +535,23 @@ class _FgoAnnualReportRealPageState extends State<FgoAnnualReportRealPage> {
       final svt = userSvt.dbSvt;
       final collection = mstData.userSvtCollection[userSvt.svtId];
 
-      final limitCount = userSvt.dispLimitCount;
+      final dispLimitCount = userSvt.transformVal == 1
+          ? userSvt.dispLimitCount2 ?? userSvt.dispLimitCount
+          : userSvt.dispLimitCount;
       String? svtImage, rarityIcon, clsIcon;
       if (svt != null) {
         // svt image
         final status = svt.extraAssets.status;
-        svtImage = status.ascension?[limitCount] ?? status.costume?[limitCount];
-        if (svtImage == null && limitCount > 10) {
-          final charaId = svt.costume.values.firstWhereOrNull((e) => e.id == limitCount)?.battleCharaId;
+        svtImage = status.ascension?[dispLimitCount] ?? status.costume?[dispLimitCount];
+        if (svtImage == null && dispLimitCount > 10) {
+          final charaId = svt.costume.values.firstWhereOrNull((e) => e.id == dispLimitCount)?.battleCharaId;
           svtImage = status.costume?[charaId];
         }
         svtImage ??= status.ascension?.values.last;
 
         // rarity icon
-        final rarity = svt.getAscended(userSvt.dispLimitCount, (e) => e.overwriteRarity) ?? svt.rarity;
+        final rarity =
+            svt.getAscended(Servant.dispLimitCountToLimitCount(dispLimitCount), (e) => e.overwriteRarity) ?? svt.rarity;
         int rarityType = 0;
         if (userSvt.exceedCount > 0) {
           rarityType = 1;

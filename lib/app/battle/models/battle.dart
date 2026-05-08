@@ -289,17 +289,21 @@ class BattleData {
 
     fieldBuffs.clear();
 
-    backupAllyServants = List.generate(playerSettings.length, (idx) {
-      final svtSetting = playerSettings[idx];
-      return svtSetting == null || svtSetting.svt == null
-          ? null
-          : BattleServantData.fromPlayerSvtData(
-              svtSetting,
-              getNextUniqueId(),
-              startingPosition: idx + 1,
-              isUseGrandBoard: isUseGrandBoard,
-            );
-    });
+    backupAllyServants.clear();
+    for (final (index, svtSetting) in playerSettings.indexed) {
+      if (svtSetting == null || svtSetting.svt == null) {
+        backupAllyServants.add(null);
+      } else {
+        backupAllyServants.add(
+          await BattleServantData.fromPlayerSvtData(
+            svtSetting,
+            getNextUniqueId(),
+            startingPosition: index + 1,
+            isUseGrandBoard: isUseGrandBoard,
+          ),
+        );
+      }
+    }
     await _fetchWaveEnemies();
 
     final overwriteEquip = quest.extraDetail?.getMergedOverwriteEquipSkills();
@@ -472,6 +476,7 @@ class BattleData {
   }
 
   Future<void> _nextTurn() async {
+    await fieldAi.actTurnStart(this);
     await _replenishActors();
     bool addTurn = true;
 

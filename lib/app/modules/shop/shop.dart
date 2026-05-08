@@ -341,7 +341,7 @@ class ShopHelper {
         if (shop.shopType == ShopType.startUpSummon && purchaseType == PurchaseType.servant) {
           final svt = db.gameData.servantsById[targetId];
           if (svt != null) {
-            final status = db.curUser.svtStatusOf(svt.collectionNo);
+            final status = svt.status;
             if (status.favorite) {
               text = 'NP${status.cur.npLv}';
             }

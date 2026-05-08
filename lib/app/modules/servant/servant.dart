@@ -392,7 +392,10 @@ class ServantDetailPageState extends State<ServantDetailPage> with SingleTickerP
         return _SubTabInfo(
           tab: tab,
           tabBuilder: () => S.current.illustration,
-          viewBuilder: (ctx) => SvtIllustrationTab(svt: svt),
+          viewBuilder: (ctx) => TransformSvtProfileTabber(
+            svt: svt,
+            builder: (context, svt, _) => SvtIllustrationTab(svt: svt),
+          ),
         );
       case SvtTab.relatedCards:
         if (!svt.isServantType) return null;
@@ -420,11 +423,14 @@ class ServantDetailPageState extends State<ServantDetailPage> with SingleTickerP
           viewBuilder: (ctx) => SvtSummonTab(svt: svt),
         );
       case SvtTab.voice:
-        if (svt.collectionNo == 0 && svt.profile.voices.isEmpty) return null;
+        if (!svt.isUserSvt && svt.profile.voices.isEmpty) return null;
         return _SubTabInfo(
           tab: tab,
           tabBuilder: () => S.current.voice,
-          viewBuilder: (ctx) => SvtVoiceTab(svt: svt),
+          viewBuilder: (ctx) => TransformSvtProfileTabber(
+            svt: svt,
+            builder: (context, svt, _) => SvtVoiceTab(svt: svt),
+          ),
         );
       case SvtTab.quest:
         if (svt.relateQuestIds.isEmpty && svt.trialQuestIds.isEmpty) {
@@ -509,20 +515,28 @@ class ServantDetailPageState extends State<ServantDetailPage> with SingleTickerP
                       );
                     }
 
-                    final faces = svt.extraAssets.faces;
-                    if (faces.ascension != null) {
-                      faces.ascension!.forEach((key, value) {
-                        _addOne('${S.current.ascension} $key', value);
-                      });
+                    for (final _svt in {svt, ?svt.script?.transformInfo?.saveTransformSvt}) {
+                      final faces = _svt.extraAssets.faces;
+                      if (faces.ascension != null) {
+                        faces.ascension!.forEach((key, value) {
+                          _addOne('${S.current.ascension} $key', value);
+                        });
+                      }
+                      if (faces.costume != null) {
+                        faces.costume!.forEach((key, value) {
+                          _addOne(_svt.costume[key]?.lName.l ?? '${S.current.costume} $key', value);
+                        });
+                      }
+                      if (faces.transformGroup != null) {
+                        faces.transformGroup!.forEach((key, value) {
+                          _addOne('Group $key', value);
+                        });
+                      }
+                      if (_svt.aprilFoolBorderedIcon != null) {
+                        _addOne(S.current.april_fool, svt.aprilFoolBorderedIcon);
+                      }
                     }
-                    if (faces.costume != null) {
-                      faces.costume!.forEach((key, value) {
-                        _addOne(svt.profile.costume[key]?.lName.l ?? '${S.current.costume} $key', value);
-                      });
-                    }
-                    if (svt.aprilFoolBorderedIcon != null) {
-                      _addOne(S.current.april_fool, svt.aprilFoolBorderedIcon);
-                    }
+
                     return SimpleConfirmDialog(
                       title: Text(S.current.svt_ascension_icon),
                       content: SingleChildScrollView(

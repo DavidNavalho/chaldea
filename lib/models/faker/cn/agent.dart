@@ -43,7 +43,12 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
 
   static const developmentAuthCode = 'aK8mTxBJCwZyxBjNJSKA5xCWL7zKtgZEQNiZmffXUbyQd5aLun';
   static const _sdkLoginHost = 'line1-sdk-center-login-sh.biligame.net';
-  static const _androidAppKey = "a4e39619a09d49e9aead9b820980013a"; // version update
+  static const _kApkData = (
+    appKey: "a4e39619a09d49e9aead9b820980013a",
+    apkSign: "4502a02a00395dec05a4134ad593224d", // apk MD5 from `./apksigner verify --print-certs xxx.apk`
+    versionCode: 225,
+    appVer: "2.106.1",
+  );
 
   // login by account & passwd
   // always use android configuration
@@ -58,19 +63,19 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
       "sdk_type": 1,
       "merchant_id": 1,
       "platform": 3,
-      "apk_sign": "4502a02a00395dec05a4134ad593224d", // version update
+      "apk_sign": _kApkData.apkSign,
       "platform_type": 3,
       "old_buvid": user.buvid,
       "udid": user.buvid,
       "app_id": 112,
       "game_id": 112,
       "timestamp": DateTime.now().millisecondsSinceEpoch,
-      "version_code": 225, // version update
+      "version_code": _kApkData.versionCode,
       "bd_id": user.bdid,
       "server_id": 248,
       "version": 3,
       "domain_switch_count": 0,
-      "app_ver": "2.106.1", // version update
+      "app_ver": _kApkData.appVer,
       "domain": _sdkLoginHost,
       "original_domain": "https://$_sdkLoginHost",
       "sdk_log_type": 1,
@@ -95,7 +100,7 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
     final keys = params.keys.where((e) => !_excludeKeys.contains(e)).toList();
     keys.sort();
     final vals = [for (final k in keys) params[k]!];
-    params['sign'] = md5.convert(utf8.encode(vals.join('') + _androidAppKey)).toString();
+    params['sign'] = md5.convert(utf8.encode(vals.join('') + _kApkData.appKey)).toString();
     return params;
   }
 
@@ -587,6 +592,15 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
     required int32_t randomSettingSupport,
     required int32_t limitCountSupport,
     required bool isPush,
+    required int imageLimitCount2,
+    required int dispLimitCount2,
+    required int commandCardLimitCount2,
+    required int iconLimitCount2,
+    required int portraitLimitCount2,
+    required int randomSettingOwn2,
+    required int randomSettingSupport2,
+    required int limitCountSupport2,
+    required int transformVal,
   }) {
     return _acPhp(
       key: 'cardfavorite',
@@ -607,6 +621,16 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
         "randomLimitCountSupport": randomSettingSupport,
         "limitCountSupport": limitCountSupport,
         "isPush": isPush.toInt(),
+        // TODO: CN 20270401 Francesca
+        // "imageLimitCount2": imageLimitCount2,
+        // "dispLimitCount2": dispLimitCount2,
+        // "commandCardLimitCount2": commandCardLimitCount2,
+        // "iconLimitCount2": iconLimitCount2,
+        // "portraitLimitCount2": portraitLimitCount2,
+        // "randomLimitCount2": randomSettingOwn2,
+        // "randomLimitCountSupport2": randomSettingSupport2,
+        // "limitCountSupport2": limitCountSupport2,
+        // "transformVal": transformVal,
       },
     );
   }
@@ -841,6 +865,9 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
     int32_t followerRandomLimitCount = 0, //?
     String choiceRandomLimitCounts = "{}",
     int32_t followerSpoilerProtectionLimitCount = 4, //?
+    int32_t followerTransformRandomLimitCount = 0,
+    String choiceTransformRandomLimitCounts = "{}",
+    int32_t followerTransformSpoilerProtectionLimitCount = 0,
     int32_t recommendSupportIdx = 0,
     required int32_t followerSupportDeckId,
     int32_t campaignItemId = 0,
@@ -870,6 +897,10 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
         "followerRandomLimitCount": followerRandomLimitCount,
         "followerSpoilerProtectionLimitCount": followerSpoilerProtectionLimitCount,
         "followerSupportDeckId": followerSupportDeckId,
+        // TODO: CN 20270401 Francesca
+        // "choiceTransformRandomLimitCounts": choiceTransformRandomLimitCounts,
+        // "followerTransformRandomLimitCount": followerTransformRandomLimitCount,
+        // "followerTransformSpoilerProtectionLimitCount": followerTransformSpoilerProtectionLimitCount,
         "recommendSupportIdx": 0,
         "campaignItemId": campaignItemId,
         "restartWave": restartWave,
@@ -919,7 +950,6 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
     List<Map<String, Object>> firstNpPlayList = const [],
     List<PlayerServantNoblePhantasmUsageDataEntity> playerServantNoblePhantasmUsageData =
         const [], // []/ [{"svtId":403500,"followerType":0,"seqId":403500,"addCount":3}]"
-    // required  PlayerServantNoblePhantasmUsageData playerServantNoblePhantasmUsageData,
     Map<int, int> usedEquipSkillDict = const {},
     Map<int, int> svtCommonFlagDict = const {},
     List<int32_t> skillShiftUniqueIdArray = const [],
@@ -955,6 +985,7 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
       "routeSelect": routeSelectIdArray,
       "dataLostUniqueIds": dataLostUniqueIdArray,
       "aliveUniqueIds": aliveUniqueIds,
+      // added after battleStatus set
       // "battleStatus": 3845526358,
       // "voicePlayedList": "[]",
       // "usedTurnList": [2, 0, 1],
@@ -968,9 +999,9 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
     if (superBossResult.isNotEmpty) {
       throw ArgumentError.value(superBossResult, 'superBossResult', 'superBossResult is not supported');
     }
-    // for(final result in superBossResult){
-    //   num2 += result.getStatusLong();
-    // }
+    for (final result in superBossResult) {
+      num2 += result.getStatusLong();
+    }
     int64_t num3 = 0;
 
     for (int num4 in aliveUniqueIds) {
@@ -990,11 +1021,11 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
 
     dictionary['reachedWave'] = waveNum;
 
-    // List<int> battleMissionTargetIds = battleMissionValueDict.keys.toList();
-    // battleMissionTargetIds.sort();
-    // List<int> battleMissionTargetValues = [for (final x in battleMissionTargetIds) battleMissionValueDict[x]!];
-    // dictionary['battleMissionTargetIds'] = battleMissionTargetIds;
-    // dictionary['battleMissionTargetValues'] = battleMissionTargetValues;
+    List<int> battleMissionTargetIds = battleMissionValueDict.keys.toList();
+    battleMissionTargetIds.sort();
+    List<int> battleMissionTargetValues = [for (final x in battleMissionTargetIds) battleMissionValueDict[x]!];
+    dictionary['battleMissionTargetIds'] = battleMissionTargetIds;
+    dictionary['battleMissionTargetValues'] = battleMissionTargetValues;
 
     logger.t('battle_result.result=${jsonEncode(dictionary)}');
 

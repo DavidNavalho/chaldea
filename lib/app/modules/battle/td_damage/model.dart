@@ -273,7 +273,7 @@ class TdDmgSolver {
       if (svt == null) continue;
       final sdata = PlayerSvtData.svt(svt);
       sdata.updateRankUps(region: options.region);
-      BattleServantData support = BattleServantData.fromPlayerSvtData(
+      BattleServantData support = await BattleServantData.fromPlayerSvtData(
         sdata,
         battleData.getNextUniqueId(),
         isUseGrandBoard: battleData.isUseGrandBoard,

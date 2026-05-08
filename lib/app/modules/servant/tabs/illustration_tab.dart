@@ -4,6 +4,7 @@ import 'package:chaldea/app/modules/common/extra_assets_page.dart';
 import 'package:chaldea/app/modules/common/filter_group.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/models.dart';
+import 'package:chaldea/utils/extension.dart';
 
 class SvtIllustrationTab extends StatefulWidget {
   final Servant svt;
@@ -62,8 +63,10 @@ class _SvtIllustrationTabState extends State<SvtIllustrationTab> {
   }
 
   Iterable<String> getUrls(ExtraAssetsUrl urls) sync* {
-    if (urls.ascension != null) {
-      yield* urls.ascension!.entries.where((e) => filter.options.contains(e.key)).map((e) => e.value);
+    for (final (key, value) in {...?urls.ascension?.items, ...?urls.transformGroup?.items}) {
+      if (filter.options.contains(key)) {
+        yield value;
+      }
     }
     if (urls.costume != null && filter.options.contains(_costumeKey)) {
       yield* urls.costume!.values;

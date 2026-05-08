@@ -100,11 +100,9 @@ class _ImportPageHomeState extends State<ImportPageHome> {
             header: 'To be removed',
             children: [
               ListTile(
+                enabled: false,
                 leading: const Icon(Icons.screenshot),
-                title: Text(
-                  S.current.import_item_screenshots,
-                  style: const TextStyle(decoration: .lineThrough, fontStyle: .italic),
-                ),
+                title: Text(S.current.import_item_screenshots),
                 subtitle: Text(S.current.import_item_hint),
                 trailing: const Icon(Icons.keyboard_arrow_right),
                 onTap: () {
@@ -112,11 +110,9 @@ class _ImportPageHomeState extends State<ImportPageHome> {
                 },
               ),
               ListTile(
+                enabled: false,
                 leading: const Icon(Icons.screenshot),
-                title: Text(
-                  S.current.import_active_skill_screenshots,
-                  style: const TextStyle(decoration: .lineThrough, fontStyle: .italic),
-                ),
+                title: Text(S.current.import_active_skill_screenshots),
                 subtitle: Text("[${S.current.outdated}] ${S.current.import_active_skill_hint}"),
                 trailing: const Icon(Icons.keyboard_arrow_right),
                 onTap: () {
@@ -126,11 +122,9 @@ class _ImportPageHomeState extends State<ImportPageHome> {
                 },
               ),
               ListTile(
+                enabled: false,
                 leading: const Icon(Icons.screenshot),
-                title: Text(
-                  S.current.import_append_skill_screenshots,
-                  style: const TextStyle(decoration: .lineThrough, fontStyle: .italic),
-                ),
+                title: Text(S.current.import_append_skill_screenshots),
                 subtitle: Text('[${S.current.outdated}] ${S.current.import_append_skill_hint}'),
                 trailing: const Icon(Icons.keyboard_arrow_right),
                 onTap: () {

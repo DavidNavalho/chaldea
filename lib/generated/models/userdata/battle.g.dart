@@ -219,6 +219,7 @@ SvtSaveData _$SvtSaveDataFromJson(Map json) => $checkedCreate('SvtSaveData', jso
   final val = SvtSaveData(
     svtId: $checkedConvert('svtId', (v) => (v as num?)?.toInt()),
     limitCount: $checkedConvert('limitCount', (v) => (v as num?)?.toInt() ?? 4),
+    transformVal: $checkedConvert('transformVal', (v) => (v as num?)?.toInt() ?? 0),
     skillLvs: $checkedConvert('skillLvs', (v) => (v as List<dynamic>?)?.map((e) => (e as num).toInt()).toList()),
     skillIds: $checkedConvert('skillIds', (v) => (v as List<dynamic>?)?.map((e) => (e as num?)?.toInt()).toList()),
     appendLvs: $checkedConvert('appendLvs', (v) => (v as List<dynamic>?)?.map((e) => (e as num).toInt()).toList()),
@@ -284,6 +285,7 @@ SvtSaveData _$SvtSaveDataFromJson(Map json) => $checkedCreate('SvtSaveData', jso
 Map<String, dynamic> _$SvtSaveDataToJson(SvtSaveData instance) => <String, dynamic>{
   'svtId': ?instance.svtId,
   'limitCount': instance.limitCount,
+  'transformVal': instance.transformVal,
   'skillIds': instance.skillIds,
   'skillLvs': instance.skillLvs,
   'appendLvs': instance.appendLvs,

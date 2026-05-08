@@ -22,6 +22,15 @@ UserServantEntity _$UserServantEntityFromJson(Map json) => UserServantEntity(
   randomLimitCount: json['randomLimitCount'],
   randomLimitCountSupport: json['randomLimitCountSupport'],
   limitCountSupport: json['limitCountSupport'],
+  dispLimitCount2: json['dispLimitCount2'],
+  imageLimitCount2: json['imageLimitCount2'],
+  commandCardLimitCount2: json['commandCardLimitCount2'],
+  iconLimitCount2: json['iconLimitCount2'],
+  portraitLimitCount2: json['portraitLimitCount2'],
+  randomLimitCount2: json['randomLimitCount2'],
+  randomLimitCountSupport2: json['randomLimitCountSupport2'],
+  limitCountSupport2: json['limitCountSupport2'],
+  transformVal: json['transformVal'],
   lv: json['lv'],
   exp: json['exp'],
   adjustHp: json['adjustHp'],
@@ -627,6 +636,27 @@ ServantLeaderInfo _$ServantLeaderInfoFromJson(Map json) => ServantLeaderInfo(
   eventSvtPoint: json['eventSvtPoint'],
   grandSvt: json['grandSvt'],
   grandGraphId: json['grandGraphId'],
+  afterTransformSvtInfo: json['afterTransformSvtInfo'] == null
+      ? null
+      : AfterTransformSvtInfo.fromJson(Map<String, dynamic>.from(json['afterTransformSvtInfo'] as Map)),
+  transformVal: json['transformVal'],
+);
+
+AfterTransformSvtInfo _$AfterTransformSvtInfoFromJson(Map json) => AfterTransformSvtInfo(
+  imageLimitCount: json['imageLimitCount'],
+  dispLimitCount: json['dispLimitCount'],
+  commandCardLimitCount: json['commandCardLimitCount'],
+  iconLimitCount: json['iconLimitCount'],
+  portraitLimitCount: json['portraitLimitCount'],
+  randomLimitCountTargets: json['randomLimitCountTargets'],
+  transformVal: json['transformVal'],
+  skillId1: json['skillId1'],
+  skillId2: json['skillId2'],
+  skillId3: json['skillId3'],
+  hp: json['hp'],
+  atk: json['atk'],
+  treasureDeviceId: json['treasureDeviceId'],
+  classPassive: json['classPassive'],
 );
 
 OtherUserGameEntity _$OtherUserGameEntityFromJson(Map json) => OtherUserGameEntity(

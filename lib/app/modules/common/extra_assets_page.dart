@@ -55,7 +55,7 @@ class ExtraAssetsPage extends StatelessWidget {
   Iterable<String> bordered(Iterable<String> urls) sync* {
     yield* urls;
     for (final url in urls) {
-      if (RegExp(r'/Faces/f_\d+\.png$').hasMatch(url) || RegExp(r'/CommandCodes/c_\d+\.png').hasMatch(url)) {
+      if (RegExp(r'/Faces/f_\d+').hasMatch(url) || RegExp(r'/CommandCodes/c_\d+\.png').hasMatch(url)) {
         yield GameCardMixin.makeBordered(url)!;
       }
     }

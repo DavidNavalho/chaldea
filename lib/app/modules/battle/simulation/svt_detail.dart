@@ -64,7 +64,7 @@ class _BattleSvtDetailState extends State<BattleSvtDetail> with SingleTickerProv
   }
 
   Widget _sliverBuilder(BuildContext context) {
-    final icon = svt.niceEnemy?.icon ?? svt.niceSvt?.ascendIcon(svt.limitCount, false);
+    final icon = svt.niceEnemy?.icon ?? svt.niceSvt?.ascendIcon(svt.limitCount, bordered: false);
     return SliverAppBar(
       title: AutoSizeText(svt.lBattleName, maxLines: 1),
       actions: [_popupButton],

@@ -5,44 +5,13 @@ PODS:
     - Flutter
   - connectivity_plus (0.0.1):
     - Flutter
-  - countly_flutter_np (25.4.3):
+  - countly_flutter_np (26.1.0):
     - Flutter
   - device_info_plus (0.0.1):
     - Flutter
-  - DKImagePickerController/Core (4.3.9):
-    - DKImagePickerController/ImageDataManager
-    - DKImagePickerController/Resource
-  - DKImagePickerController/ImageDataManager (4.3.9)
-  - DKImagePickerController/PhotoGallery (4.3.9):
-    - DKImagePickerController/Core
-    - DKPhotoGallery
-  - DKImagePickerController/Resource (4.3.9)
-  - DKPhotoGallery (0.0.19):
-    - DKPhotoGallery/Core (= 0.0.19)
-    - DKPhotoGallery/Model (= 0.0.19)
-    - DKPhotoGallery/Preview (= 0.0.19)
-    - DKPhotoGallery/Resource (= 0.0.19)
-    - SDWebImage
-    - SwiftyGif
-  - DKPhotoGallery/Core (0.0.19):
-    - DKPhotoGallery/Model
-    - DKPhotoGallery/Preview
-    - SDWebImage
-    - SwiftyGif
-  - DKPhotoGallery/Model (0.0.19):
-    - SDWebImage
-    - SwiftyGif
-  - DKPhotoGallery/Preview (0.0.19):
-    - DKPhotoGallery/Model
-    - DKPhotoGallery/Resource
-    - SDWebImage
-    - SwiftyGif
-  - DKPhotoGallery/Resource (0.0.19):
-    - SDWebImage
-    - SwiftyGif
   - file_picker (0.0.1):
-    - DKImagePickerController/PhotoGallery
     - Flutter
+    - FlutterMacOS
   - Flutter (1.0.0)
   - flutter_fgbg (0.0.1):
     - Flutter
@@ -56,11 +25,11 @@ PODS:
     - Flutter
   - fluttertoast (0.0.2):
     - Flutter
-  - Google-Mobile-Ads-SDK (12.14.0):
+  - Google-Mobile-Ads-SDK (13.2.0):
     - GoogleUserMessagingPlatform (>= 1.1)
-  - google_mobile_ads (7.0.0):
+  - google_mobile_ads (8.0.0):
     - Flutter
-    - Google-Mobile-Ads-SDK (~> 12.14.0)
+    - Google-Mobile-Ads-SDK (~> 13.2.0)
     - webview_flutter_wkwebview
   - GoogleUserMessagingPlatform (3.1.0)
   - home_widget (0.0.1):
@@ -76,9 +45,6 @@ PODS:
     - Flutter
   - permission_handler_apple (9.3.0):
     - Flutter
-  - SDWebImage (5.21.7):
-    - SDWebImage/Core (= 5.21.7)
-  - SDWebImage/Core (5.21.7)
   - share_plus (0.0.1):
     - Flutter
   - shared_preferences_foundation (0.0.1):
@@ -87,7 +53,6 @@ PODS:
   - sqflite_darwin (0.0.4):
     - Flutter
     - FlutterMacOS
-  - SwiftyGif (5.4.5)
   - url_launcher_ios (0.0.1):
     - Flutter
   - video_player_avfoundation (0.0.1):
@@ -105,7 +70,7 @@ DEPENDENCIES:
   - connectivity_plus (from `.symlinks/plugins/connectivity_plus/ios`)
   - countly_flutter_np (from `.symlinks/plugins/countly_flutter_np/ios`)
   - device_info_plus (from `.symlinks/plugins/device_info_plus/ios`)
-  - file_picker (from `.symlinks/plugins/file_picker/ios`)
+  - file_picker (from `.symlinks/plugins/file_picker/darwin`)
   - Flutter (from `Flutter`)
   - flutter_fgbg (from `.symlinks/plugins/flutter_fgbg/ios`)
   - flutter_js (from `.symlinks/plugins/flutter_js/ios`)
@@ -130,12 +95,8 @@ DEPENDENCIES:
 
 SPEC REPOS:
   trunk:
-    - DKImagePickerController
-    - DKPhotoGallery
     - Google-Mobile-Ads-SDK
     - GoogleUserMessagingPlatform
-    - SDWebImage
-    - SwiftyGif
 
 EXTERNAL SOURCES:
   alarm:
@@ -149,7 +110,7 @@ EXTERNAL SOURCES:
   device_info_plus:
     :path: ".symlinks/plugins/device_info_plus/ios"
   file_picker:
-    :path: ".symlinks/plugins/file_picker/ios"
+    :path: ".symlinks/plugins/file_picker/darwin"
   Flutter:
     :path: Flutter
   flutter_fgbg:
@@ -197,11 +158,9 @@ SPEC CHECKSUMS:
   alarm: 8a8ed4893eb9bd09e7c5a96bf8ab8104f380f65f
   audio_session: 9bb7f6c970f21241b19f5a3658097ae459681ba0
   connectivity_plus: cb623214f4e1f6ef8fe7403d580fdad517d2f7dd
-  countly_flutter_np: 64ca6f266e007e59815c8ac6088ce567fb36eee9
+  countly_flutter_np: c69ae85c9054a23aaab49d277549945be5031ec9
   device_info_plus: 21fcca2080fbcd348be798aa36c3e5ed849eefbe
-  DKImagePickerController: 946cec48c7873164274ecc4624d19e3da4c1ef3c
-  DKPhotoGallery: b3834fecb755ee09a593d7c9e389d8b5d6deed60
-  file_picker: a0560bc09d61de87f12d246fc47d2119e6ef37be
+  file_picker: 70164d9778c42c47218d6cd79ce435de0856b11a
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
   flutter_fgbg: d3da78df78454b1808f0829a5da9cd17dfe16444
   flutter_js: 867813c1830e1d9b2c5d547cdb6f61801e2f2145
@@ -209,8 +168,8 @@ SPEC CHECKSUMS:
   flutter_mailer: 3a8cd4f36c960fb04528d5471097270c19fec1c4
   flutter_timezone: 7c838e17ffd4645d261e87037e5bebf6d38fe544
   fluttertoast: 2c67e14dce98bbdb200df9e1acf610d7a6264ea1
-  Google-Mobile-Ads-SDK: 4534fd2dfcd3f705c5485a6633c5188d03d4eed2
-  google_mobile_ads: df3008bafbe1f2ad6862f87334e560d2f047f902
+  Google-Mobile-Ads-SDK: f0365e190d66539c65cea8ded43e2c367abb5477
+  google_mobile_ads: fc71399df4ee37c5637400f351898ee22543f75b
   GoogleUserMessagingPlatform: befe603da6501006420c206222acd449bba45a9c
   home_widget: 54b4f6b36ed8d64cfee594a476225c35c3e45091
   image_gallery_saver: 14711d79da40581063e8842a11acf1969d781ed7
@@ -218,11 +177,9 @@ SPEC CHECKSUMS:
   package_info_plus: af8e2ca6888548050f16fa2f1938db7b5a5df499
   pasteboard: 3913b69d3f2be214970a8ae94e7e87fe76e47e98
   permission_handler_apple: 4ed2196e43d0651e8ff7ca3483a069d469701f2d
-  SDWebImage: e9fc87c1aab89a8ab1bbd74eba378c6f53be8abf
   share_plus: 50da8cb520a8f0f65671c6c6a99b3617ed10a58a
   shared_preferences_foundation: 7036424c3d8ec98dfe75ff1667cb0cd531ec82bb
   sqflite_darwin: 20b2a3a3b70e43edae938624ce550a3cbf66a3d0
-  SwiftyGif: 706c60cf65fa2bc5ee0313beece843c8eb8194d4
   url_launcher_ios: 7a95fa5b60cc718a708b8f2966718e93db0cef1b
   video_player_avfoundation: dd410b52df6d2466a42d28550e33e4146928280a
   wakelock_plus: e29112ab3ef0b318e58cfa5c32326458be66b556

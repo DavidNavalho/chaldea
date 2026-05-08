@@ -446,7 +446,7 @@ class UserItemEntity with DataEntityBase<_IntStr> {
   factory UserItemEntity.fromJson(Map<String, dynamic> data) => _$UserItemEntityFromJson(data);
 }
 
-@JsonSerializable(createToJson: false)
+@JsonSerializable(createToJson: false, includeIfNull: false)
 class UserServantEntity with DataEntityBase<int> {
   int id; // unique id for every card
   int svtId;
@@ -465,14 +465,26 @@ class UserServantEntity with DataEntityBase<int> {
   int? status;
   int limitCount; // ascension
   int dispLimitCount;
+  int get dispIconLimitCount => Servant.dispLimitCountToLimitCount(dispLimitCount);
   int imageLimitCount;
   int commandCardLimitCount;
   int iconLimitCount;
   int portraitLimitCount;
-  int battleVoice;
   int randomLimitCount;
   int randomLimitCountSupport;
   int limitCountSupport;
+  int? dispLimitCount2;
+  int get dispIconLimitCount2 => Servant.dispLimitCountToLimitCount(dispLimitCount2 ?? 0);
+  int? imageLimitCount2;
+  int? commandCardLimitCount2;
+  int? iconLimitCount2;
+  int? portraitLimitCount2;
+  int? randomLimitCount2;
+  int? randomLimitCountSupport2;
+  int? limitCountSupport2;
+  int? transformVal;
+
+  int battleVoice;
 
   int lv;
   int exp;
@@ -539,6 +551,15 @@ class UserServantEntity with DataEntityBase<int> {
     dynamic randomLimitCount,
     dynamic randomLimitCountSupport,
     dynamic limitCountSupport,
+    dynamic dispLimitCount2,
+    dynamic imageLimitCount2,
+    dynamic commandCardLimitCount2,
+    dynamic iconLimitCount2,
+    dynamic portraitLimitCount2,
+    dynamic randomLimitCount2,
+    dynamic randomLimitCountSupport2,
+    dynamic limitCountSupport2,
+    dynamic transformVal,
     dynamic lv,
     dynamic exp,
     dynamic adjustHp,
@@ -566,6 +587,15 @@ class UserServantEntity with DataEntityBase<int> {
        randomLimitCount = _toInt(randomLimitCount),
        randomLimitCountSupport = _toInt(randomLimitCountSupport),
        limitCountSupport = _toInt(limitCountSupport),
+       dispLimitCount2 = _toInt(dispLimitCount2, 0),
+       imageLimitCount2 = _toInt(imageLimitCount2, 0),
+       commandCardLimitCount2 = _toInt(commandCardLimitCount2, 0),
+       iconLimitCount2 = _toInt(iconLimitCount2, 0),
+       portraitLimitCount2 = _toInt(portraitLimitCount2, 0),
+       randomLimitCount2 = _toInt(randomLimitCount2, 0),
+       randomLimitCountSupport2 = _toInt(randomLimitCountSupport2, 0),
+       limitCountSupport2 = _toInt(limitCountSupport2, 0),
+       transformVal = _toInt(transformVal, 0),
        lv = _toInt(lv),
        exp = _toInt(exp),
        adjustHp = _toInt(adjustHp),
@@ -618,6 +648,18 @@ class UserServantEntity with DataEntityBase<int> {
   }
 
   List<int> get skillLvs => [skillLv1, skillLv2, skillLv3];
+
+  String? get icon {
+    final svt = dbSvt;
+    if (transformVal == 1) {
+      final transformSvt = svt?.script?.transformInfo?.saveTransformSvt;
+      if (transformSvt != null) {
+        return transformSvt.ascendIcon(dispIconLimitCount2);
+      }
+    }
+    if (svt != null) return svt.ascendIcon(dispIconLimitCount);
+    return dbCE?.borderedIcon ?? dbEntity?.borderedIcon;
+  }
 }
 
 @JsonSerializable(createToJson: false)
@@ -716,9 +758,7 @@ class UserServantCollectionEntity with DataEntityBase<_IntStr> {
   Map<int, int> costumeIdsTo01() {
     Map<int, int> result = {};
     for (final costumeId in costumeIds) {
-      final costume = db.gameData.servantsById[svtId]?.profile.costume.values.firstWhereOrNull(
-        (e) => e.id == costumeId,
-      );
+      final costume = db.gameData.servantsById[svtId]?.costume.values.firstWhereOrNull((e) => e.id == costumeId);
       if (costume != null) {
         result[costume.battleCharaId] = 1;
       }
@@ -2359,6 +2399,8 @@ class ServantLeaderInfo {
   // int battleVoice;
   int grandSvt;
   int grandGraphId;
+  AfterTransformSvtInfo? afterTransformSvtInfo;
+  int transformVal;
 
   ServantLeaderInfo({
     required dynamic supportDeckId,
@@ -2399,6 +2441,8 @@ class ServantLeaderInfo {
     required dynamic eventSvtPoint,
     required dynamic grandSvt,
     required dynamic grandGraphId,
+    this.afterTransformSvtInfo,
+    required dynamic transformVal,
   }) : supportDeckId = _toInt(supportDeckId),
        userId = _toInt(userId),
        classId = _toInt(classId),
@@ -2433,9 +2477,60 @@ class ServantLeaderInfo {
        appendPassiveSkill = appendPassiveSkill ?? [],
        eventSvtPoint = _toInt(eventSvtPoint),
        grandSvt = _toInt(grandSvt),
-       grandGraphId = _toInt(grandGraphId);
+       grandGraphId = _toInt(grandGraphId),
+       transformVal = _toInt(transformVal);
 
   factory ServantLeaderInfo.fromJson(Map<String, dynamic> data) => _$ServantLeaderInfoFromJson(data);
+}
+
+@JsonSerializable(createToJson: false)
+class AfterTransformSvtInfo {
+  int imageLimitCount;
+  int dispLimitCount;
+  int commandCardLimitCount;
+  int iconLimitCount;
+  int portraitLimitCount;
+  List<int> randomLimitCountTargets;
+  int transformVal;
+  int skillId1;
+  int skillId2;
+  int skillId3;
+  int hp;
+  int atk;
+  int treasureDeviceId;
+  List<int> classPassive;
+
+  AfterTransformSvtInfo({
+    dynamic imageLimitCount,
+    dynamic dispLimitCount,
+    dynamic commandCardLimitCount,
+    dynamic iconLimitCount,
+    dynamic portraitLimitCount,
+    dynamic randomLimitCountTargets,
+    dynamic transformVal,
+    dynamic skillId1,
+    dynamic skillId2,
+    dynamic skillId3,
+    dynamic hp,
+    dynamic atk,
+    dynamic treasureDeviceId,
+    dynamic classPassive,
+  }) : imageLimitCount = _toInt(imageLimitCount),
+       dispLimitCount = _toInt(dispLimitCount),
+       commandCardLimitCount = _toInt(commandCardLimitCount),
+       iconLimitCount = _toInt(iconLimitCount),
+       portraitLimitCount = _toInt(portraitLimitCount),
+       randomLimitCountTargets = _toIntList(randomLimitCountTargets),
+       transformVal = _toInt(transformVal),
+       skillId1 = _toInt(skillId1),
+       skillId2 = _toInt(skillId2),
+       skillId3 = _toInt(skillId3),
+       hp = _toInt(hp),
+       atk = _toInt(atk),
+       treasureDeviceId = _toInt(treasureDeviceId),
+       classPassive = _toIntList(classPassive);
+
+  factory AfterTransformSvtInfo.fromJson(Map<String, dynamic> data) => _$AfterTransformSvtInfoFromJson(data);
 }
 
 @JsonSerializable(createToJson: false)
@@ -2652,6 +2747,7 @@ class UserEventDeckEntity extends UserDeckEntityBase with DataEntityBase<String>
   factory UserEventDeckEntity.fromJson(Map<String, dynamic> data) => _$UserEventDeckEntityFromJson(data);
 }
 
+// class DeckServant
 @JsonSerializable(createToJson: true)
 class DeckServantEntity {
   List<DeckServantData> svts;

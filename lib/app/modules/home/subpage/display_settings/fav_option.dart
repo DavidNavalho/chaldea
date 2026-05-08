@@ -24,7 +24,7 @@ class _FavOptionSettingState extends State<FavOptionSetting> {
             groupValue: db.settings.preferredFavorite,
             onChanged: (v) {
               setState(() {
-                db.settings.preferredFavorite = null;
+                db.settings.preferredFavorite = v;
                 db.saveSettings();
               });
             },

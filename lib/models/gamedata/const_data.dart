@@ -1475,9 +1475,9 @@ enum BuffAction {
   functionOtherTreasureDevicePreBefore(166),
   functionAttackPhaseStart(167),
   functionTreasureDevicePostAfter(167),
-  action169(169),
-  action170(170),
-  action171(171),
+  functionMultiDead(169),
+  functionMultiGuts(170),
+  functionMultiGutsBefore(171),
   limitMaxNp(172),
   limitMinNp(173),
   // custom

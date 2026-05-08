@@ -4,11 +4,15 @@ import 'package:flutter/foundation.dart';
 
 import 'package:chaldea/app/api/atlas.dart';
 import 'package:chaldea/models/models.dart';
+import 'package:chaldea/packages/logger.dart' show SilentException;
 import 'package:chaldea/utils/extension.dart';
 import '../utils/battle_utils.dart';
 
 class PlayerSvtData {
   Servant? svt;
+  Servant? transformSvt;
+  bool transformVal = false;
+  Servant? get dispSvt => transformVal ? (transformSvt ?? svt) : svt;
   int limitCount = 4;
   List<int> skillLvs = List.filled(kActiveSkillNums.length, 10);
   List<NiceSkill?> skills = List.filled(kActiveSkillNums.length, null);
@@ -62,6 +66,30 @@ class PlayerSvtData {
     SvtEquipTarget.reward => equip3,
   };
 
+  void resetAfterSvtChanged() {
+    transformVal = false;
+    transformSvt = null;
+    grandSvt = false;
+  }
+
+  Future<void> loadTransformSvt({required bool raiseIfNotFound}) async {
+    transformSvt = null;
+    int transformId = svt?.script?.transformInfo?.saveTransform ?? 0;
+    if (transformVal) {
+      if (transformId == 0) {
+        transformVal = false;
+      } else {
+        transformSvt = db.gameData.servantsById[transformId] ?? await AtlasApi.svt(transformId);
+        if (transformSvt == null) {
+          transformVal = false;
+          if (raiseIfNotFound) {
+            throw SilentException('svt ${svt?.id}\'s transform $transformId not found');
+          }
+        }
+      }
+    }
+  }
+
   PreferPlayerSvtDataSource onSelectServant(
     Servant selectedSvt, {
     PreferPlayerSvtDataSource? source,
@@ -73,12 +101,14 @@ class PlayerSvtData {
       classBoardData = ClassBoardStatisticsData();
     }
     svt = selectedSvt;
+    transformSvt = null;
+    transformVal = false;
     if (supportType == SupportSvtType.npc) {
       supportType = SupportSvtType.none;
     }
     fixedAtk = fixedHp = null;
     grandSvt = false;
-    final status = db.curUser.svtStatusOf(selectedSvt.collectionNo);
+    final status = selectedSvt.status;
     final plan = source == PreferPlayerSvtDataSource.target
         ? db.curUser.svtPlanOf(selectedSvt.collectionNo)
         : status.cur;
@@ -128,6 +158,8 @@ class PlayerSvtData {
 
   void fromUserSvt({required Servant svt, required SvtStatus status, required SvtPlan plan, int? limitCount}) {
     this
+      ..transformSvt = null
+      ..transformVal = false
       ..grandSvt = status.grandSvt
       ..limitCount = limitCount ?? plan.ascension
       ..lv = svt.grailedLv(plan.grail)
@@ -147,7 +179,7 @@ class PlayerSvtData {
   }
 
   void updateRankUps({Region? region, int? jpTime}) {
-    final svt = this.svt;
+    final svt = transformVal ? (transformSvt ?? this.svt) : this.svt;
     if (svt == null) return;
     // td
     final tds = BattleUtils.getShownTds(svt, limitCount);
@@ -267,6 +299,8 @@ class PlayerSvtData {
   PlayerSvtData copy() {
     return PlayerSvtData.base()
       ..svt = svt
+      ..transformSvt = transformSvt
+      ..transformVal = transformVal
       ..limitCount = limitCount
       ..skillLvs = skillLvs.toList()
       ..skills = skills.toList()
@@ -303,6 +337,7 @@ class PlayerSvtData {
     final PlayerSvtData playerSvtData = PlayerSvtData.base()
       ..svt = svt
       ..limitCount = storedData.limitCount
+      ..transformVal = storedData.transformVal > 0
       ..skillLvs = storedData.skillLvs.toList()
       ..appendLvs = storedData.appendLvs.toList()
       ..disabledExtraSkills = storedData.disabledExtraSkills.toSet()
@@ -323,19 +358,22 @@ class PlayerSvtData {
       ..grandSvt = storedData.grandSvt
       ..classBoardData = storedData.classBoardData?.copy() ?? ClassBoardStatisticsData();
 
-    if (svt != null) {
+    await playerSvtData.loadTransformSvt(raiseIfNotFound: false);
+    final dispSvt = playerSvtData.dispSvt;
+
+    if (dispSvt != null) {
       playerSvtData.skills = List.generate(kActiveSkillNums.length, (index) => null);
       for (int index = 0; index < kActiveSkillNums.length; index++) {
         NiceSkill? targetSkill;
         final skillId = storedData.skillIds.getOrNull(index);
         if (skillId != null && skillId != 0) {
-          targetSkill = svt.skills.lastWhereOrNull((skill) => skill.id == skillId);
+          targetSkill = dispSvt.skills.lastWhereOrNull((skill) => skill.id == skillId);
           targetSkill ??= await showEasyLoading(() => AtlasApi.skill(skillId), mask: true);
         }
         playerSvtData.skills[index] = targetSkill;
       }
 
-      playerSvtData.extraPassives = svt.extraPassive.toList();
+      playerSvtData.extraPassives = dispSvt.extraPassive.toList();
 
       playerSvtData.customPassives.clear();
       playerSvtData.customPassiveLvs.clear();
@@ -353,7 +391,7 @@ class PlayerSvtData {
       }
 
       if (storedData.tdId != null && storedData.tdId != 0) {
-        playerSvtData.td = playerSvtData.svt!.noblePhantasms.lastWhereOrNull((td) => td.id == storedData.tdId);
+        playerSvtData.td = dispSvt.noblePhantasms.lastWhereOrNull((td) => td.id == storedData.tdId);
         playerSvtData.td ??= await showEasyLoading(() => AtlasApi.td(storedData.tdId!), mask: true);
       }
 
@@ -372,6 +410,7 @@ class PlayerSvtData {
     return SvtSaveData(
       svtId: svt?.id,
       limitCount: limitCount,
+      transformVal: transformVal ? 1 : 0,
       skillLvs: skillLvs.toList(),
       skillIds: skills.map((skill) => skill?.id).toList(),
       appendLvs: appendLvs.toList(),

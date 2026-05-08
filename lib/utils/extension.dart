@@ -75,9 +75,9 @@ extension NumX on num {
     return s;
   }
 
-  String formatSep({String? groupSeparator, num? minVal = 10000}) {
+  String formatSep({String? groupSeparator = ',', num? minVal = 10000}) {
     if (isInfinite || isNaN) return toString();
-    return format(compact: false, groupSeparator: ',');
+    return format(compact: false, groupSeparator: groupSeparator);
   }
 }
 
@@ -682,5 +682,25 @@ Iterable<int> range(int a, [int? b, int? c]) sync* {
   }
   for (int i = start; (step > 0 ? i < end : i > end); i += step) {
     yield i;
+  }
+}
+
+extension TextSpanX on TextSpan {
+  String getDebugFullText({String Function(InlineSpan span)? nonTextSpanDescriptor}) {
+    if (children == null) return text ?? "";
+    final buffer = StringBuffer();
+    if (text != null) buffer.write(text);
+    for (final child in children!) {
+      if (child is TextSpan) {
+        buffer.write(child.getDebugFullText(nonTextSpanDescriptor: nonTextSpanDescriptor));
+      } else {
+        if (nonTextSpanDescriptor != null) {
+          buffer.write(nonTextSpanDescriptor(child));
+        } else {
+          buffer.write(child.toString());
+        }
+      }
+    }
+    return buffer.toString();
   }
 }

@@ -42,7 +42,7 @@ class NiceAi {
   String infoText;
   // timing is only for field ai
   int? timing;
-  AiTiming? timingDescription;
+  AiTiming? get timingDescription => AiTiming.fromValue(timing);
 
   NiceAi({
     required this.id,
@@ -59,7 +59,6 @@ class NiceAi {
     this.parentAis = const {},
     this.infoText = '',
     this.timing,
-    this.timingDescription,
   });
   factory NiceAi.fromJson(Map<String, dynamic> json) => _$NiceAiFromJson(json);
 
@@ -343,6 +342,8 @@ enum AiTiming {
 
   const AiTiming(this.value);
   final int value;
+
+  static AiTiming? fromValue(int? value) => values.firstWhereOrNull((e) => e.value == value);
 }
 
 enum NiceAiActType {

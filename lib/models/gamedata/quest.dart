@@ -1172,6 +1172,8 @@ class SupportServant {
   EnemySkill skills;
   List<SupportServantPassiveSkill> passiveSkills; // Only CN has it
   SupportServantTd noblePhantasm;
+  @JsonKey(unknownEnumValue: NpcServantFollowerFlag.unknown)
+  List<NpcServantFollowerFlag> flags;
   @JsonKey(unknownEnumValue: NpcFollowerEntityFlag.none)
   List<NpcFollowerEntityFlag> followerFlags;
   List<SupportServantEquip> equips;
@@ -1194,6 +1196,7 @@ class SupportServant {
     required this.skills,
     this.passiveSkills = const [],
     required this.noblePhantasm,
+    this.flags = const [],
     this.followerFlags = const [],
     this.equips = const [],
     this.script,
@@ -2480,6 +2483,9 @@ enum QuestAfterActionCommand {
   roadHideQuick(203),
   roadGrayQuick(204),
   roadDispQuick(205),
+  roadHideFade(206),
+  roadGrayFade(207),
+  roadDispFade(208),
   camMvSpot(300),
   camMvRoad(301),
   camMvGimmick(302),
