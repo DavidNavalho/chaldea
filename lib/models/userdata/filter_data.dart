@@ -44,10 +44,8 @@ class FilterGroupData<T> {
 
   VoidCallback? onChanged;
 
-  FilterGroupData({bool matchAll = false, bool invert = false, Set<T>? options, this.onChanged})
-    : _matchAll = matchAll,
-      _invert = invert,
-      _options = options ?? {};
+  FilterGroupData({this._matchAll = false, this._invert = false, Set<T>? options, this.onChanged})
+    : _options = options ?? {};
 
   FilterGroupData<T> copy() {
     return FilterGroupData(matchAll: _matchAll, invert: _invert, options: options.toSet(), onChanged: onChanged);
@@ -226,6 +224,13 @@ class SvtFilterData with FilterDataMixin {
 
   final bondCompare = FilterGroupData<CompareOperator>(options: {CompareOperator.lessThan});
   final bondValue = FilterRadioData<int>();
+  int customBondValue = -1;
+  int? getBondValue() {
+    final v = bondValue.radioValue;
+    if (v != null && v < 0 && customBondValue >= 0) return customBondValue;
+    return v;
+  }
+
   final region = FilterRadioData<Region>();
   final obtain = FilterGroupData<SvtObtain>();
   final tdCardType = FilterGroupData<int>();
@@ -294,6 +299,7 @@ class SvtFilterData with FilterDataMixin {
     super.reset();
     effectScope.options = {SvtEffectScope.active, SvtEffectScope.td};
     isEventSvt = false;
+    customBondValue = -1;
     if (db.settings.hideUnreleasedCard) {
       if (db.curUser.region != Region.jp) {
         region.set(db.curUser.region);

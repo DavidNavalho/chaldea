@@ -317,7 +317,7 @@ class _FakeGrandOrderState extends State<FakeGrandOrder> with FakerRuntimeStateM
     );
 
     return Container(
-      color: Theme.of(context).secondaryHeaderColor,
+      color: Theme.of(context).colorScheme.tertiaryContainer,
       padding: const EdgeInsets.only(bottom: 4),
       child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
@@ -820,7 +820,7 @@ class _FakeGrandOrderState extends State<FakeGrandOrder> with FakerRuntimeStateM
         CheckboxListTile.adaptive(
           dense: true,
           value: battleOption.waitApRecoverGold,
-          title: const Text("Recover Golden Fruit right after AP changed"),
+          title: const Text("Wait AP changed before eating Golden Fruit"),
           onChanged: (v) {
             runtime.lockTask(() {
               setState(() {
@@ -2319,7 +2319,7 @@ class _FakeGrandOrderState extends State<FakeGrandOrder> with FakerRuntimeStateM
     );
     final eventDeckKey = '$eventId-$eventDeckNo';
     final showNormalDeck = _hideEventDeck == eventDeckKey;
-    final highlightStyle = TextStyle(color: AppTheme(context).tertiary);
+    final highlightStyle = TextStyle(color: Theme.of(context).colorScheme.primary);
     return [
       DividerWithTitle(
         titleWidget: InkWell(
@@ -2367,6 +2367,7 @@ class _FakeGrandOrderState extends State<FakeGrandOrder> with FakerRuntimeStateM
               questPhase: questPhase,
             ),
             userSvtCollections: mstData.userSvtCollection.lookup,
+            questPhase: questPhase,
           ),
         ),
       );

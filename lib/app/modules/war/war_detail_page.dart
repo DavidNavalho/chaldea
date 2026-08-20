@@ -10,6 +10,7 @@ import 'package:chaldea/app/modules/common/builders.dart';
 import 'package:chaldea/app/modules/war/war/script_list.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/models.dart';
+import 'package:chaldea/packages/language.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/carousel_util.dart';
 import 'package:chaldea/widgets/region_based.dart';
@@ -118,8 +119,16 @@ class _WarDetailPageState extends State<WarDetailPage> with RegionBasedState<Nic
                 ),
               ],
             ),
-          if (lShortName != lLongName) CustomTableRow.fromTexts(texts: [lShortName]),
-          if (shortNameJp != longNameJp && !Transl.isJP) CustomTableRow.fromTexts(texts: [shortNameJp]),
+          if (lShortName != lLongName)
+            CustomTableRow.fromTexts(
+              texts: [lShortName],
+              defaults: TableCellData(textAlign: TextAlign.center),
+            ),
+          if (shortNameJp != longNameJp && !Transl.isJP)
+            CustomTableRow.fromTexts(
+              texts: [shortNameJp],
+              defaults: TableCellData(textAlign: TextAlign.center),
+            ),
           CustomTableRow(
             children: [
               TableCellData(text: S.current.war_age, isHeader: true),
@@ -232,6 +241,7 @@ class _WarDetailPageState extends State<WarDetailPage> with RegionBasedState<Nic
       extraTiles.add(
         ListTile(
           title: Text(S.current.media_assets),
+          subtitle: kIsWeb ? Text(Language.isZH ? '请使用客户端查看' : 'Use mobile or desktop app instead') : null,
           enabled: !kIsWeb,
           onTap: () {
             router.pushPage(WarAssetListPage(war: war));

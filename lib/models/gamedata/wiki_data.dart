@@ -373,6 +373,8 @@ class FixedDrop {
 
 @JsonSerializable()
 class LimitedSummon with RouteInfo {
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  final bool isFromWiki;
   String id;
   String name;
   String? mcLink;
@@ -390,6 +392,7 @@ class LimitedSummon with RouteInfo {
   List<String> relatedEvents;
 
   LimitedSummon({
+    this.isFromWiki = true,
     required this.id,
     String? name,
     this.mcLink,
@@ -417,9 +420,24 @@ class LimitedSummon with RouteInfo {
 
   bool get isLuckyBag => type.isLuckyBag;
 
-  bool get isDestiny => ConstData.destinyOrderClasses.containsKey(id);
+  bool get isDestiny {
+    if (ConstData.destinyOrderClasses.containsKey(id)) return true;
+    if (isLuckyBag && name.contains('デスティニーオーダー')) return true;
+    return false;
+  }
 
-  List<int> get destinyClasses => ConstData.destinyOrderClasses[id]?.toList() ?? [];
+  List<int> get destinyClasses {
+    List<int> clsIds = ConstData.destinyOrderClasses[id]?.toList() ?? [];
+    if (clsIds.isNotEmpty) return clsIds;
+    if (isDestiny) {
+      if (name.contains('(七騎士)')) {
+        return [1, 2, 3, 4, 5, 6, 7];
+      } else if (name.contains('(エクストラ)')) {
+        return [9, 11, 10, 23, 25, 28, 33];
+      }
+    }
+    return [];
+  }
 
   Transl<String, String> get lName => Transl.summonNames(name);
 
@@ -497,9 +515,11 @@ class LimitedSummon with RouteInfo {
 @JsonSerializable()
 class SubSummon {
   String title;
+  @JsonKey(includeFromJson: false, includeToJson: false)
+  String? banner; // from raw gacha
   List<ProbGroup> probs;
 
-  SubSummon({required this.title, this.probs = const []});
+  SubSummon({required this.title, this.banner, this.probs = const []});
 
   factory SubSummon.fromJson(Map<String, dynamic> json) => _$SubSummonFromJson(json);
 

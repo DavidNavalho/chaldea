@@ -260,8 +260,10 @@ class WaveInfoPage extends StatelessWidget {
             ...?stage.enemyMasterBattleIdByPlayerGender,
           ])
             buildEnemyMaster(masterId),
-          if (stage.waveStartMovies.isNotEmpty) ListTile(title: Text(S.current.stage_opening_movie)),
-          for (final movie in stage.waveStartMovies) MyVideoPlayer.url(url: movie.waveStartMovie, autoPlay: false),
+          for (final movie in stage.waveStartMovies)
+            ..._buildMovie(S.current.stage_opening_movie, movie.waveStartMovie),
+          if (questPhase.extraDetail?.battleFinishMovie != null)
+            ..._buildMovie('Battle End Movie', questPhase.extraDetail!.battleFinishMovie!),
           if (originalScript.isNotEmpty) ...[
             kDefaultDivider,
             Card(
@@ -275,6 +277,22 @@ class WaveInfoPage extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  List<Widget> _buildMovie(String title, String? url) {
+    if (url == null) return [];
+    return [
+      ListTile(
+        title: Text(title),
+        trailing: TextButton(
+          onPressed: () {
+            launch(url, external: true);
+          },
+          child: Text(RegExp(r'/([^\/]+)\.[^\.]+$').firstMatch(url)?.group(1) ?? S.current.open),
+        ),
+      ),
+      MyVideoPlayer.url(url: url, autoPlay: false),
+    ];
   }
 
   Widget buildMasterImage({int? battleMasterImageId, int? masterImageId}) {
@@ -293,12 +311,15 @@ class WaveInfoPage extends StatelessWidget {
         onLoading: (context) => Text(battleMasterImageId.toString()),
         builder: (context, images) {
           List<Widget> trailings = [];
-          final faceIcons = images?.map((e) => e.faceIcon).whereType<String>().toList() ?? [];
-          if (faceIcons.isEmpty) {
+          final figures = {
+            if (images != null)
+              for (final image in images) ...[?image.faceIcon, ?image.skillCutin, ?image.commandSpellCutin],
+          };
+          if (figures.isEmpty) {
             trailings.add(Text(battleMasterImageId.toString()));
           } else {
-            for (final image in faceIcons) {
-              trailings.add(CachedImage(imageUrl: image, width: 36, height: 36, viewFullOnTap: true));
+            for (final image in figures) {
+              trailings.add(CachedImage(imageUrl: image, width: 36, viewFullOnTap: true));
             }
           }
           return Wrap(spacing: 2, children: trailings);

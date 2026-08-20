@@ -8,13 +8,21 @@ import 'package:chaldea/utils/utils.dart';
 
 typedef UserQuestStat = ({UserQuestEntity userQuest, Quest quest, int count});
 
+enum ErrorType { appVer, gameData, gacha, shop }
+
+class ErrorDetail {
+  final ErrorType type;
+  final String message;
+  ErrorDetail(this.type, this.message);
+}
+
 class FgoAnnualReportData {
   final MasterDataManager mstData;
   final Region region;
   DateTime? serverTime;
   final UserGameEntity userGame;
 
-  List<Object> errors = [];
+  List<ErrorDetail> errors = [];
 
   DateTime createdAt = DateTime.now();
   int curYear = DateTime.now().year;
@@ -67,6 +75,7 @@ class FgoAnnualReportData {
   // misc
   List<UserServantCollectionEntity> usedLanternSvt = [];
   int get usedLanternCount => Maths.sum(usedLanternSvt.map((e) => e.usedLanternCount));
+  int get usedGreatLanternCount => Maths.sum(usedLanternSvt.map((e) => e.usedGreatLanternCount));
 
   List<UserShopEntity> svtAnonymousShops = [];
   int get usedSvtAnonymousCount => Maths.sum(svtAnonymousShops.map((e) => e.num));
@@ -102,14 +111,19 @@ class FgoAnnualReportData {
     );
     final dataRequiredAppVer = db.runtimeData.dataRequiredAppVer;
     if (dataRequiredAppVer != null) {
-      report.errors.add(S.current.error_required_app_version(dataRequiredAppVer.versionString, ''));
+      report.errors.add(
+        ErrorDetail(.appVer, S.current.error_required_app_version(dataRequiredAppVer.versionString, '')),
+      );
     }
     final upgradableDataVersion = db.runtimeData.upgradableDataVersion;
     if (upgradableDataVersion != null &&
         upgradableDataVersion.timestamp > db.gameData.version.timestamp &&
         upgradableDataVersion.timestamp > DateTime.now().timestamp - 7 * kSecsPerDay) {
       report.errors.add(
-        '${S.current.gamedata} ${S.current.outdated}: ${S.current.settings_general}->${S.current.gamedata}->${S.current.update}',
+        ErrorDetail(
+          .gameData,
+          '${S.current.gamedata}(${db.gameData.version.dateTime.toDateString()}) ${S.current.outdated}: ${S.current.settings_general}->${S.current.gamedata}->${S.current.update}',
+        ),
       );
     }
 
@@ -134,7 +148,7 @@ class FgoAnnualReportData {
     }
     report.ownedSvtCollections = {
       for (final collection in mstData.userSvtCollection)
-        if (collection.isOwned && report.regionReleasedPlayableSvtIds.contains(collection.svtId))
+        if (collection.isGet && report.regionReleasedPlayableSvtIds.contains(collection.svtId))
           collection.svtId: collection,
     };
     for (final collection in report.ownedSvtCollections.values) {
@@ -170,11 +184,13 @@ class FgoAnnualReportData {
     // bond
     for (final collection in report.ownedSvtCollections.values) {
       final svt = db.gameData.servantsById[collection.svtId];
-      if (!collection.isOwned) continue;
+      if (!collection.isGet) continue;
       if (svt == null || svt.collectionNo == 0 || !svt.isUserSvt) continue;
-      if (collection.usedLanternCount > 0) report.usedLanternSvt.add(collection);
-      if (collection.friendshipRank >= 10) report.bond10SvtCollections[collection.svtId] = collection;
-      if (collection.friendshipRank >= 15) report.bond15SvtCollections[collection.svtId] = collection;
+      if (collection.usedAllLanternCount > 0) report.usedLanternSvt.add(collection);
+      if (collection.friendshipRank >= kBondLvDefaultMax) report.bond10SvtCollections[collection.svtId] = collection;
+      if (collection.friendshipRank >= kNormalLanternBondLvMax) {
+        report.bond15SvtCollections[collection.svtId] = collection;
+      }
     }
     final releasedSvtEquipIds = db.gameData.mappingData.entityRelease.ofRegion(region);
     final regionBondEquips = {
@@ -195,9 +211,13 @@ class FgoAnnualReportData {
     // summon
     final _rawGachas = await AtlasApi.rawGachas(region: region, expireAfter: expireAfter);
     final _extraGachas = await AtlasApi.rawGachasExtra(region: region, expireAfter: expireAfter);
+    print('_rawGachas=${_rawGachas?.length}, _extraGachas=${_extraGachas?.length}');
     if (_rawGachas == null || _extraGachas == null) {
       report.errors.add(
-        Language.isZH ? '卡池数据下载失败，卡池统计结果不准确' : 'Gacha data download failed, gacha statistics may be incorrect',
+        ErrorDetail(
+          .gacha,
+          Language.isZH ? '卡池数据下载失败，卡池统计结果不准确' : 'Gacha data download failed, gacha statistics may be incorrect',
+        ),
       );
     }
 
@@ -208,9 +228,12 @@ class FgoAnnualReportData {
     final _shops = await AtlasApi.rawShops(region: region, expireAfter: expireAfter);
     if (_shops == null) {
       report.errors.add(
-        Language.isZH
-            ? '商店数据下载失败，无记名灵基统计可能不准确'
-            : 'Shop data download failed, Unregistered Spirit Origin data may be incorrect',
+        ErrorDetail(
+          .shop,
+          Language.isZH
+              ? '商店数据下载失败，无记名灵基统计可能不准确'
+              : 'Shop data download failed, Unregistered Spirit Origin data may be incorrect',
+        ),
       );
     } else {
       report.mstShops = {for (final shop in _shops) shop.id: shop};
@@ -243,7 +266,7 @@ class FgoAnnualReportData {
     for (final collection in report.ownedSvtCollections.values) {
       final svt = db.gameData.servantsById[collection.svtId];
       if (svt == null || svt.rarity != 5) continue;
-      if (!collection.isOwned) continue;
+      if (!collection.isGet) continue;
       if (const [800100, 2801200].contains(collection.svtId)) continue; // Mash, Solomon
       if (const [
         SvtObtain.eventReward,

@@ -3,6 +3,7 @@ import 'package:chaldea/packages/json_viewer/json_viewer.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
 
+@Deprecated('Not used emm...')
 class ValListDsc extends StatelessWidget {
   final BaseFunction func;
   final List<DataVals> mutaingVals;
@@ -30,7 +31,7 @@ class ValListDsc extends StatelessWidget {
                 vals: vals,
                 originVals: originVals.getOrNull(j),
                 ignoreRate: false,
-                color: j == 5 || j == 9 ? AppTheme(context).tertiary : null,
+                color: j == 5 || j == 9 ? Theme.of(context).colorScheme.primary : null,
                 inList: true,
               );
             }
@@ -38,7 +39,7 @@ class ValListDsc extends StatelessWidget {
             if (selected != null && selected! - 1 == j) {
               child = DecoratedBox(
                 decoration: BoxDecoration(
-                  border: Border.all(color: AppTheme(context).tertiaryContainer.withAlpha(180)),
+                  border: Border.all(color: Theme.of(context).colorScheme.secondary.withAlpha(180)),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: child,
@@ -240,13 +241,15 @@ class ValDsc extends StatelessWidget {
             final base = kFuncValPercentType[func.funcType];
             if (base != null) {
               if (k != null) {
-                parts.add("${_toPercent(vals.Value, base)}%+${_toPercent(k, base)}%×${isPercentK ? 'p' : 'N'}");
+                parts.add(
+                  "${_toPercent(originVals?.Value ?? vals.Value, base)}%+${_toPercent(k, base)}%×${isPercentK ? 'p' : 'N'}",
+                );
               } else {
                 _addPercent(parts, vals.Value, base);
               }
             } else {
               if (k != null) {
-                parts.add("${vals.Value}+$k×${isPercentK ? 'p' : 'N'}");
+                parts.add("${originVals?.Value ?? vals.Value}+$k×${isPercentK ? 'p' : 'N'}");
               } else {
                 parts.add(vals.Value.toString());
               }
@@ -271,7 +274,9 @@ class ValDsc extends StatelessWidget {
           case FuncType.damageNpIndividualSum:
             if (vals.Value2 != null) {
               if (vals.Correction != null && vals.Correction != 0) {
-                parts.add('${_toPercent(vals.Value2, 10)}%+N×${_toPercent(vals.Correction, 10)}%');
+                parts.add(
+                  '${_toPercent(originVals?.Value2 ?? vals.Value2, 10)}%+N×${_toPercent(vals.Correction, 10)}%',
+                );
               } else {
                 parts.add('${_toPercent(vals.Value2, 10)}%');
               }
@@ -280,8 +285,10 @@ class ValDsc extends StatelessWidget {
             }
             break;
           case FuncType.damageNpBattlePointPhase:
-            int value2 = vals.Value2 ?? 0, correction = vals.Correction ?? 0;
-            parts.add('${_toPercent(value2, 10)}%+N×${_toPercent(correction, 10)}%');
+            if (vals.Value2 != null || vals.Correction != null) {
+              int value2 = originVals?.Value2 ?? vals.Value2 ?? 0, correction = vals.Correction ?? 0;
+              parts.add('${_toPercent(value2, 10)}%+N×${_toPercent(correction, 10)}%');
+            }
             break;
           default:
             parts.add(vals.Correction.toString());
@@ -306,7 +313,12 @@ class ValDsc extends StatelessWidget {
         }
       }
       if (vals.BattlePointValue != null) {
-        _addInt(parts, vals.BattlePointValue, post: (v) => '+$v');
+        String op = switch (func.funcType) {
+          .addBattlePoint => '+',
+          .subBattlePoint => '-',
+          _ => '',
+        };
+        _addInt(parts, vals.BattlePointValue, post: (v) => '$op$v');
       }
       if (!ignoreCount && vals.Count != null && vals.Count! > 0) {
         _addInt(parts, vals.Count, post: (v) => Transl.special.funcValCountTimes(vals.Count!));
@@ -371,15 +383,22 @@ class ValDsc extends StatelessWidget {
         vals.SnapShotParamAddValue ??
         vals.CondParamAddValue ??
         vals.CondParamRangeMaxValue;
+    int? b = k != null ? originalVals?.Value ?? vals.Value : vals.Value;
+
+    if (vals.TypeIndividualityEachFunc?.isNotEmpty == true) {
+      k ??= vals.Value;
+      b = null;
+    }
+
     bool isPercentK = (vals.CondParamRangeMaxValue ?? 0) != 0;
 
     if (base != null) {
       if (k != null) {
         parts.add(
-          "${_toPercent(originalVals?.Value ?? vals.Value, base)}%+${_toPercent(k, base)}%×${isPercentK ? 'p' : 'N'}",
+          [if (b != null) "${_toPercent(b, base)}%", "${_toPercent(k, base)}%×${isPercentK ? 'p' : 'N'}"].join('+'),
         );
       } else {
-        _addPercent(parts, originalVals?.Value ?? vals.Value, base);
+        _addPercent(parts, vals.Value, base);
       }
       // return;
     } else if (triggers != null) {
@@ -432,7 +451,7 @@ class ValDsc extends StatelessWidget {
       return;
     } else {
       if (k != null) {
-        parts.add("${vals.Value}+$k×${isPercentK ? 'p' : 'N'}");
+        parts.add([if (b != null) "$b", "$k×${isPercentK ? 'p' : 'N'}"].join('+'));
       } else {
         _addInt(parts, vals.Value);
       }

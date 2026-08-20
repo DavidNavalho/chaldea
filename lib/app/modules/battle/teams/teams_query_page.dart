@@ -2,14 +2,14 @@ import 'dart:math';
 
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 
-import 'package:chaldea/app/api/chaldea.dart';
+import 'package:chaldea/app/api/chaldea_server.dart';
 import 'package:chaldea/app/app.dart';
+import 'package:chaldea/app/modules/auth/login_page.dart';
 import 'package:chaldea/app/modules/battle/formation/formation_card.dart';
 import 'package:chaldea/app/modules/battle/simulation_preview.dart';
 import 'package:chaldea/app/modules/common/builders.dart';
 import 'package:chaldea/custom/shared_teams/my_box_batch_controller.dart';
 import 'package:chaldea/custom/shared_teams/my_box_compatibility.dart';
-import 'package:chaldea/app/modules/home/subpage/login_page.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/api/api.dart';
 import 'package:chaldea/models/models.dart';
@@ -51,7 +51,7 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
   static const _defaultPageSize = 200;
   int pageSize = _defaultPageSize;
   final secrets = db.settings.secrets;
-  int? get curUserId => secrets.user?.id;
+  int? get curUserId => secrets.user.id;
 
   TeamQueryMode get mode => widget.mode;
 
@@ -80,7 +80,7 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
   }
 
   PreferredSizeWidget? get appBar {
-    final username = widget.username ?? widget.userId ?? secrets.user?.name ?? "Not Login";
+    final username = widget.username ?? widget.userId ?? (secrets.user.name.isEmpty ? null : secrets.user.name);
     return AppBar(
       title: Text(switch (mode) {
         TeamQueryMode.user => '${S.current.team} @$username',
@@ -242,7 +242,7 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
     final style = themeData.textTheme.bodySmall;
     Future<void> onVote(bool isUpVote) async {
       if (!secrets.isLoggedIn) return;
-      if (record.userId == secrets.user?.id) {
+      if (record.userId == secrets.user.id) {
         EasyLoading.showInfo("Do not vote your own team.");
         return;
       }
@@ -250,14 +250,14 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
       record.tempVotes!.updateMyVote(isUpVote);
       if (mounted) setState(() {});
       EasyDebounce.debounce('team_vote_${record.id}', const Duration(seconds: 1), () async {
-        final result = await ChaldeaWorkerApi.teamVote(
+        final result = await ChaldeaServerApi.teamVote(
           teamId: record.id,
           voteValue: (record.tempVotes ?? record.votes).mine,
         );
         record.tempVotes = null;
         if (result != null) {
           record.votes = result;
-          ChaldeaWorkerApi.clearTeamCache();
+          ChaldeaServerApi.clearTeamCache();
         }
         if (mounted) setState(() {});
       });
@@ -564,7 +564,7 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
       );
     }
 
-    if (mode == TeamQueryMode.user || record.userId == curUserId || secrets.user?.isTeamMod == true) {
+    if (mode == TeamQueryMode.user || record.userId == curUserId || secrets.user.isTeamMod == true) {
       actions.add(
         TextButton(
           onPressed: () {
@@ -746,7 +746,7 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
       case TeamQueryMode.user:
         final userId = widget.userId ?? (widget.username != null ? int.tryParse(widget.username!) : null);
         task = showEasyLoading(
-          () => ChaldeaWorkerApi.teamsByUser(
+          () => ChaldeaServerApi.teamsByUser(
             limit: pageSize,
             offset: offset,
             expireAfter: refresh ? Duration.zero : const Duration(days: 2),
@@ -759,7 +759,7 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
         final phase = widget.phaseInfo?.phase ?? quest?.phases.lastOrNull;
         if (quest == null || !quest.isLaplaceSharable || phase == null) return;
         task = showEasyLoading(
-          () => ChaldeaWorkerApi.teamsByQuest(
+          () => ChaldeaServerApi.teamsByQuest(
             questId: quest.id,
             phase: phase,
             enemyHash: widget.phaseInfo?.enemyHash,
@@ -774,16 +774,16 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
           if (teamIds.isEmpty) {
             return null;
           } else if (teamIds.length == 1) {
-            final team = await ChaldeaWorkerApi.team(teamIds.single, expireAfter: refresh ? Duration.zero : null);
+            final team = await ChaldeaServerApi.team(teamIds.single, expireAfter: refresh ? Duration.zero : null);
             if (team == null) return null;
             return TeamQueryResult(offset: 0, limit: 1, total: 1, data: [team]);
           } else {
-            return ChaldeaWorkerApi.teams(teamIds: teamIds);
+            return ChaldeaServerApi.teams(teamIds: teamIds);
           }
         });
       case TeamQueryMode.ranking:
         task = showEasyLoading(
-          () => ChaldeaWorkerApi.teamsRanking(
+          () => ChaldeaServerApi.teamsRanking(
             limit: pageSize,
             offset: offset,
             expireAfter: refresh ? Duration.zero : null,
@@ -817,11 +817,11 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
 
   Future<void> _deleteUserTeam(UserBattleData battleRecord) async {
     if (!secrets.isLoggedIn) return;
-    final resp = await showEasyLoading(() => ChaldeaWorkerApi.teamDelete(id: battleRecord.id));
-    if (resp == null) return;
+    final resp = await showEasyLoading(() => ChaldeaServerApi.teamDelete(id: battleRecord.id));
+    if (resp != true) return;
     queryResult.data.remove(battleRecord);
-    ChaldeaWorkerApi.clearTeamCache();
-    resp.showToast();
+    ChaldeaServerApi.clearTeamCache();
+    EasyLoading.showSuccess(S.current.success);
     if (mounted) setState(() {});
   }
 
@@ -942,7 +942,7 @@ class _ReportTeamDialogState extends State<ReportTeamDialog> {
         "War: ${quest?.war?.longName.setMaxLines(1)}",
         "ID: ${record.id}",
         "Uploader: ${record.username}",
-        "Reporter: ${db.settings.secrets.user?.name}",
+        "Reporter: ${db.settings.secrets.user.name}",
         "Reason:\n$reason",
       ], '\n');
 

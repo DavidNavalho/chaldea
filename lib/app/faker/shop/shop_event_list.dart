@@ -44,7 +44,7 @@ class ShopEventListPage extends StatelessWidget {
 
     final now = DateTime.now().timestamp;
 
-    final List<ShopType> _kShownShopTypes = [ShopType.mana, ShopType.rarePri, ShopType.revivalItem];
+    const _kShownShopTypes = <ShopType>[.mana, .rarePri, .revivalItem, .exRoomShop];
     children.addAll([for (final shopType in _kShownShopTypes) _buildShopType(context, shopType)]);
 
     final events = runtime.gameData.timerData.events.values
@@ -89,6 +89,7 @@ class ShopEventListPage extends StatelessWidget {
       ShopType.mana => Items.manaPrism?.icon,
       ShopType.rarePri => Items.rarePrism?.icon,
       ShopType.revivalItem => Items.revivalItem?.icon,
+      ShopType.exRoomShop => Items.exRoomItem?.icon,
       _ => null,
     };
 
@@ -143,15 +144,21 @@ class ShopEventListPage extends StatelessWidget {
           ListTile(
             dense: true,
             title: Text(event.lName.l),
-            subtitle: CountDown(endedAt: event.endedAt.sec2date()),
+            subtitle: Align(
+              alignment: .centerStart,
+              child: CountDown(endedAt: event.endedAt.sec2date()),
+            ),
             trailing: bannerWidget,
           ),
           for (final slot in groups.keys.toList()..sort())
             ListTile(
               dense: true,
               leading: const SizedBox.shrink(),
-              title: Text('Slot $slot'),
-              subtitle: CountDown(endedAt: _getShopClosedAt(groups[slot]!).sec2date()),
+              title: Text('Slot $slot - ${groups[slot]!.length} shops'),
+              subtitle: Align(
+                alignment: .centerStart,
+                child: CountDown(endedAt: _getShopClosedAt(groups[slot]!).sec2date()),
+              ),
               trailing: Icon(DirectionalIcons.keyboard_arrow_forward(context)),
               onTap: () {
                 router.pushPage(

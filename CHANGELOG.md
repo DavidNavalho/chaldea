@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.6.0
+
+BREAKING CHANGE!!!
+
+- Service Migration: The legacy app and services will be discontinued in September
+- Added email binding for password recovery
+- Adapted to the Material 3 theme
+- Bug fix
+
 ## 2.5.27
 
 - bug fix and improvements

@@ -9,7 +9,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 
 import 'package:chaldea/app/api/atlas.dart';
-import 'package:chaldea/app/api/chaldea.dart';
+import 'package:chaldea/app/api/chaldea_server.dart';
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/battle/models/battle.dart';
 import 'package:chaldea/app/modules/battle/battle_simulation.dart';
@@ -147,7 +147,7 @@ class _SimulationPreviewState extends State<SimulationPreview> {
           ),
           TextButton(
             onPressed: questPhase == null ? null : () => onTapSharedTeams(questPhase!),
-            style: TextButton.styleFrom(foregroundColor: AppTheme(context).tertiary),
+            style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.primary),
             child: Text(S.current.team_shared),
           ),
           TextButton(
@@ -422,12 +422,12 @@ class _SimulationPreviewState extends State<SimulationPreview> {
                 trailing: const Icon(Icons.file_open),
                 onTap: () async {
                   try {
-                    final result = await FilePickerU.pickFiles(
+                    final file = await FilePickerU.pickFile(
                       type: FileType.custom,
                       allowedExtensions: ['json'],
                       clearCache: true,
                     );
-                    final bytes = result?.files.firstOrNull?.bytes;
+                    final bytes = await file?.readAsBytes();
                     if (bytes == null) return;
                     final phaseData = QuestPhase.fromJson(Map.from(jsonDecode(utf8.decode(bytes))));
                     if (phaseData.id > 0) phaseData.id = -phaseData.id;
@@ -1079,7 +1079,7 @@ class _SimulationPreviewState extends State<SimulationPreview> {
       } else {
         final teamId = int.tryParse(uri.queryParameters['id'] ?? "");
         if (teamId != null && teamId > 0) {
-          final encoded = await showEasyLoading(() => ChaldeaWorkerApi.team(teamId));
+          final encoded = await showEasyLoading(() => ChaldeaServerApi.team(teamId));
           if (encoded != null) {
             data = encoded.parse();
             questInfo = encoded.questInfo;

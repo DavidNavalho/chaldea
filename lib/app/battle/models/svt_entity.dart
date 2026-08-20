@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:chaldea/app/api/atlas.dart';
+import 'package:chaldea/app/battle/functions/battle_point_calc.dart';
 import 'package:chaldea/app/battle/functions/function_executor.dart';
 import 'package:chaldea/app/battle/models/battle.dart';
 import 'package:chaldea/app/battle/utils/battle_exception.dart';
@@ -93,27 +94,16 @@ class BattleServantData {
 
   int bondLv = 5;
   int startingPosition = 0;
-  // initScript will set initial value
-  Map<int, int> curBattlePoints = {};
+  Map<int, BattlePointData> curBattlePoints = {};
 
-  int determineBattlePointPhase(final int battlePointId) {
-    final battlePoint = niceSvt?.battlePoints.firstWhereOrNull((battlePoint) => battlePoint.id == battlePointId);
-    final curBattlePoint = curBattlePoints[battlePointId];
-    if (battlePoint == null || curBattlePoint == null) {
-      return 0;
-    }
-
-    int phase = 0;
-    for (final battlePointPhase in battlePoint.phases) {
-      if (battlePointPhase.value <= curBattlePoint) {
-        phase = max(phase, battlePointPhase.phase);
+  void refreshBattlePointMax() {
+    for (final entry in curBattlePoints.entries) {
+      final maxValue = BattlePointCalc.getBattlePointMax(this, entry.key);
+      entry.value.maxValue = maxValue;
+      if (maxValue != null) {
+        entry.value.value = entry.value.value.clamp(0, maxValue);
       }
     }
-    return phase;
-  }
-
-  int getMaxBattlePointPhase(int battlePointId) {
-    return Maths.max(niceSvt?.battlePoints.expand((e) => e.phases).map((e) => e.phase) ?? <int>[], 0);
   }
 
   int np = 0; // player, np/100
@@ -420,29 +410,22 @@ class BattleServantData {
 
     if (niceEnemy != null) {
       int shiftLength = niceEnemy!.enemyScript.shift?.length ?? 0;
-      int shiftPosition = niceEnemy!.enemyScript.shiftPosition ?? -1;
-      if (shiftPosition >= 0) {
-        shiftDeckIndex = shiftPosition;
-        shiftLowLimit = (shiftPosition + 1).clamp(0, shiftLength - 1);
-      }
-      int dispBreakShift = niceEnemy!.enemyScript.dispBreakShift ?? 0;
-      if (dispBreakShift > 0) {
-        shiftDeckIndex += dispBreakShift;
-      }
+      if (shiftLength > 0) {
+        int shiftPosition = niceEnemy!.enemyScript.shiftPosition ?? -1;
+        if (shiftPosition >= 0) {
+          shiftDeckIndex = shiftPosition;
+          shiftLowLimit = (shiftPosition + 1).clamp(0, shiftLength - 1);
+        }
+        int dispBreakShift = niceEnemy!.enemyScript.dispBreakShift ?? 0;
+        if (dispBreakShift > 0) {
+          shiftDeckIndex += dispBreakShift;
+        }
 
-      shiftDeckIndex = shiftDeckIndex.clamp(-1, shiftLength - 1);
-      final shouldShift = dispBreakShift > 0 || shiftPosition >= 0;
-      if (shouldShift) {
-        shiftDeckIndex -= 1; // go to previous shift to shift to desired shift
-        await shift(battleData);
-      }
-    }
-
-    if (niceSvt != null && playerSvtData?.supportType != SupportSvtType.friend) {
-      final questBlockList = battleData.niceQuest?.extraDetail?.IgnoreBattlePointUp;
-      for (final battlePoint in niceSvt!.battlePoints) {
-        if (questBlockList == null || !questBlockList.contains(battlePoint.id)) {
-          curBattlePoints[battlePoint.id] = 0;
+        shiftDeckIndex = shiftDeckIndex.clamp(-1, shiftLength - 1);
+        final shouldShift = dispBreakShift > 0 || shiftPosition >= 0;
+        if (shouldShift) {
+          shiftDeckIndex -= 1; // go to previous shift to shift to desired shift
+          await shift(battleData);
         }
       }
     }
@@ -1180,7 +1163,7 @@ class BattleServantData {
     return results;
   }
 
-  List<int> getTraits({final List<int>? addTraits}) {
+  List<int> getTraits({final List<int>? addTraits, final bool isIncludeNpEffectIndiv = true}) {
     final List<int> allTraits = [];
     allTraits.addAll(getBasicSvtTraits());
 
@@ -1216,6 +1199,13 @@ class BattleServantData {
           if (isServant) ...logicalClassInfo.relationSvtIndividuality,
         ];
         allTraits.addAll(addClassTraitIds);
+      }
+    }
+
+    if (isIncludeNpEffectIndiv) {
+      final npDamageTrait = getCurrentNP()?.getNpEffectIndiv();
+      if (npDamageTrait != null) {
+        allTraits.addAll(npDamageTrait);
       }
     }
 
@@ -1312,7 +1302,9 @@ class BattleServantData {
       return;
     }
 
-    gainHp(heal);
+    if (heal >= 0) {
+      gainHp(heal);
+    }
   }
 
   void setHp(final int newHp) {
@@ -1486,10 +1478,12 @@ class BattleServantData {
       return;
     }
 
-    baseAtk = (targetSvt.atkGrowth.getOrNull(playerSvtData!.lv - 1) ?? 0) + playerSvtData!.atkFou;
+    baseAtk =
+        (targetSvt.atkGrowth.getOrNull(playerSvtData!.lv - 1) ?? 0) + playerSvtData!.atkFou + (isGrandSvt ? 1000 : 0);
     _maxHp =
         (targetSvt.hpGrowth.getOrNull(playerSvtData!.lv - 1) ?? 0) +
         playerSvtData!.hpFou +
+        (isGrandSvt ? 1000 : 0) +
         (equip1?.hp ?? 0) +
         (equip2?.hp ?? 0) +
         (equip3?.hp ?? 0);
@@ -1721,7 +1715,8 @@ class BattleServantData {
     NiceTd? td = getBaseTD();
     final tdChangeByBattlePoint = td?.script?.tdChangeByBattlePoint?.firstOrNull;
     if (tdChangeByBattlePoint != null &&
-        tdChangeByBattlePoint.phase <= determineBattlePointPhase(tdChangeByBattlePoint.battlePointId)) {
+        tdChangeByBattlePoint.phase <=
+            BattlePointCalc.determineBattlePointPhase(this, tdChangeByBattlePoint.battlePointId)) {
       return niceSvt?.noblePhantasms.firstWhereOrNull((niceTd) => niceTd.id == tdChangeByBattlePoint.noblePhantasmId) ??
           td;
     }
@@ -1789,8 +1784,13 @@ class BattleServantData {
     }
   }
 
-  List<BuffData> getAllBuffs(final BattleData battleData, {bool activeFirst = false}) {
-    final selfBuffs = activeFirst ? battleBuff.validBuffsActiveFirst : battleBuff.validBuffs;
+  List<BuffData> getAllBuffs(final BattleData battleData, {BuffsOrder? buffsOrder = BuffsOrder.activeFirst}) {
+    final selfBuffs = switch (buffsOrder) {
+      null => battleBuff.validBuffsActiveFirst,
+      BuffsOrder.activeFirst => battleBuff.validBuffsActiveFirst,
+      BuffsOrder.passiveFirst => battleBuff.validBuffs,
+      BuffsOrder.addOrder => battleBuff.validBuffsAddOrder,
+    };
     return [...selfBuffs, ...battleData.getFieldBuffs(isPlayer)];
   }
 
@@ -1884,7 +1884,7 @@ class BattleServantData {
       return null;
     }
 
-    final allBuffs = getAllBuffs(battleData, activeFirst: true);
+    final allBuffs = getAllBuffs(battleData, buffsOrder: BuffsOrder.activeFirst);
     for (final buff in collectBuffsPerAction(allBuffs, BuffAction.multiattack)) {
       if (await buff.shouldActivateBuff(
         battleData,
@@ -2257,6 +2257,7 @@ class BattleServantData {
     final BattleSkillInfoData? skillInfo,
     final List<NiceFunction>? receivedFunctionsList,
     final int? consumedNp,
+    final BuffsOrder? buffsOrder,
   }) async {
     return await activateBuffs(
       battleData,
@@ -2267,6 +2268,7 @@ class BattleServantData {
       skillInfo: skillInfo,
       receivedFunctionsList: receivedFunctionsList,
       consumedNp: consumedNp,
+      buffsOrder: buffsOrder,
     );
   }
 
@@ -2305,9 +2307,10 @@ class BattleServantData {
     final BattleSkillInfoData? skillInfo,
     final List<NiceFunction>? receivedFunctionsList,
     final int? consumedNp,
+    final BuffsOrder? buffsOrder,
   }) async {
     bool activated = false;
-    final allBuffs = getAllBuffs(battleData, activeFirst: true);
+    final allBuffs = getAllBuffs(battleData, buffsOrder: buffsOrder);
     for (final buffAction in buffActions) {
       for (final buff in collectBuffsPerAction(allBuffs, buffAction)) {
         final List<int> selfTraits = fetchSelfTraits(buffAction, buff, this, cardData: card);
@@ -2539,16 +2542,18 @@ class BattleServantData {
     for (final skill in skillInfoList) {
       skill.setRankUp(rankUps);
     }
+
+    refreshBattlePointMax();
   }
 
-  void useBuffOnce() {
+  void useBuffOnce(BattleData battleData) {
     battleBuff.getAllBuffs().forEach((buff) {
       if (buff.isUsed) {
         buff.useOnce();
       }
     });
-    battleBuff.checkUsedBuff();
-    battleBuff.commandCodeList.removeWhere((buff) => buff.checkBuffClear());
+    battleBuff.checkUsedBuff(battleData);
+    battleBuff.commandCodeList.removeWhere((buff) => buff.checkBuffClear(battleData));
   }
 
   Future<void> enterField(final BattleData battleData) async {
@@ -2800,7 +2805,7 @@ class BattleServantData {
       ..level = level
       ..bondLv = bondLv
       ..startingPosition = startingPosition
-      ..curBattlePoints = curBattlePoints.deepCopy()
+      ..curBattlePoints = {for (final entry in curBattlePoints.entries) entry.key: entry.value.copy()}
       ..baseAtk = baseAtk
       ..hp = hp
       .._maxHp = _maxHp
@@ -2824,6 +2829,15 @@ class BattleServantData {
       ..changeIndex = changeIndex
       ..actionHistory = actionHistory.toList(); //copy
   }
+}
+
+class BattlePointData {
+  int value;
+  int? maxValue;
+
+  BattlePointData({required this.value, required this.maxValue});
+
+  BattlePointData copy() => BattlePointData(value: value, maxValue: maxValue);
 }
 
 class BattleServantActionHistory {
@@ -2856,3 +2870,5 @@ enum BattleServantActionHistoryType {
 
   bool get isDamage => this != none;
 }
+
+enum BuffsOrder { activeFirst, passiveFirst, addOrder }

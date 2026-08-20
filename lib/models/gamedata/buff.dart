@@ -179,6 +179,7 @@ class BuffScript with DataScriptBase {
   List<int>? get ckOpCountIndividuality => toList('ckOpCountIndividuality');
   int? get ckIndvCountAbove => toInt('ckIndvCountAbove');
   int? get ckIndvCountBelow => toInt('ckIndvCountBelow');
+  int? get condGrantorRelativePosition => toInt('condGrantorRelativePosition');
 
   List<List<int>>? get NotPierceIndividuality =>
       const Trait2dListConverter().fromJsonNull(source["NotPierceIndividuality"]);
@@ -556,6 +557,10 @@ enum BuffType {
   multiGutsBeforeFunction(245),
   limitMaxNp(246),
   limitMinNp(247),
+  lastSelfturnprogressFunction(248),
+  addMaxBattlePoint(249),
+  subMaxBattlePoint(250),
+  selfturnprogressFunction(251),
 
   toFieldChangeField(10001),
   toFieldAvoidBuff(10002),
@@ -594,7 +599,7 @@ final Map<BuffType, List<BuffValueTriggerType Function(DataVals)>> kBuffValueTri
     ),
   };
 
-  for (final type in {
+  final normalTriggerBuffTypes = {
     BuffType.delayFunction,
     BuffType.deadFunction,
     BuffType.battlestartFunction,
@@ -640,7 +645,19 @@ final Map<BuffType, List<BuffValueTriggerType Function(DataVals)>> kBuffValueTri
     BuffType.multiDeadFunction,
     BuffType.multiGutsFunction,
     BuffType.multiGutsBeforeFunction,
-  }) {
+    BuffType.lastSelfturnprogressFunction,
+    BuffType.selfturnprogressFunction,
+    BuffType.classboardCommandSpellAfterFunction,
+  };
+
+  for (final type in BuffType.values.reversed.take(5)) {
+    if (type.name.endsWith('Function')) {
+      assert(normalTriggerBuffTypes.contains(type), '$type is trigger function? If yes, add it');
+      normalTriggerBuffTypes.add(type);
+    }
+  }
+
+  for (final type in normalTriggerBuffTypes) {
     types[type] = (v) => BuffValueTriggerType(buffType: type, skill: v.Value, level: v.Value2, rate: v.UseRate);
   }
 
@@ -701,7 +718,8 @@ enum BuffConditionTargetType {
   enemyFull(5),
   ptOtherAll(6),
   ptOtherFull(7),
-  fieldOtherAll(8);
+  fieldOtherAll(8),
+  relativePositionPt(9);
 
   const BuffConditionTargetType(this.value);
   final int value;
@@ -724,6 +742,7 @@ enum BuffConditionTargetType {
       ptOtherAll => null,
       ptOtherFull => FuncTargetType.ptOtherFull,
       fieldOtherAll => null,
+      relativePositionPt => null,
     };
   }
 

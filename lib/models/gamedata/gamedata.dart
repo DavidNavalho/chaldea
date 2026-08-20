@@ -34,6 +34,7 @@ export 'class_board.dart';
 export 'command_code.dart';
 export 'common.dart';
 export 'const_data.dart';
+export 'constants.dart';
 export 'daily_bonus.dart';
 export 'drop_rate.dart';
 export 'enemy_master.dart';
@@ -552,6 +553,7 @@ class GameTop extends GameAppVerCode {
   RegionAssetBundle? assetbundle;
   String get assetbundleFolder => assetbundle?.folderName ?? "";
   String? unityVer;
+  String? clientIdentityKey; // NA only
 
   GameTop({
     required this.region,
@@ -567,6 +569,7 @@ class GameTop extends GameAppVerCode {
     this.dateVer = 0, // CN has no dateVer
     this.assetbundle,
     this.unityVer,
+    this.clientIdentityKey,
   });
 
   String get host {
@@ -588,8 +591,10 @@ class GameTop extends GameAppVerCode {
 
   void updateFrom(GameTop other) {
     if (other.region != region) return;
-    appVer = other.appVer;
-    verCode = other.verCode;
+    if (AppVersion.compare(appVer, other.appVer) < 0) {
+      appVer = other.appVer;
+      verCode = other.verCode;
+    }
     if (other.dateVer > dateVer) dateVer = other.dateVer;
     if (other.dataVer > dataVer) {
       dataVer = other.dataVer;
@@ -839,6 +844,8 @@ class GameTimerData {
   late final Map<int, EventMission> eventMissions = {
     for (final mm in masterMissions.values)
       for (final m in mm.missions) m.id: m,
+    for (final event in events.values)
+      for (final m in event.missions) m.id: m,
   };
 
   GameTimerData({

@@ -141,6 +141,9 @@ class _UserShopsPageState extends State<UserShopsPage>
         ? TextStyle(color: Theme.of(context).hintColor)
         : TextStyle(color: Theme.of(context).disabledColor);
     Widget? leading = reward?.$1;
+    if (shop.image != null) {
+      leading = db.getIconImage(shop.image, width: 32);
+    }
     if (leading != null && !canBuy) {
       leading = Opacity(opacity: 0.5, child: leading);
     }
@@ -184,7 +187,12 @@ class _UserShopsPageState extends State<UserShopsPage>
             fit: BoxFit.scaleDown,
             child: Text.rich(
               TextSpan(
-                text: [userShop?.num ?? 0, shop.limitNum == 0 ? '∞' : shop.limitNum].join('/'),
+                text: [
+                  if (userShop != null && userShop.resetNum > 0) '[${userShop.resetNum}]',
+                  userShop?.num ?? 0,
+                  '/',
+                  shop.limitNum == 0 ? '∞' : shop.limitNum,
+                ].join(''),
                 children: [
                   if (shop.purchaseType == PurchaseType.item && shop.targetIds.length == 1)
                     TextSpan(
@@ -319,7 +327,7 @@ class _UserShopsPageState extends State<UserShopsPage>
     }
 
     if (!mounted) return;
-    final int? buyCount = await _BuyCountDialog(
+    final int? buyCount = await ShopBuyCountDialog(
       runtime: runtime,
       shop: shop,
       maxCount: maxBuyCount,
@@ -403,17 +411,17 @@ class _UserShopsPageState extends State<UserShopsPage>
   }
 }
 
-class _BuyCountDialog extends StatefulWidget {
+class ShopBuyCountDialog extends StatefulWidget {
   final FakerRuntime runtime;
   final NiceShop shop;
   final int maxCount;
-  const _BuyCountDialog({required this.runtime, required this.shop, required this.maxCount});
+  const ShopBuyCountDialog({super.key, required this.runtime, required this.shop, required this.maxCount});
 
   @override
-  State<_BuyCountDialog> createState() => __BuyCountDialogState();
+  State<ShopBuyCountDialog> createState() => _ShopBuyCountDialogState();
 }
 
-class __BuyCountDialogState extends State<_BuyCountDialog> {
+class _ShopBuyCountDialogState extends State<ShopBuyCountDialog> {
   late final mstData = widget.runtime.mstData;
   int buyCount = 1;
 

@@ -299,6 +299,7 @@ NiceAiAct _$NiceAiActFromJson(Map json) => NiceAiAct(
   noblePhantasm: json['noblePhantasm'] == null
       ? null
       : NiceTd.fromJson(Map<String, dynamic>.from(json['noblePhantasm'] as Map)),
+  script: (json['script'] as Map?)?.map((k, e) => MapEntry(k as String, e)) ?? const {},
 );
 
 Map<String, dynamic> _$NiceAiActToJson(NiceAiAct instance) => <String, dynamic>{
@@ -313,6 +314,7 @@ Map<String, dynamic> _$NiceAiActToJson(NiceAiAct instance) => <String, dynamic>{
   'noblePhantasmLv': instance.noblePhantasmLv,
   'noblePhantasmOc': instance.noblePhantasmOc,
   'noblePhantasm': instance.noblePhantasm?.toJson(),
+  'script': instance.script,
 };
 
 const _$NiceAiActTypeEnumMap = {
@@ -339,6 +341,7 @@ const _$NiceAiActTypeEnumMap = {
   NiceAiActType.messageGroup: 'messageGroup',
   NiceAiActType.overwriteFieldMotion: 'overwriteFieldMotion',
   NiceAiActType.overwriteAddUniqueCamera: 'overwriteAddUniqueCamera',
+  NiceAiActType.gimmickSkill: 'gimmickSkill',
   NiceAiActType.noblePhantasm: 'noblePhantasm',
   NiceAiActType.battleEnd: 'battleEnd',
   NiceAiActType.loseEnd: 'loseEnd',

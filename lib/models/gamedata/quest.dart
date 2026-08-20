@@ -113,7 +113,7 @@ class Quest with RouteInfo {
     this.spotId = 0,
     String? spotName,
     this.warId = 0,
-    String? warLongName,
+    this._warLongName,
     this.chapterId = 0,
     this.chapterSubId = 0,
     this.chapterSubStr = "",
@@ -131,7 +131,6 @@ class Quest with RouteInfo {
     this.openedAt = 0,
     this.closedAt = 0,
   }) : _spotName = spotName == '0' ? null : spotName,
-       _warLongName = warLongName,
        giftIcon = _isSQGiftIcon(giftIcon, gifts) ? null : giftIcon,
        consume = consumeType.useApOrBp ? consume : 0;
 
@@ -797,7 +796,12 @@ class Gift extends BaseGift {
     Gift(id: 482, type: GiftType.item, objectId: 46, num: 1),
     Gift(id: 482, type: GiftType.item, objectId: 103, num: 1),
   ];
-  static final _commonGifts = {448: kGift448, 482: kGift482};
+  static final kGiftSvtBond16 = <Gift>[
+    Gift(id: 90008780, type: .servant, objectId: 9570600, num: 1),
+    Gift(id: 90008780, type: .servant, objectId: 9670600, num: 1),
+    Gift(id: 90008780, type: .item, objectId: 2, num: 30),
+  ];
+  static final _commonGifts = {448: kGift448, 482: kGift482, 90008780: kGiftSvtBond16};
 
   factory Gift.fromJson(Map<String, dynamic> json) => _$GiftFromJson(json);
 
@@ -884,6 +888,8 @@ class Gift extends BaseGift {
 
   @override
   Map<String, dynamic> toJson() => _$GiftToJson(this);
+
+  static final Map<int, List<Gift>> kSvtFixedBondGifts = {16: kGiftSvtBond16};
 }
 
 @JsonSerializable()
@@ -1825,6 +1831,7 @@ class QuestPhaseExtraDetail with DataScriptBase {
   String? get masterSkillDelayInfo => getScript('masterSkillDelayInfo');
   int? get isUseGrandBoard => getScript('isUseGrandBoard');
   int? get isInfinityCost => getScript('isInfinityCost');
+  String? get battleFinishMovie => getScript("battleFinishMovie");
 
   QuestPhaseExtraDetail({
     this.questSelect,
@@ -1846,7 +1853,7 @@ class QuestPhaseExtraDetail with DataScriptBase {
     if (overwriteEquipSkills?.skills.isNotEmpty == true || addEquipSkills?.skills.isNotEmpty == true) {
       return OverwriteEquipSkills(
         iconId: overwriteEquipSkills?.iconId ?? addEquipSkills?.iconId,
-        skills: [...?overwriteEquipSkills?.skills, ...?addEquipSkills?.skills],
+        skills: [...?addEquipSkills?.skills.reversed, ...?overwriteEquipSkills?.skills],
       );
     }
     return null;
@@ -1864,6 +1871,9 @@ class OverwriteEquipSkills {
 
   String get icon {
     final iconId = this.iconId ?? 0;
+    if (iconId <= 0) {
+      return 'https://static.atlasacademy.io/file/aa-fgo-extract-jp/Battle/Common/BattleUIAtlas/btn_master_skill_disable.png';
+    }
     String url = "https://static.atlasacademy.io/file/aa-fgo-extract-jp/Battle/Common/";
     if ((iconId) > 2) {
       url += 'BattleAssetUIAtlas/';
@@ -1877,6 +1887,8 @@ class OverwriteEquipSkills {
   List<int> get skillIds => skills.map((e) => e.id).toList();
 
   int get skillLv => skills.firstOrNull?.lv ?? 1;
+
+  Map<int, int> get skillLvs => {for (final skill in skills) skill.id: skill.lv};
 
   Future<MysticCode> toMysticCode() async {
     final icon = this.icon;

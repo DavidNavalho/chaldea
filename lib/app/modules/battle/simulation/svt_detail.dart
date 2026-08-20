@@ -157,20 +157,22 @@ class _BattleSvtDetailState extends State<BattleSvtDetail> with SingleTickerProv
   }
 
   PreferredSizeWidget get tabBar {
+    final isDark = Theme.of(context).isDarkMode;
     return FixedHeight.tabBar(
       TabBar(
-        // tabAlignment: TabAlignment.center,
         controller: _tabController,
-        // labelColor: AppTheme(context).tertiary,
+        // tabAlignment: TabAlignment.center,
         indicatorSize: TabBarIndicatorSize.tab,
         labelPadding: const EdgeInsets.symmetric(horizontal: 8.0),
         // unselectedLabelColor: Colors.grey,
+        // isScrollable: true,
         tabs: [
           const Tab(text: 'Buff'),
           Tab(text: S.current.card_info),
           if (showAiTab) const Tab(text: 'AI'),
         ],
-        indicatorColor: Theme.of(context).isDarkMode ? null : Colors.white.withAlpha(210),
+        indicatorColor: isDark ? null : Colors.white.withAlpha(210),
+        unselectedLabelColor: isDark ? Colors.grey.shade200 : Colors.grey.shade800,
       ),
     );
   }
@@ -371,7 +373,7 @@ class _BattleSvtDetailState extends State<BattleSvtDetail> with SingleTickerProv
       // else S.current.battle_buff_permanent,
       if (buff.param != 0 && !kBuffValueTriggerTypes.containsKey(buff.buff.type))
         TextSpan(
-          text: Buff.formatRate(buff.buff.type, buff.param),
+          text: Buff.formatRate(buff.buff.type, buff.getValue(svt)),
           style: (buff.buff.percentBase == null) ? const TextStyle(fontStyle: FontStyle.italic) : null,
         ),
     ];

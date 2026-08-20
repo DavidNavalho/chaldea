@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:dio/dio.dart';
 
+import 'package:chaldea/app/api/chaldea.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/db.dart';
 import 'package:chaldea/models/userdata/remote_config.dart';
@@ -51,18 +52,18 @@ class _NetworkSettingsPageState extends State<NetworkSettingsPage> {
       onChanged: (v) => settings.data = v,
     ),
     _Group(
-      title: '${S.current.chaldea_server}(Account/Laplace)',
-      globalUrl: '${HostsX.worker.global}/network/ping',
-      cnUrl: '${HostsX.worker.cn}/network/ping',
-      getValue: () => settings.worker,
-      onChanged: (v) => settings.worker = v,
-    ),
-    _Group(
-      title: '${S.current.chaldea_server}(Recognizer)',
+      title: S.current.chaldea_server,
       globalUrl: '${HostsX.api.global}/network/ping',
       cnUrl: '${HostsX.api.cn}/network/ping',
       getValue: () => settings.api,
       onChanged: (v) => settings.api = v,
+    ),
+    _Group(
+      title: '${S.current.chaldea_server}(Worker)',
+      globalUrl: '${HostsX.worker.global}/network/ping',
+      cnUrl: '${HostsX.worker.cn}/network/ping',
+      getValue: () => settings.worker,
+      onChanged: (v) => settings.worker = v,
     ),
     _Group(
       title: 'Atlas Api',
@@ -206,7 +207,17 @@ class _NetworkSettingsPageState extends State<NetworkSettingsPage> {
             ),
             if (Language.isCHS) serverHint,
             for (final group in testGroups) _buildGroup(group),
-            SafeArea(child: Language.isCHS ? serverHint : const SizedBox()),
+            if (Language.isCHS) serverHint,
+            Center(
+              child: TextButton(
+                onPressed: () async {
+                  await showEasyLoading(() => CachedApi.remoteConfig(expireAfter: .zero));
+                  if (mounted) setState(() {});
+                },
+                child: Text('Refresh config'),
+              ),
+            ),
+            SafeArea(child: const SizedBox()),
           ],
         ),
       ),

@@ -47,8 +47,8 @@ Apple Developer portal, App Store Connect, entitlements, and application code.
 | Widget bundle ID | `io.github.davidnavalho.chaldea.FakerStatusWidget` |
 | Shared App Group | `group.io.github.davidnavalho.chaldea.shared` |
 | Installed app display name | `Chaldea` |
-| Current app version | `2.5.27` |
-| Current TestFlight build | `990` (build override; `pubspec.yaml` remains `+989`) |
+| Current repository version | `2.6.0+990` |
+| Latest uploaded TestFlight build | `2.5.27 (990)` |
 | Main app minimum iOS | `15.0` |
 | Widget minimum iOS | `18.1` |
 
@@ -85,8 +85,8 @@ Fork-only build entry points:
 - `scripts/fork/build_ios_testflight.sh` configures Flutter, regenerates Pods,
   applies the external overlay, creates an archive, and validates its identity.
 - `scripts/fork/prepare_ios_testflight.rb` updates only ignored CocoaPods build
-  output for Xcode 27 and creates an ignored per-Pod target map consumed by the
-  overlay.
+  output for Xcode 27 and creates an ignored dependency-target map for generated
+  CocoaPods and Flutter Swift-package targets.
 
 Fork-only entitlement files:
 
@@ -111,14 +111,15 @@ Thin adapters in upstream-owned files:
 - `ios/Chaldea.xcodeproj/project.pbxproj` changes only the two file-reference
   paths for Flutter's generated plugin registrant.
 - `ios/Chaldea/Chaldea-Bridging-Header.h` and the Xcode project point to
-  Flutter 3.41's generated registrant under `ios/Runner`. The native app source
+  Flutter's generated registrant under `ios/Runner`. The native app source
   folder is named `Chaldea`, but current Flutter always generates the files in
   its standard `Runner` folder.
 
 `ios/Podfile` and `ios/Podfile.lock` remain identical to upstream. Xcode 27
-rejects some older generated Pod deployment defaults, so the preparer changes
-only `ios/Pods/Pods.xcodeproj` after `pod install`. Both that project and the
-generated `ios/Flutter/ephemeral/ForkIdentityPods.xcconfig` are ignored.
+rejects some older generated dependency deployment defaults, so the preparer
+changes only `ios/Pods/Pods.xcodeproj` after `pod install` and maps generated
+Swift-package target/product names. The Pods project and generated
+`ios/Flutter/ephemeral/ForkIdentityDependencies.xcconfig` are ignored.
 
 Direct `flutter build ipa` commands do not apply the personal overlay and are
 not the fork's TestFlight build path. Use the wrapper so the repository's
@@ -132,16 +133,18 @@ DerivedData.
 Installed and validated on this machine:
 
 - Homebrew FVM: `4.1.2`
-- Flutter through FVM: `3.41.7`
-- Dart: `3.11.5`
+- Flutter through FVM: `3.44.8`
+- Dart: `3.12.2`
 - CocoaPods: `1.16.2`
 - Xcode: `27.0 beta 5`, build `27A5237l`
 - Active developer directory:
   `/Applications/Xcode-27.0.0-Beta.5.app/Contents/Developer`
 - Active iOS SDK: iOS `27.0` beta
 
-The repository `.fvmrc` was aligned with `pubspec.yaml` and now selects Flutter
-3.41.7.
+The repository `.fvmrc` is aligned with `pubspec.yaml` and selects Flutter
+3.44.8. Its FVM cache is on the external SSD at
+`/Volumes/mini-ssd/DevData/FVM`; the older internal 3.41.7 installation was not
+removed.
 
 Verify the environment with:
 
@@ -181,10 +184,11 @@ pod install
 cd ..
 ```
 
-CocoaPods currently resolves 27 dependencies and 29 total Pods.
+CocoaPods currently resolves 5 dependencies and 6 total Pods. Flutter 3.44.8
+integrates the remaining supported plugins through its generated Swift package.
 
-If dependencies are regenerated, confirm every generated Pod deployment target
-is iOS 15 after running the fork preparer:
+If dependencies are regenerated, run the preparer and confirm every generated
+Pod deployment target is iOS 15:
 
 ```sh
 ruby scripts/fork/prepare_ios_testflight.rb
@@ -203,7 +207,7 @@ IPHONEOS_DEPLOYMENT_TARGET = 15.0
 The following unsigned validation command succeeds with Xcode 27 beta 5:
 
 ```sh
-scripts/fork/build_ios_testflight.sh --build-name 2.5.27 --build-number 990
+scripts/fork/build_ios_testflight.sh --build-name 2.6.0 --build-number 990
 ```
 
 Successful archive:
@@ -214,32 +218,32 @@ Last validated artifact metadata:
 
 ```text
 Main app:
-  Version: 2.5.27
+  Version: 2.6.0
   Build: 990
   Bundle: io.github.davidnavalho.chaldea
   Minimum iOS: 15.0
 
 Widget extension:
-  Version: 2.5.27
+  Version: 2.6.0
   Build: 990
   Bundle: io.github.davidnavalho.chaldea.FakerStatusWidget
   Minimum iOS: 18.1
 ```
 
-On 2026-08-20, both unsigned and signed wrapper archives completed. The signed
-app and widget identifiers use team `WAF9PC2Y8K`, both signed bundles contain
-the personal App Group, and the compiled Flutter binary contains the personal
-App Group rather than the upstream default.
+On 2026-08-20, both unsigned and signed 2.5.27 wrapper archives completed. On
+2026-08-21, the unsigned 2.6.0 wrapper archive completed after the upstream
+Flutter 3.44.8/Swift-package update. The compiled Flutter binary contains the
+personal App Group rather than the upstream default.
 
 The archive is a generated, ignored artifact and may not exist on another
 machine. The wrapper also checks the app and widget bundle IDs, versions, and
 build numbers before reporting success.
 
-The signed archive command also succeeds:
+For the next signed archive, use a new build number:
 
 ```sh
 scripts/fork/build_ios_testflight.sh \
-  --build-name 2.5.27 \
+  --build-name 2.6.0 \
   --build-number 991 \
   --codesign \
   --allow-provisioning-updates
@@ -478,7 +482,7 @@ First try:
 
 ```sh
 scripts/fork/build_ios_testflight.sh \
-  --build-name 2.5.27 \
+  --build-name 2.6.0 \
   --build-number 991 \
   --codesign \
   --allow-provisioning-updates
@@ -504,7 +508,7 @@ Every uploaded build for the same app version needs a unique, increasing build
 number. The current repository version is:
 
 ```text
-2.5.27+989
+2.6.0+990
 ```
 
 Builds `989` and `990` were accepted by App Store Connect on 2026-08-20 and
@@ -513,7 +517,7 @@ version in `pubspec.yaml` or build with an override:
 
 ```sh
 scripts/fork/build_ios_testflight.sh \
-  --build-name 2.5.27 \
+  --build-name 2.6.0 \
   --build-number 991 \
   --codesign \
   --allow-provisioning-updates
@@ -715,13 +719,15 @@ Resolution: Both identifiers and both signed bundles must use exactly:
 
 ### Deployment-target error under Xcode 27
 
-Cause: The app or a generated Pod resolved below iOS 15.
+Cause: The app, a generated Pod, or a Flutter Swift-package target/product
+resolved to the Xcode 27 SDK default instead of iOS 15.
 
 Resolution: Confirm the `Chaldea` deployment mapping is `15.0` in
 `ForkIdentity.xcconfig`, rerun `pod install`, then run
 `ruby scripts/fork/prepare_ios_testflight.rb`. Verify that the generated Pods
-project contains only iOS 15 deployment values. Do not put this workaround in
-the upstream Podfile.
+project contains only iOS 15 deployment values and that the ignored dependency
+map contains the Swift-package targets. Do not put this workaround in the
+upstream Podfile or Xcode project.
 
 ### `GeneratedPluginRegistrant.h` not found
 

@@ -33,9 +33,10 @@ class FakerAgentJP extends FakerAgent<FRequestJP, AutoLoginDataJP, NetworkManage
     final fresp = await request.beginRequest();
     if (fresp.data.responses.any((e) => e.fail?['action'] == 'app_version_up')) {
       if (!checkAppUpdate) {
-        throw Exception('fgo version updated');
+        throw Exception('fgo version updated\n${fresp.data.responses}');
       }
       final newVer = await AtlasApi.gPlayVer(network.gameTop.region);
+      logger.d('[${network.gameTop.region}] play store version: $newVer');
       if (newVer == null) {
         throw Exception('fgo version updated but resolve new version failed');
       }
@@ -65,21 +66,25 @@ class FakerAgentJP extends FakerAgent<FRequestJP, AutoLoginDataJP, NetworkManage
 
   @override
   Future<FResponse> loginTop() async {
+    if (network.gameTop.assetbundleFolder.isEmpty) {
+      throw SilentException('Game info not loaded');
+    }
     network.agentData.raidRecords.clear();
     final request = FRequestJP(network: network, path: '/login/top');
     request.addBaseField();
-    if (network.gameTop.region == Region.jp) {
-      await request.addSignatureField();
-    }
+    await request.addSignatureField(); // NA use same key as JP
     request.addFieldStr('deviceInfo', network.user.deviceInfo ?? FakerUA.deviceinfo);
     final int lastAccessTime = int.parse(request.paramString['lastAccessTime']!);
-    final int userId = int.parse(network.user.auth!.userId);
-    int userState = (-lastAccessTime >> 2) ^ userId & network.gameTop.folderCrc;
+    final userId = network.user.auth!.userId;
+    final int userIdInt = int.parse(userId);
+    int userState = (-lastAccessTime >> 2) ^ userIdInt & network.gameTop.folderCrc;
     request.addFieldInt64('userState', userState);
     request.addFieldStr('assetbundleFolder', network.gameTop.assetbundleFolder);
     request.addFieldInt32('isTerminalLogin', 1);
     if (network.gameTop.region == Region.na) {
       request.addFieldInt32('country', network.user.country.countryId);
+      request.addFieldStr('clientIdentityKey', network.gameTop.clientIdentityKey ?? network.gameTop.appVer);
+      request.addFieldStr('countryCode2', network.catMouseGame.catGame3(userId, network.gameTop.assetbundleFolder));
     }
     return request.beginRequestAndCheckError('login', addBaseFields: false);
   }
@@ -571,9 +576,17 @@ class FakerAgentJP extends FakerAgent<FRequestJP, AutoLoginDataJP, NetworkManage
     int32_t followerRandomLimitCount = 0, //?
     String choiceRandomLimitCounts = "{}",
     int32_t followerSpoilerProtectionLimitCount = 4, //?
+    int32_t followerDispLimitCount = 0,
+    int32_t followerIconLimitCount = 0,
+    int32_t followerPortraitLimitCount = 0,
+    int32_t followerCommandCardLimitCount = 0,
     int32_t followerTransformRandomLimitCount = 0,
     String choiceTransformRandomLimitCounts = "{}",
     int32_t followerTransformSpoilerProtectionLimitCount = 0,
+    int32_t followerTransformDispLimitCount = 0,
+    int32_t followerTransformIconLimitCount = 0,
+    int32_t followerTransformPortraitLimitCount = 0,
+    int32_t followerTransformCommandCardLimitCount = 0,
     int32_t recommendSupportIdx = 0,
     required int32_t followerSupportDeckId,
     int32_t campaignItemId = 0,
@@ -597,10 +610,18 @@ class FakerAgentJP extends FakerAgent<FRequestJP, AutoLoginDataJP, NetworkManage
     request.addFieldStr("choiceRandomLimitCounts", choiceRandomLimitCounts);
     request.addFieldInt32("followerRandomLimitCount", followerRandomLimitCount);
     request.addFieldInt32("followerSpoilerProtectionLimitCount", followerSpoilerProtectionLimitCount);
+    request.addFieldInt32("followerDispLimitCount", followerDispLimitCount);
+    request.addFieldInt32("followerIconLimitCount", followerIconLimitCount);
+    request.addFieldInt32("followerPortraitLimitCount", followerPortraitLimitCount);
+    request.addFieldInt32("followerCommandCardLimitCount", followerCommandCardLimitCount);
     if (choiceTransformRandomLimitCounts.isEmpty) choiceTransformRandomLimitCounts = "{}";
     request.addFieldStr("choiceTransformRandomLimitCounts", choiceTransformRandomLimitCounts);
     request.addFieldInt32("followerTransformRandomLimitCount", followerTransformRandomLimitCount);
     request.addFieldInt32("followerTransformSpoilerProtectionLimitCount", followerTransformSpoilerProtectionLimitCount);
+    request.addFieldInt32("followerTransformDispLimitCount", followerTransformDispLimitCount);
+    request.addFieldInt32("followerTransformIconLimitCount", followerTransformIconLimitCount);
+    request.addFieldInt32("followerTransformPortraitLimitCount", followerTransformPortraitLimitCount);
+    request.addFieldInt32("followerTransformCommandCardLimitCount", followerTransformCommandCardLimitCount);
     request.addFieldInt32("recommendSupportIdx", recommendSupportIdx);
     request.addFieldInt32("followerSupportDeckId", followerSupportDeckId);
     request.addFieldInt32("campaignItemId", campaignItemId);

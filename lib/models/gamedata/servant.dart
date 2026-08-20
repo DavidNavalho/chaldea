@@ -11,6 +11,7 @@ import '_helper.dart';
 import 'common.dart';
 import 'const_data.dart';
 import 'game_card.dart';
+import 'individuality.dart';
 import 'item.dart';
 import 'mappings.dart';
 import 'quest.dart' show Gift;
@@ -206,7 +207,6 @@ class Servant extends BasicServant {
   ServantCoin? coin;
   ServantScript? script;
   List<SvtScript> charaScripts;
-  List<BattlePoint> battlePoints;
   List<NiceSkill> skills;
   List<NiceSkill> classPassive;
   List<NiceSkill> extraPassive;
@@ -317,7 +317,6 @@ class Servant extends BasicServant {
     this.coin,
     this.script,
     this.charaScripts = const [],
-    this.battlePoints = const [],
     this.skills = const [],
     this.classPassive = const [],
     this.extraPassive = const [],
@@ -388,7 +387,6 @@ class Servant extends BasicServant {
       costumeMaterials: costumeMaterials,
       coin: coin,
       script: script,
-      battlePoints: battlePoints,
       skills: skills,
       classPassive: classPassive,
       extraPassive: extraPassive,
@@ -596,19 +594,26 @@ class Servant extends BasicServant {
         db.gameData.constData.svtClassCardImageIdRemap[collectionNo] ??
         db.gameData.constData.classInfo[classId]?.imageId ??
         13;
-    int subId = 1;
-    if (imageId == 9999) imageId = 13;
-    if (imageId.isEven) {
-      imageId -= 1;
-      subId = 2;
+    final overwriteImageIds = script?.overwriteClassImageId;
+    if (overwriteImageIds != null) {
+      if (id == 205500) {
+        // Urðr
+        imageId = 40;
+      } else {
+        imageId = overwriteImageIds.firstOrNull?.imageId ?? imageId;
+      }
     }
-    final color = Atlas.classColor(rarity);
-    return Atlas.asset('ClassCard/class_${color}_$imageId@$subId.png');
+    return Atlas.classCard(rarity, imageId);
   }
 
-  String get cardBack {
-    final color = Atlas.classColor(rarity);
-    return Atlas.asset('ClassCard/class_${color}_101@2.png');
+  Set<String> get classCards {
+    final defaultImageId = db.gameData.constData.classInfo[classId]?.imageId;
+    return {
+      classCard,
+      if (script?.overwriteClassImageId != null)
+        for (final overwrite in script!.overwriteClassImageId!) Atlas.classCard(rarity, overwrite.imageId),
+      if (defaultImageId != null) Atlas.classCard(rarity, defaultImageId),
+    };
   }
 
   @override
@@ -841,6 +846,25 @@ class Servant extends BasicServant {
       nextTotal: nextTotal,
     );
   }
+
+  // read-only, don't use for battle
+  List<BattlePoint> get battlePoints {
+    List<BattlePoint> bps = [];
+    for (final bp in ConstData.battlePoints.values) {
+      for (final bpSvt in bp.svts) {
+        if (bpSvt.svtId == id ||
+            (bpSvt.individuality != null &&
+                Individuality.checkSignedMultiIndividuality(
+                  selfArray: traitsAll.toList(),
+                  signedTargetsArray: bpSvt.individuality!,
+                ))) {
+          bps.add(bp);
+          break;
+        }
+      }
+    }
+    return bps;
+  }
 }
 
 @JsonSerializable()
@@ -946,7 +970,7 @@ class CraftEssence extends BasicCraftEssence {
     super.hpMax = 0,
     this.growthCurve = 0,
     this.expFeed = const [],
-    int? bondEquipOwner,
+    this._bondEquipOwner,
     this.valentineEquipOwner,
     this.valentineScript = const [],
     AscensionAdd? ascensionAdd,
@@ -955,7 +979,6 @@ class CraftEssence extends BasicCraftEssence {
     NiceLore? profile,
     super.face = "",
   }) : extraAssets = extraAssets ?? ExtraAssets(),
-       _bondEquipOwner = bondEquipOwner,
        ascensionAdd = ascensionAdd ?? AscensionAdd(),
        profile = profile ?? NiceLore();
 
@@ -978,7 +1001,7 @@ class CraftEssence extends BasicCraftEssence {
 
   bool get isRegionSpecific => collectionNo > 100000 && (sortId ?? collectionNo) < 0;
 
-  ({List<List<int>> traits, int rateCount})? getBondBonusData() {
+  ({List<List<int>> traits, int rateCount})? getBondBonusData({bool includeNoTraitLimit = false}) {
     if (collectionNo <= 0 || isRegionSpecific) return null;
     List<NiceSkill> _skills;
     if (rarity < 5) return null;
@@ -990,7 +1013,7 @@ class CraftEssence extends BasicCraftEssence {
         for (final func in skill.functions)
           if (func.funcType == FuncType.servantFriendshipUp &&
               (func.svals.firstOrNull?.EventId ?? 0) == 0 &&
-              (func.functvals.isNotEmpty || func.overWriteTvalsList.isNotEmpty))
+              ((func.functvals.isNotEmpty || func.overWriteTvalsList.isNotEmpty) || includeNoTraitLimit))
             (rateCount: func.svals.firstOrNull?.RateCount ?? 0, traits: func.getResultTvalsList()),
     ];
     if (results.isEmpty) return null;
@@ -1808,8 +1831,15 @@ class ServantScript with DataScriptBase {
   ExtraAssets? maleImage;
   ServantTransformInfo? transformInfo;
   // List<ImagePartsGroup>? imagePartsGroup;
+  List<OverwriteSvtClassImageId>? overwriteClassImageId;
 
-  ServantScript({this.skillRankUp, this.svtBuffTurnExtend, this.maleImage, this.transformInfo});
+  ServantScript({
+    this.skillRankUp,
+    this.svtBuffTurnExtend,
+    this.maleImage,
+    this.transformInfo,
+    this.overwriteClassImageId,
+  });
 
   factory ServantScript.fromJson(Map<String, dynamic> json) => _$ServantScriptFromJson(json)..setSource(json);
 
@@ -1836,6 +1866,18 @@ class ServantTransformInfo {
   factory ServantTransformInfo.fromJson(Map<String, dynamic> json) => _$ServantTransformInfoFromJson(json);
 
   Map<String, dynamic> toJson() => _$ServantTransformInfoToJson(this);
+}
+
+@JsonSerializable()
+class OverwriteSvtClassImageId {
+  int imageId;
+  List<CommonRelease> releaseConditions;
+
+  OverwriteSvtClassImageId({this.imageId = 0, this.releaseConditions = const []});
+
+  factory OverwriteSvtClassImageId.fromJson(Map<String, dynamic> json) => _$OverwriteSvtClassImageIdFromJson(json);
+
+  Map<String, dynamic> toJson() => _$OverwriteSvtClassImageIdToJson(this);
 }
 
 @JsonSerializable()
@@ -1954,9 +1996,17 @@ class BattlePoint {
   String name;
   List<BattlePointFlag> flags;
   List<BattlePointPhase> phases;
-  // script;
+  List<SvtBattlePoint> svts;
+  BattlePointScript? script;
 
-  BattlePoint({required this.id, this.name = '', this.flags = const [], this.phases = const []});
+  BattlePoint({
+    required this.id,
+    this.name = '',
+    this.flags = const [],
+    this.phases = const [],
+    this.svts = const [],
+    this.script,
+  });
   factory BattlePoint.fromJson(Map<String, dynamic> json) => _$BattlePointFromJson(json);
 
   Map<String, dynamic> toJson() => _$BattlePointToJson(this);
@@ -1972,6 +2022,45 @@ class BattlePointPhase {
   factory BattlePointPhase.fromJson(Map<String, dynamic> json) => _$BattlePointPhaseFromJson(json);
 
   Map<String, dynamic> toJson() => _$BattlePointPhaseToJson(this);
+}
+
+@JsonSerializable()
+class SvtBattlePoint {
+  int svtId; // -1 if not svt id
+  @Trait2dListConverter()
+  List<List<int>>? individuality;
+
+  SvtBattlePoint({this.svtId = -1, this.individuality});
+
+  factory SvtBattlePoint.fromJson(Map<String, dynamic> json) => _$SvtBattlePointFromJson(json);
+
+  Map<String, dynamic> toJson() => _$SvtBattlePointToJson(this);
+}
+
+@JsonSerializable()
+class BattlePointScript {
+  List<BattlePointScriptMaxChange>? maxChange;
+  int? maxLimit;
+  int? defaultMax; // 0
+
+  BattlePointScript({this.maxChange, this.maxLimit, this.defaultMax});
+
+  factory BattlePointScript.fromJson(Map<String, dynamic> json) => _$BattlePointScriptFromJson(json);
+
+  Map<String, dynamic> toJson() => _$BattlePointScriptToJson(this);
+}
+
+@JsonSerializable()
+class BattlePointScriptMaxChange {
+  @TraitListConverter()
+  List<int>? individuality;
+  int? value; // 0
+
+  BattlePointScriptMaxChange({this.individuality, this.value});
+
+  factory BattlePointScriptMaxChange.fromJson(Map<String, dynamic> json) => _$BattlePointScriptMaxChangeFromJson(json);
+
+  Map<String, dynamic> toJson() => _$BattlePointScriptMaxChangeToJson(this);
 }
 
 enum SvtType {
@@ -2165,6 +2254,7 @@ enum BattlePointFlag {
   hideUiGaugeAllTime,
   hideUiGaugeWhenCantAddPoint,
   hideUiGaugeWhenCantAddPointAndFollowerSupport,
+  battlePointCheckAsPercentage,
 }
 
 enum SvtCardPositionDamageRatesSlideType { none, front, back }

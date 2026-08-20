@@ -1,5 +1,5 @@
 import 'dart:convert';
-import 'dart:math' show min;
+import 'dart:math' show min, max;
 
 import 'package:chaldea/models/db.dart';
 import 'package:chaldea/packages/logger.dart';
@@ -7,6 +7,7 @@ import 'package:chaldea/utils/utils.dart';
 import '_helper.dart';
 import 'command_code.dart';
 import 'common.dart';
+import 'constants.dart';
 import 'gift.dart';
 import 'item.dart';
 import 'quest.dart';
@@ -14,6 +15,7 @@ import 'servant.dart';
 import 'war.dart' show WarId;
 
 part '../../generated/models/gamedata/mst_tables.g.dart';
+part 'mst_result.dart';
 
 // ignore: unused_element
 int _toInt(dynamic v, [int? k]) {
@@ -221,6 +223,14 @@ final _$mstMasterSchemes = <String, (Type, DataMaster Function(String mstName))>
     (mstName) => DataMaster<_IntStr, UserBoxGachaEntity>(mstName, UserBoxGachaEntity.fromJson),
   ),
   "userShop": (UserShopEntity, (mstName) => DataMaster<_IntStr, UserShopEntity>(mstName, UserShopEntity.fromJson)),
+  "mstShopDaily": (
+    ShopDailyEntity,
+    (mstName) => DataMaster<String, ShopDailyEntity>(mstName, ShopDailyEntity.fromJson),
+  ),
+  "userShopDaily": (
+    UserShopDailyEntity,
+    (mstName) => DataMaster<_IntStr, UserShopDailyEntity>(mstName, UserShopDailyEntity.fromJson),
+  ),
   "userQuest": (UserQuestEntity, (mstName) => DataMaster<_IntStr, UserQuestEntity>(mstName, UserQuestEntity.fromJson)),
   "userDeck": (UserDeckEntity, (mstName) => DataMaster<int, UserDeckEntity>(mstName, UserDeckEntity.fromJson)),
   "userEventDeck": (
@@ -398,6 +408,8 @@ abstract class MasterDataManagerBase {
   DataMaster<String, TotalEventRaidEntity> get totalEventRaid => get<String, TotalEventRaidEntity>();
   DataMaster<_IntStr, UserBoxGachaEntity> get userBoxGacha => get<_IntStr, UserBoxGachaEntity>();
   DataMaster<_IntStr, UserShopEntity> get userShop => get<_IntStr, UserShopEntity>();
+  DataMaster<String, ShopDailyEntity> get mstShopDaily => get<String, ShopDailyEntity>();
+  DataMaster<_IntStr, UserShopDailyEntity> get userShopDaily => get<_IntStr, UserShopDailyEntity>();
   // event/quest
   DataMaster<_IntStr, UserQuestEntity> get userQuest => get<_IntStr, UserQuestEntity>();
 
@@ -750,10 +762,13 @@ class UserServantCollectionEntity with DataEntityBase<_IntStr> {
        updatedAt = _toInt(updatedAt),
        createdAt = _toInt(createdAt);
 
-  bool get isOwned => status == SvtCollectionStatus.get.value;
+  bool get isGet => status == SvtCollectionStatus.get.value;
 
-  int get maxFriendshipRank => (svtId == kMashSvtId ? 5 : 10) + friendshipExceedCount;
-  int get usedLanternCount => svtId == kMashSvtId ? friendshipExceedCount - 5 : friendshipExceedCount;
+  int get maxFriendshipRank =>
+      (svtId == kMashSvtId ? kBondLvDefaultMax - 5 : kBondLvDefaultMax) + friendshipExceedCount;
+  int get usedAllLanternCount => svtId == kMashSvtId ? friendshipExceedCount - 5 : friendshipExceedCount;
+  int get usedLanternCount => min(5, usedAllLanternCount);
+  int get usedGreatLanternCount => max(0, usedAllLanternCount - 5);
 
   Map<int, int> costumeIdsTo01() {
     Map<int, int> result = {};
@@ -766,7 +781,7 @@ class UserServantCollectionEntity with DataEntityBase<_IntStr> {
     return result;
   }
 
-  bool get isReachBondLimit => friendshipRank >= 10 + friendshipExceedCount;
+  bool get isReachBondLimit => friendshipRank >= maxFriendshipRank;
 
   factory UserServantCollectionEntity.fromJson(Map<String, dynamic> data) =>
       _$UserServantCollectionEntityFromJson(data);
@@ -1187,7 +1202,7 @@ class UserEquipEntity with DataEntityBase<int> {
 class UserCommandCodeCollectionEntity with DataEntityBase<_IntStr> {
   int userId;
   int commandCodeId;
-  int status; // 0-find, 2-got
+  int status; // 0-not met, 1-met, 2-got
   int getNum;
   // updatedAt, createdAt
 
@@ -1203,6 +1218,8 @@ class UserCommandCodeCollectionEntity with DataEntityBase<_IntStr> {
       getNum = _toInt(getNum);
   factory UserCommandCodeCollectionEntity.fromJson(Map<String, dynamic> data) =>
       _$UserCommandCodeCollectionEntityFromJson(data);
+
+  bool get isGet => status == 2;
 
   CommandCode? get dbCC => db.gameData.commandCodesById[commandCodeId];
 }
@@ -1735,6 +1752,30 @@ class UserEventEntity with DataEntityBase<_IntStr> {
        updatedAt = _toInt(updatedAt),
        createdAt = _toInt(createdAt);
   factory UserEventEntity.fromJson(Map<String, dynamic> data) => _$UserEventEntityFromJson(data);
+
+  bool hasEventFlag(EventStatusType flagId) {
+    return (flag & flagId.value) != 0;
+  }
+
+  bool hasScriptFlag(int flagId) => (scriptFlag & (1 << flagId)) != 0;
+}
+
+enum EventStatusType {
+  none(0),
+  purchasedRarePri(1),
+  strictCampaignEnd(2),
+  isComebackTargetUser(3),
+  battleLineLose(4),
+  battleLineResultEnd(5),
+  battleLineResultWin(6),
+  useEventItem(7),
+  viewOpeningMovie(8),
+  raidParticipate(9),
+  getItemFromBoxGacha(10);
+
+  const EventStatusType(this.kind);
+  final int kind;
+  int get value => 1 << kind;
 }
 
 @JsonSerializable(createToJson: false)
@@ -2204,6 +2245,77 @@ class UserShopEntity with DataEntityBase<_IntStr> {
 }
 
 @JsonSerializable(createToJson: false)
+class ShopDailyEntity with DataEntityBase<String> {
+  int dayKey; // 20260802
+  int shopId;
+  int shopType;
+  int lineupGroup;
+  int dailyLimitNum;
+  int poolCycleNo;
+  List<int> useItemIds;
+  List<int> usePrices;
+  int openedAt;
+  int closedAt;
+  int updatedAt;
+
+  @override
+  String get primaryKey => createPK(dayKey, shopId);
+
+  static String createPK(int dayKey, int shopId) => _createPK2(dayKey, shopId);
+
+  ShopDailyEntity({
+    dynamic dayKey,
+    dynamic shopId,
+    dynamic shopType,
+    dynamic lineupGroup,
+    dynamic dailyLimitNum,
+    dynamic poolCycleNo,
+    dynamic useItemIds,
+    dynamic usePrices,
+    dynamic openedAt,
+    dynamic closedAt,
+    dynamic updatedAt,
+  }) : dayKey = _toInt(dayKey),
+       shopId = _toInt(shopId),
+       shopType = _toInt(shopType),
+       lineupGroup = _toInt(lineupGroup),
+       dailyLimitNum = _toInt(dailyLimitNum),
+       poolCycleNo = _toInt(poolCycleNo),
+       useItemIds = _toIntList(useItemIds),
+       usePrices = _toIntList(usePrices),
+       openedAt = _toInt(openedAt),
+       closedAt = _toInt(closedAt),
+       updatedAt = _toInt(updatedAt);
+
+  factory ShopDailyEntity.fromJson(Map<String, dynamic> data) => _$ShopDailyEntityFromJson(data);
+}
+
+@JsonSerializable(createToJson: false)
+class UserShopDailyEntity with DataEntityBase<_IntStr> {
+  int userId;
+  int shopId;
+  int dayKey;
+  int num;
+  int updatedAt;
+
+  @override
+  _IntStr get primaryKey => shopId;
+
+  static _IntStr createPK(int shopId) => shopId;
+
+  UserShopDailyEntity({dynamic userId, dynamic shopId, dynamic dayKey, dynamic num, dynamic updatedAt})
+    : userId = _toInt(userId),
+      shopId = _toInt(shopId),
+      dayKey = _toInt(dayKey),
+      num = _toInt(num),
+      updatedAt = _toInt(updatedAt);
+
+  factory UserShopDailyEntity.fromJson(Map<String, dynamic> data) => _$UserShopDailyEntityFromJson(data);
+
+  UserShopDailyEntity? validate(int dayKey) => dayKey == this.dayKey ? this : null;
+}
+
+@JsonSerializable(createToJson: false)
 class UserQuestEntity with DataEntityBase<_IntStr> {
   int userId;
   int questId;
@@ -2281,6 +2393,44 @@ class UserQuestEntity with DataEntityBase<_IntStr> {
     }
     return (successNum: successNum, failNum: failNum);
   }
+
+  bool _isResetInterval() {
+    final quest = db.gameData.quests[questId];
+    if (quest == null) return false;
+    if (quest.afterClear != .resetInterval) return false;
+    int intervalHours = 0; // Quest.intervalHours
+    return DateTime.now().timestamp >= lastStartedAt + intervalHours * 3600;
+  }
+
+  int getClearNum() {
+    if (_isResetInterval()) return 0;
+    return clearNum;
+  }
+
+  int getQuestPhase() {
+    if (_isResetInterval()) return 0;
+    return questPhase;
+  }
+
+  bool hasStatusFlag(UserQuestStatusFlag flag) {
+    return (status & flag.value) != 0;
+  }
+}
+
+enum UserQuestStatusFlag {
+  reset(1),
+  resetReward(2),
+  purchasedRarePri(3),
+  challengedNewestPhase(4),
+  battleResultWin(5),
+  battleResultLose(6),
+  latestResultWin(7),
+  latestResultLose(8),
+  notGetQuestClearGift(9);
+
+  const UserQuestStatusFlag(this.kind);
+  final int kind;
+  int get value => 1 << kind;
 }
 
 @JsonSerializable(createToJson: false)
@@ -3239,310 +3389,6 @@ class DropInfo {
   factory DropInfo.fromJson(Map<String, dynamic> data) => _$DropInfoFromJson(data);
 }
 
-@JsonSerializable(createToJson: false)
-class BattleFriendshipRewardInfo {
-  bool isNew;
-  int userSvtId; // =0
-  int targetSvtId;
-  // int targetSvtFriendshipRank;
-  int mstGiftId;
-  int type;
-  int objectId;
-  int num;
-  int limitCount;
-  int lv;
-  int rarity;
-
-  BattleFriendshipRewardInfo({
-    dynamic isNew,
-    dynamic userSvtId,
-    dynamic mstGiftId,
-    dynamic type,
-    dynamic targetSvtId,
-    dynamic objectId,
-    dynamic num,
-    dynamic limitCount,
-    dynamic lv,
-    dynamic rarity,
-  }) : isNew = _toBool(isNew),
-       userSvtId = _toInt(userSvtId),
-       mstGiftId = _toInt(mstGiftId),
-       type = _toInt(type),
-       targetSvtId = _toInt(targetSvtId),
-       objectId = _toInt(objectId),
-       num = _toInt(num),
-       limitCount = _toInt(limitCount),
-       lv = _toInt(lv),
-       rarity = _toInt(rarity);
-
-  factory BattleFriendshipRewardInfo.fromJson(Map<String, dynamic> data) => _$BattleFriendshipRewardInfoFromJson(data);
-}
-
-// BattleResultComponent.resultData
-@JsonSerializable(createToJson: false)
-class BattleResultData {
-  int battleId;
-  int battleResult;
-  int eventId;
-
-  int followerId;
-  int followerClassId;
-  int followerSupportDeckId;
-  int followerType;
-  int followerStatus;
-
-  List<UserGameEntity> oldUserGame;
-  List<UserQuestEntity> oldUserQuest;
-  List<UserEquipEntity> oldUserEquip;
-  List<UserServantCollectionEntity> oldUserSvtCollection;
-  List<UserServantEntity> oldUserSvt; // usually empty
-
-  Map myDeck; // DeckData, id+userSvtId
-
-  int firstClearRewardQp;
-  int originalPhaseClearQp;
-  int phaseClearQp;
-  int friendshipExpBase;
-
-  List<BattleFriendshipRewardInfo> friendshipRewardInfos; // List<BattleFriendshipRewardInfo>
-  List warClearReward; // List<WarClearReward>
-  List<DropInfo> rewardInfos; // List<QuestRewardInfo>, 星光之砂
-  List<DropInfo> resultDropInfos;
-
-  BattleResultData({
-    dynamic battleId,
-    dynamic battleResult,
-    dynamic eventId,
-    dynamic followerId,
-    dynamic followerClassId,
-    dynamic followerSupportDeckId,
-    dynamic followerType,
-    dynamic followerStatus,
-    List<UserGameEntity>? oldUserGame,
-    List<UserQuestEntity>? oldUserQuest,
-    List<UserEquipEntity>? oldUserEquip,
-    List<UserServantCollectionEntity>? oldUserSvtCollection,
-    List<UserServantEntity>? oldUserSvt,
-    dynamic myDeck,
-    dynamic firstClearRewardQp,
-    dynamic originalPhaseClearQp,
-    dynamic phaseClearQp,
-    dynamic friendshipExpBase,
-    List<BattleFriendshipRewardInfo>? friendshipRewardInfos,
-    dynamic warClearReward,
-    List<DropInfo>? rewardInfos,
-    List<DropInfo>? resultDropInfos,
-  }) : battleId = _toInt(battleId),
-       battleResult = _toInt(battleResult),
-       eventId = _toInt(eventId, 0),
-       followerId = _toInt(followerId, 0),
-       followerClassId = _toInt(followerClassId, 0),
-       followerSupportDeckId = _toInt(followerSupportDeckId, 0),
-       followerType = _toInt(followerType, 0),
-       followerStatus = _toInt(followerStatus, 0),
-       oldUserGame = oldUserGame ?? [],
-       oldUserQuest = oldUserQuest ?? [],
-       oldUserEquip = oldUserEquip ?? [],
-       oldUserSvtCollection = oldUserSvtCollection ?? [],
-       oldUserSvt = oldUserSvt ?? [],
-       myDeck = myDeck is Map ? myDeck : {}, //
-       firstClearRewardQp = _toInt(firstClearRewardQp, 0),
-       originalPhaseClearQp = _toInt(originalPhaseClearQp, 0),
-       phaseClearQp = _toInt(phaseClearQp, 0),
-       friendshipExpBase = _toInt(friendshipExpBase, 0),
-       friendshipRewardInfos = friendshipRewardInfos ?? [],
-       warClearReward = warClearReward as List? ?? [],
-       rewardInfos = rewardInfos ?? [],
-       resultDropInfos = resultDropInfos ?? [];
-
-  factory BattleResultData.fromJson(Map<dynamic, dynamic> data) => _$BattleResultDataFromJson(data);
-}
-
-// GachaInfos
-@JsonSerializable()
-class GachaInfos extends MstGiftBase {
-  bool isNew;
-  int userSvtId;
-  //  int type;
-  //  int objectId;
-  //  int num;
-  int limitCount;
-  int sellQp;
-  int sellMana;
-  int svtCoinNum;
-
-  GachaInfos({
-    dynamic isNew,
-    dynamic userSvtId,
-    dynamic type,
-    dynamic objectId,
-    dynamic num,
-    dynamic limitCount,
-    dynamic sellQp,
-    dynamic sellMana,
-    dynamic svtCoinNum,
-  }) : isNew = _toBool(isNew),
-       userSvtId = _toInt(userSvtId),
-       limitCount = _toInt(limitCount),
-       sellQp = _toInt(sellQp),
-       sellMana = _toInt(sellMana),
-       svtCoinNum = _toInt(svtCoinNum),
-       super(type: _toInt(type), objectId: _toInt(objectId), num: _toInt(num));
-
-  factory GachaInfos.fromJson(Map<String, dynamic> json) => _$GachaInfosFromJson(json);
-
-  @override
-  Map<String, dynamic> toJson() => _$GachaInfosToJson(this);
-}
-
-@JsonSerializable(createToJson: false, createFieldMap: true)
-class LoginResultData {
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  int serverTime = 0;
-  // List<LoginMessageData> loginMessages;
-  List<LoginBonusData> totalLoginBonus;
-  List<LoginBonusData> seqLoginBonus;
-  // List<FortuneBonusData> loginFortuneBonus;
-  List<CampaignBonusData> campaignBonus;
-  // List<LeaveSvtData> leaveSvt;
-  // List<int> materialAddSvtIds;
-  // List<int> returnRarePriShopIds;
-  // List<int> freeShopIds;
-  List<Map<String, dynamic>> campaignDirectBonus; // List<CampaignDirectBonusData>
-
-  LoginResultData({
-    List<LoginBonusData>? totalLoginBonus,
-    List<LoginBonusData>? seqLoginBonus,
-    List<CampaignBonusData>? campaignBonus,
-    List<Map<String, dynamic>>? campaignDirectBonus,
-  }) : totalLoginBonus = totalLoginBonus ?? [],
-       seqLoginBonus = seqLoginBonus ?? [],
-       campaignBonus = campaignBonus ?? [],
-       campaignDirectBonus = campaignDirectBonus ?? [];
-
-  factory LoginResultData.fromJson(Map<dynamic, dynamic> data) => _$LoginResultDataFromJson(data);
-
-  static const fieldMap = _$LoginResultDataFieldMap;
-
-  List<List<LoginBonusBase>> getLists() => [totalLoginBonus, seqLoginBonus, campaignBonus /*campaignDirectBonus*/];
-
-  void clear() {
-    totalLoginBonus = [];
-    seqLoginBonus = [];
-    campaignBonus = [];
-    campaignDirectBonus = [];
-  }
-
-  void updateServerTime(int? t) {
-    if (t != null && t > 0) {
-      serverTime = t;
-      for (final bonusList in getLists()) {
-        for (final bonus in bonusList) {
-          bonus.createdAt = t;
-        }
-      }
-    }
-  }
-
-  bool get isEmpty => getLists().every((e) => e.isEmpty);
-  bool get isNotEmpty => !isEmpty;
-  int get length => Maths.sum(getLists().map((e) => e.length));
-
-  @Deprecated('')
-  void mergeLoginBonus(LoginResultData target) {
-    totalLoginBonus = [...totalLoginBonus, ...target.totalLoginBonus];
-    seqLoginBonus = [...seqLoginBonus, ...target.seqLoginBonus];
-    campaignBonus = [...campaignBonus, ...target.campaignBonus];
-    campaignDirectBonus = [...campaignDirectBonus, ...target.campaignDirectBonus];
-  }
-}
-
-sealed class LoginBonusBase {
-  List<LoginBonusItemData> items;
-  Map<String, dynamic> script;
-  int createdAt;
-
-  LoginBonusBase({this.items = const [], this.script = const {}, dynamic createdAt}) : createdAt = _toInt(createdAt);
-
-  String get key;
-
-  @JsonKey(includeFromJson: false)
-  Map srcData = {};
-
-  List<({String? bannerUrl, String? urlLink})> getBanners(Region region) {
-    List<({String? bannerUrl, String? urlLink})> result = [];
-    final List<Map> banners = List.from(script['banners'] ?? []);
-    for (final banner in banners) {
-      String? bannerUrl = banner['bannerUrl'], urlLink = banner['urlLink'];
-      if (bannerUrl == null && urlLink == null) continue;
-      if (bannerUrl != null && !bannerUrl.toLowerCase().startsWith('http')) {
-        switch (region) {
-          case Region.jp:
-            const baseUrl = 'https://view.fate-go.jp';
-            bannerUrl = Uri.parse(baseUrl).resolve(bannerUrl).toString();
-          default:
-            break;
-        }
-      }
-      result.add((bannerUrl: bannerUrl, urlLink: urlLink));
-    }
-    return result;
-  }
-}
-
-@JsonSerializable(createToJson: false)
-class LoginBonusData extends LoginBonusBase {
-  int num;
-  String message;
-
-  LoginBonusData({dynamic num, super.items, dynamic message, super.script, super.createdAt})
-    : num = _toInt(num),
-      message = message?.toString() ?? '';
-
-  factory LoginBonusData.fromJson(Map<dynamic, dynamic> data) => _$LoginBonusDataFromJson(data)..srcData = data;
-
-  @override
-  String get key => 'day $num';
-}
-
-@JsonSerializable(createToJson: false)
-class CampaignBonusData extends LoginBonusBase {
-  String name;
-  String detail;
-  String addDetail;
-  bool isDeemedLogin;
-  int eventId;
-  int day;
-
-  CampaignBonusData({
-    this.name = '',
-    this.detail = '',
-    this.addDetail = '',
-    this.isDeemedLogin = false,
-    super.items,
-    super.script,
-    dynamic eventId,
-    dynamic day,
-    super.createdAt,
-  }) : eventId = _toInt(eventId),
-       day = _toInt(day);
-
-  factory CampaignBonusData.fromJson(Map<dynamic, dynamic> data) => _$CampaignBonusDataFromJson(data)..srcData = data;
-
-  @override
-  String get key => '$eventId-day$day';
-}
-
-@JsonSerializable(createToJson: false)
-class LoginBonusItemData {
-  String name;
-  int num;
-
-  LoginBonusItemData({this.name = '', dynamic num}) : num = _toInt(num);
-
-  factory LoginBonusItemData.fromJson(Map<dynamic, dynamic> data) => _$LoginBonusItemDataFromJson(data);
-}
-
 enum UserStatusFlagKind {
   // FP gacha auto sell
   combineMaterialC(0),
@@ -3572,7 +3418,8 @@ enum UserStatusFlagKind {
   birthdaySetting(21),
   issuedDeletePassword(22),
   deleted(23),
-  executedLogin(25);
+  executedLogin(25), // removed
+  supportLimitCountToDispLimitCount(28);
 
   const UserStatusFlagKind(this.value);
   final int value;
