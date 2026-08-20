@@ -1,0 +1,8 @@
+#include? "Generated.xcconfig"
+
+// Identity values for this fork's personal iOS distribution.
+CHALDEA_IOS_TEAM_ID = WAF9PC2Y8K
+CHALDEA_IOS_BUNDLE_ID = io.github.davidnavalho.chaldea
+CHALDEA_IOS_WIDGET_BUNDLE_ID = $(CHALDEA_IOS_BUNDLE_ID).FakerStatusWidget
+CHALDEA_IOS_APP_GROUP_ID = group.io.github.davidnavalho.chaldea.shared
+CHALDEA_IOS_DEPLOYMENT_TARGET = 15.0
