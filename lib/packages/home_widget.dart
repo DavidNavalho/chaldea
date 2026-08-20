@@ -13,7 +13,9 @@ class HomeWidgetX {
   static Future<bool?> init() async {
     if (!isSupported) return null;
     if (PlatformU.isIOS) {
-      return HomeWidget.setAppGroupId('group.cc.narumi.chaldea.shared');
+      return HomeWidget.setAppGroupId(
+        const String.fromEnvironment('CHALDEA_IOS_APP_GROUP_ID', defaultValue: 'group.cc.narumi.chaldea.shared'),
+      );
     }
     return null;
   }

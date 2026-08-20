@@ -27,7 +27,7 @@ struct Provider: AppIntentTimelineProvider {
     async -> Timeline<SimpleEntry>
   {
     let sharedDefaults = UserDefaults(
-      suiteName: "group.cc.narumi.chaldea.shared")
+      suiteName: ChaldeaForkIdentity.appGroupId)
     let accountsData = sharedDefaults?.string(forKey: "accountsData") ?? "[]"
 
     let currentDate = Date()
