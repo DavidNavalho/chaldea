@@ -89,7 +89,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
       SliderWithPrefix(
         label: S.current.bond,
         min: 0,
-        max: 15,
+        max: kBondLvMax,
         value: playerSvtData.bondLv,
         valueFormatter: (v) => 'Lv.$v',
         onChange: (v) {
@@ -124,14 +124,16 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
       SliderWithPrefix(
         label: 'ATK ${S.current.foukun}',
         min: 0,
-        max: 2000,
+        max: 3000,
         value: playerSvtData.atkFou,
         // division: 200,
         valueFormatter: (v) => '+$v',
         onChange: (v) {
           _updateState(() {
             int v2 = (v / 10).round();
-            if (v2 > 100) {
+            if (v2 > 200) {
+              v2 = v2 ~/ 10 * 10;
+            } else if (v2 > 100) {
               v2 = v2 ~/ 2 * 2;
             }
             playerSvtData.atkFou = v2 * 10;
@@ -141,14 +143,16 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
       SliderWithPrefix(
         label: 'HP ${S.current.foukun}',
         min: 0,
-        max: 2000,
+        max: 3000,
         value: playerSvtData.hpFou,
         // division: 200,
         valueFormatter: (v) => '+$v',
         onChange: (v) {
           _updateState(() {
             int v2 = (v / 10).round();
-            if (v2 > 100) {
+            if (v2 > 200) {
+              v2 = v2 ~/ 10 * 10;
+            } else if (v2 > 100) {
               v2 = v2 ~/ 2 * 2;
             }
             playerSvtData.hpFou = v2 * 10;
@@ -738,8 +742,7 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
       ];
     }
 
-    Widget _buildTypeVal(int type) {
-      final stat = playerSvtData.classBoardData.getClassStatistic(type, dispSvt.classId);
+    Set<num> _getMaxCounts(int type) {
       Set<num> maxCounts = {};
       if (grandBoard != null) {
         for (final vals in valsList) {
@@ -752,7 +755,14 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
           }
         }
       }
-      maxCounts.remove(0);
+      maxCounts.remove(0.toInt());
+      maxCounts.remove(0.0);
+      return maxCounts;
+    }
+
+    Widget _buildTypeVal(int type) {
+      final stat = playerSvtData.classBoardData.getClassStatistic(type, dispSvt.classId);
+      final maxCounts = _getMaxCounts(type);
 
       final dispName = ClassStatisticsType.fromId(type)?.dispName ?? 'Type $type';
       return ListTile(
@@ -792,19 +802,38 @@ class _ServantOptionEditPageState extends State<ServantOptionEditPage> {
               TextSpan(
                 text: '${Transl.svtClassId(dispSvt.classId).l} ${S.current.svt_class} ${S.current.statistics_title} ',
                 style: Theme.of(context).textTheme.bodySmall,
-                children: [
-                  SharedBuilder.textButtonSpan(
-                    context: context,
-                    text: S.current.clear,
-                    onTap: () {
-                      setState(() {
-                        playerSvtData.classBoardData.classStatistics.clear();
-                      });
-                    },
-                  ),
-                ],
               ),
             ),
+          ),
+          Row(
+            mainAxisAlignment: .center,
+            spacing: 8,
+            children: [
+              TextButton(
+                style: kTextButtonDenseStyle,
+                onPressed: () {
+                  setState(() {
+                    playerSvtData.classBoardData.classStatistics.clear();
+                  });
+                },
+                child: Text(S.current.clear),
+              ),
+              TextButton(
+                style: kTextButtonDenseStyle,
+                onPressed: classStatTypes.every((type) => _getMaxCounts(type).length == 1)
+                    ? () {
+                        setState(() {
+                          playerSvtData.classBoardData.classStatistics.clear();
+                          for (final type in classStatTypes) {
+                            playerSvtData.classBoardData.getClassStatistic(type, dispSvt.classId).typeVal =
+                                _getMaxCounts(type).single.toInt();
+                          }
+                        });
+                      }
+                    : null,
+                child: Text("MAX"),
+              ),
+            ],
           ),
           for (final type in classStatTypes) _buildTypeVal(type),
         ],

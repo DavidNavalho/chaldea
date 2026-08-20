@@ -19,6 +19,7 @@ class NiceWar with RouteInfo {
   String? banner;
   String? headerImage;
   int priority;
+  int materialPriority;
   int parentWarId;
   int materialParentWarId;
   int parentBlankEarthSpotId;
@@ -51,6 +52,7 @@ class NiceWar with RouteInfo {
     this.banner,
     this.headerImage,
     this.priority = 0,
+    this.materialPriority = 0,
     this.parentWarId = 0,
     this.materialParentWarId = 0,
     this.parentBlankEarthSpotId = 0,
@@ -60,7 +62,7 @@ class NiceWar with RouteInfo {
     this.script,
     this.startType = WarStartType.none,
     this.targetId = 0,
-    int eventId = 0,
+    this._eventId = 0,
     this.eventName = "",
     this.lastQuestId = 0,
     this.releaseConditions = const [],
@@ -71,8 +73,7 @@ class NiceWar with RouteInfo {
     this.spotRoads = const [],
     this.questSelections = const [],
   }) : _name = _fixName(name, id, eventName),
-       _longName = _fixName(longName, id, eventName),
-       _eventId = eventId {
+       _longName = _fixName(longName, id, eventName) {
     if (banner != null) {
       // fixed when released
       // if (id == 404) {
@@ -81,6 +82,16 @@ class NiceWar with RouteInfo {
       //   banner = banner!.replaceAll(RegExp(r'/questboard.*.png'), '/questboard_cap_closed_406.png');
       // }
     }
+  }
+
+  static final Map<int, num> _fixedWarPriorities = {WarId.mainInterlude: 980, WarId.grandBoardWar: 405.5};
+
+  num get resolvedPriority {
+    if (_fixedWarPriorities.containsKey(id)) return _fixedWarPriorities[id]!;
+    if (parentWars.contains(16000) && priority > 10000) {
+      return id;
+    }
+    return priority;
   }
 
   Set<int> get parentWars => {
@@ -107,6 +118,13 @@ class NiceWar with RouteInfo {
           break;
         }
       }
+    }
+    if (id == WarId.pastChaldea) {
+      final overwriteBanners = warAdds
+          .where((e) => e.type == .banner && e.overwriteBanner?.isNotEmpty == true)
+          .toList();
+      overwriteBanners.sort2((e) => e.priority);
+      banner = overwriteBanners.lastOrNull?.overwriteBanner ?? banner;
     }
 
     if (banner == null) return null;
@@ -193,12 +211,19 @@ class NiceWar with RouteInfo {
   }
 
   Transl<String, String> get lLongName {
-    final warName = (flags.contains(WarFlag.subFolder) ? _name : _longName) ?? _defaultName;
+    String warName = (flags.contains(WarFlag.subFolder) ? _name : _longName) ?? _defaultName;
+    if (id == WarId.pastChaldea) {
+      warName =
+          warAdds.firstWhereOrNull((e) => e.type == .longName && e.overwriteStr.isNotEmpty)?.overwriteStr ?? warName;
+    }
     return Transl.warNames(warName);
   }
 
   Transl<String, String> get lName {
     String warName = _name ?? _longName ?? _defaultName;
+    if (id == WarId.pastChaldea) {
+      warName = warAdds.firstWhereOrNull((e) => e.type == .name && e.overwriteStr.isNotEmpty)?.overwriteStr ?? warName;
+    }
     if (Transl.md.warNames.containsKey(warName)) {
       return Transl.warNames(warName);
     } else {
@@ -674,6 +699,10 @@ enum WarOverwriteType {
   bgObject,
   recommendSupportParentWar,
   folderHeaderId,
+  materialPriority,
+  materialFolderName,
+  materialHeaderImgId,
+  materialGalleryHeaderImgId,
 }
 
 enum WarStartType { none, script, quest }
@@ -689,8 +718,11 @@ abstract class WarId {
   static const interlude = 1003;
   static const mainInterlude = 1004;
   static const advanced = 1006;
+  static const exRoomWar = 1007;
   static const ordealCall = 401;
   static const grandBoardWar = 8395;
+
+  static const pastChaldea = 501;
 }
 
 const Map<int, String> _warMCBanner = {

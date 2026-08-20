@@ -113,6 +113,13 @@ class SvtTdTab extends StatelessWidget {
         overrideData: overrideTds.getOrNull(0),
       );
     }
+    bool _checkHasCond(int index) {
+      final td = tds[index], oTdData = overrideTds.getOrNull(index);
+      return td.svt.condQuestId > 0 || oTdData != null;
+    }
+
+    final hasAnyCond = tds.indexed.any((e) => _checkHasCond(e.$1));
+
     NiceTd initTd = _getDefaultTd(tds) ?? tds.last;
     return ValueStatefulBuilder<int>(
       initValue: tds.indexOf(initTd),
@@ -147,18 +154,23 @@ class SvtTdTab extends StatelessWidget {
                 },
               ),
             ),
-            if (td.svt.condQuestId > 0 || oTdData != null)
-              IconButton(
-                padding: const EdgeInsets.all(2),
-                constraints: const BoxConstraints(minWidth: 48, minHeight: 24),
-                onPressed: () => showDialog(
-                  context: context,
-                  useRootNavigator: false,
-                  builder: (_) => releaseCondition(svt, td, oTdData),
+            if (hasAnyCond)
+              Visibility(
+                visible: td.svt.condQuestId > 0 || oTdData != null,
+                maintainSize: true,
+                maintainAnimation: true,
+                maintainState: true,
+                child: InkWell(
+                  onTap: () => showDialog(
+                    context: context,
+                    useRootNavigator: false,
+                    builder: (_) => releaseCondition(svt, td, oTdData),
+                  ),
+                  child: const Padding(
+                    padding: .symmetric(vertical: 2, horizontal: 8),
+                    child: Icon(Icons.info_outline),
+                  ),
                 ),
-                icon: const Icon(Icons.info_outline),
-                color: Theme.of(context).hintColor,
-                tooltip: S.current.open_condition,
               ),
           ],
         );

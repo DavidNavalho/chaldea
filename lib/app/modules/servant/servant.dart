@@ -104,6 +104,7 @@ class ServantDetailPageState extends State<ServantDetailPage> with SingleTickerP
     final ascension = ascensions?[asc] ?? ascensions?.values.toList().getOrNull(0);
     return [
       SliverAppBar(
+        titleSpacing: 0,
         title: AutoSizeText(svt.lAscName.l, maxLines: 1),
         actions: [
           if (svt.isUserSvt)
@@ -218,7 +219,7 @@ class ServantDetailPageState extends State<ServantDetailPage> with SingleTickerP
                 // style: Theme.of(context).textTheme.bodySmall,
                 textScaler: const TextScaler.linear(0.9),
                 // style: TextStyle(color: Theme.of(context).colorScheme.primary),
-                style: TextStyle(color: AppTheme(context).tertiary),
+                style: TextStyle(color: Theme.of(context).colorScheme.primary),
               ),
             ),
           const SizedBox(height: 4),
@@ -226,16 +227,13 @@ class ServantDetailPageState extends State<ServantDetailPage> with SingleTickerP
       ),
       titlePadding: const EdgeInsetsDirectional.only(start: 16),
       contentPadding: const EdgeInsetsDirectional.fromSTEB(16, 0, 16, 0),
-      subtitle: SizedBox(
-        height: 22,
-        child: ListView(
-          scrollDirection: Axis.horizontal,
-          shrinkWrap: true,
+      subtitle: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          mainAxisSize: .min,
           children: <Widget>[
             // more tags/info here
-            if (!const [SvtType.combineMaterial, SvtType.statusUp].contains(svt.type))
-              for (final badge in getObtainBadges())
-                Padding(padding: const EdgeInsetsDirectional.only(end: 4), child: badge),
+            if (!const [SvtType.combineMaterial, SvtType.statusUp].contains(svt.type)) ...getObtainBadges(),
             if (Items.specialSvtMat.contains(svt.id))
               TextButton(
                 onPressed: () {
@@ -273,7 +271,7 @@ class ServantDetailPageState extends State<ServantDetailPage> with SingleTickerP
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              Icon(icons[index], color: AppTheme(context).tertiary),
+                              Icon(icons[index], color: Theme.of(context).colorScheme.primary),
                               AutoSizeText(
                                 db.settings.priorityTags[priority] ?? '',
                                 overflow: TextOverflow.visible,
@@ -302,16 +300,17 @@ class ServantDetailPageState extends State<ServantDetailPage> with SingleTickerP
   }
 
   PreferredSizeWidget get tabBar {
+    final isDark = Theme.of(context).isDarkMode;
     return FixedHeight.tabBar(
       TabBar(
         tabAlignment: TabAlignment.center,
-        // labelColor: AppTheme(context).tertiary,
         indicatorSize: TabBarIndicatorSize.tab,
         labelPadding: const EdgeInsets.symmetric(horizontal: 8.0),
         // unselectedLabelColor: Colors.grey,
         isScrollable: true,
         tabs: builders.map((e) => Tab(text: e.tabBuilder())).toList(),
-        indicatorColor: Theme.of(context).isDarkMode ? null : Colors.white.withAlpha(210),
+        // indicatorColor: isDark ? null : Colors.white.withAlpha(210),
+        unselectedLabelColor: isDark ? Colors.grey.shade200 : Colors.grey.shade800,
       ),
     );
   }

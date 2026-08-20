@@ -18,7 +18,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "cc.narumi.chaldea"
-    compileSdk = 36
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -38,9 +38,12 @@ android {
 
     flavorDimensions += "app"
     productFlavors {
-        create("play") {
+        create("github") {
             dimension = "app"
             isDefault = true
+        }
+        create("play") {
+            dimension = "app"
         }
         create("fdroid") {
             dimension = "app"
@@ -78,6 +81,10 @@ android {
             ndk {
                 debugSymbolLevel = "FULL"
             }
+            // Pangle SDK compat: disable new resource shrinker to avoid
+            // ShrinkProtoResourcesAction ParseError (AGP 8.0+ replacement for
+            // the removed android.enableNewResourceShrinker=false gradle.properties flag)
+            isShrinkResources = false
 
             proguardFiles(
                 getDefaultProguardFile("proguard-android.txt"),
@@ -98,6 +105,36 @@ android {
     }
 }
 
+afterEvaluate {
+    // Fix command without flavor
+    listOf("debug", "release", "profile").forEach { buildType ->
+        val taskName = "assemble${buildType.replaceFirstChar { it.uppercase() }}"
+
+        tasks.matching { it.name == taskName }.configureEach {
+            doLast {
+                // default flavor (github) APK path
+                val sourceApk = layout.buildDirectory
+                    .file("outputs/apk/github/$buildType/app-github-$buildType.apk")
+                    .get().asFile
+
+                if (sourceApk.exists()) {
+                    // copy to Flutter CLI required path
+                    val targetDir = layout.buildDirectory
+                        .dir("outputs/flutter-apk")
+                        .get().asFile
+                    targetDir.mkdirs()
+
+                    sourceApk.copyTo(
+                        target = File(targetDir, "app-$buildType.apk"),
+                        overwrite = true
+                    )
+                    println("✅ Copied app-github-$buildType.apk → app-$buildType.apk")
+                }
+            }
+        }
+    }
+}
+
 flutter {
     source = "../.."
 }
@@ -105,4 +142,7 @@ flutter {
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation("androidx.glance:glance-appwidget:1.1.1")
+    // OkHttp: required by Pangle/GroMore SDK for network requests
+    // (see official docs: https://www.csjplatform.com/supportcenter/28659)
+    implementation("com.squareup.okhttp3:okhttp:3.12.1")
 }

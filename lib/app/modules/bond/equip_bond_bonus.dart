@@ -16,6 +16,7 @@ import '../common/filter_page_base.dart';
 import '../servant/filter.dart';
 
 const _kExtraPlayableSvtIds = <int>[505700];
+const int _kHiddenRate = -1000;
 
 typedef _GroupItem = ({int rateCount, List<int> ceIds, List<({Servant svt, List<int> limitCounts})> svts});
 
@@ -319,7 +320,7 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
     if (hiddenSvtIds.isNotEmpty) {
       resultData.add((
         ceIds: [],
-        rateCount: -1000,
+        rateCount: _kHiddenRate,
         svts: [
           for (final svtId in hiddenSvtIds)
             if (db.gameData.servantsById.containsKey(svtId)) (limitCounts: [], svt: db.gameData.servantsById[svtId]!),
@@ -371,9 +372,9 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: Theme.of(context).colorScheme.primary),
                 ),
-                child: Text(rateCount.format(percent: true, base: 10)),
+                child: Text(rateCount == _kHiddenRate ? S.current.hide : rateCount.format(percent: true, base: 10)),
               ),
-              if (rateCount < 0) Text(S.current.hide),
+              // if (rateCount < 0) Text(S.current.hide),
               ...ceIds
                   .map((ceId) {
                     final (:ce, :traits, :rateCount) = allCeData[ceId]!;
@@ -473,14 +474,14 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
       FilterOption(
         selected:
             svtFilterData.bondCompare.options.equalTo(const {CompareOperator.lessThan}) &&
-            svtFilterData.bondValue.radioValue == 10,
+            svtFilterData.bondValue.radioValue == kBondLvDefaultMax,
         value: 0,
-        child: Text('${S.current.bond}＜10'),
+        child: Text('${S.current.bond}＜$kBondLvDefaultMax'),
         onChanged: (value) {
           setState(() {
             if (value) {
               svtFilterData.bondCompare.options = {CompareOperator.lessThan};
-              svtFilterData.bondValue.set(10);
+              svtFilterData.bondValue.set(kBondLvDefaultMax);
             } else {
               svtFilterData.bondValue.reset();
             }

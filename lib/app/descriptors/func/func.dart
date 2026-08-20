@@ -218,7 +218,9 @@ class _DescriptorWrapper extends StatelessWidget {
                 cell = DecoratedBox(
                   decoration: BoxDecoration(
                     border: Border.all(
-                      color: cellIndex == 1 ? Colors.amber.withAlpha(180) : AppTheme(context).tertiary.withAlpha(180),
+                      color: cellIndex == 1
+                          ? Colors.amber.withAlpha(180)
+                          : AppTheme.of(context).accentColor.withAlpha(180),
                     ),
                     borderRadius: BorderRadius.circular(4),
                   ),
@@ -495,10 +497,12 @@ class SkillScriptDescriptor extends StatelessWidget {
       for (final (index, branch) in branches.indexed) {
         String title = transl("Branch").l.replaceFirst('{0}', '${index + 1}');
         title = '[$title] ';
-        if (Transl.md.skillNames.containsKey(branch.detailText)) {
-          title += Transl.skillNames(branch.detailText).l;
-        } else {
-          title += transl(branch.detailText).l;
+        if (branch.detailText.isNotEmpty) {
+          if (Transl.md.skillNames.containsKey(branch.detailText)) {
+            title += Transl.skillNames(branch.detailText).l;
+          } else {
+            title += transl(branch.detailText).l;
+          }
         }
         InlineSpan condSpan = switch (branch.condType) {
           BattleBranchSkillCondBranchType.none => TextSpan(text: branch.condType.name),
@@ -516,23 +520,25 @@ class SkillScriptDescriptor extends StatelessWidget {
               border: Border.all(color: Theme.of(context).colorScheme.secondaryContainer, width: 1),
               borderRadius: BorderRadius.circular(8),
             ),
-            padding: const EdgeInsets.all(4),
-            margin: const EdgeInsets.only(bottom: 8),
+            margin: const EdgeInsets.symmetric(vertical: 4),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ListTile(
                   dense: true,
-                  leading: FutureBuilder2<int, String?>(
-                    id: branch.iconBuffId,
-                    loader: () async {
-                      return branch.icon ?? (await AtlasApi.buff(branch.iconBuffId, region: region ?? Region.jp))?.icon;
-                    },
-                    builder: (context, icon) {
-                      return db.getIconImage(icon, width: 24, height: 24);
-                    },
-                  ),
+                  leading: branch.iconBuffId > 0
+                      ? FutureBuilder2<int, String?>(
+                          id: branch.iconBuffId,
+                          loader: () async {
+                            return branch.icon ??
+                                (await AtlasApi.buff(branch.iconBuffId, region: region ?? Region.jp))?.icon;
+                          },
+                          builder: (context, icon) {
+                            return db.getIconImage(icon, width: 24, height: 24);
+                          },
+                        )
+                      : null,
                   title: Text(title),
                   subtitle: Text.rich(
                     TextSpan(
@@ -562,8 +568,8 @@ class SkillScriptDescriptor extends StatelessWidget {
     }
     if (children.isEmpty) return const SizedBox();
     return Container(
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), color: Theme.of(context).hoverColor),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      // decoration: BoxDecoration(borderRadius: BorderRadius.circular(4), color: Theme.of(context).hoverColor),
+      margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
       child: SizedBox(
         width: double.infinity,
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: children),
@@ -755,7 +761,7 @@ class FuncDescriptor extends StatelessWidget {
         vals: mVals,
         originVals: oVals,
         ignoreRate: false,
-        color: index == 5 || index == 9 ? AppTheme(context).tertiary : null,
+        color: index == 5 || index == 9 ? AppTheme.of(context).accentColor : null,
         inList: true,
         supportOnly: support,
       );
@@ -1041,7 +1047,7 @@ class FuncDescriptor extends StatelessWidget {
               int? guessTrait;
               if (indiv == 0 || indiv == 9999) {
                 bool _isGuessTrait(int v) =>
-                    (v >= 2000 && v < 3000) || (v >= 3050 && v < 4000) || (v >= 6000 && v < 7000);
+                    (v >= 2000 && v < 3000) || (v >= 3050 && v < 4000) || (v >= 6000 && v < 7000) || v >= 10000;
                 final guessTraits = buff.vals.where((e) => _isGuessTrait(e)).toList();
                 if (guessTraits.length == 1) guessTrait = guessTraits.first;
                 for (final v in vals?.getAddIndividuality() ?? <int>[]) {
@@ -1218,20 +1224,6 @@ class FuncDescriptor extends StatelessWidget {
 
     List<List<InlineSpan>> _condSpans = [];
 
-    int? paramAddMaxCount = vals?.ParamAddMaxCount;
-    int? paramAddValue = vals?.ParamAdd ?? vals?.ParamAddValue;
-    int? paramAddMaxValue = vals?.ParamMax ?? vals?.ParamAddMaxValue;
-    if (paramAddValue != null && paramAddMaxValue != null && paramAddMaxValue % paramAddValue == 0) {
-      paramAddMaxCount ??= paramAddMaxValue ~/ paramAddValue;
-    }
-    if (paramAddMaxCount != null) {
-      _condSpans.add(
-        SharedBuilder.replaceSpan(Transl.miscFunction('ParamAddMaxCount'), '{0}', [
-          TextSpan(text: '$paramAddMaxCount'),
-        ]),
-      );
-    }
-
     // ParamAddIndiv
     final _addedParamAddTexts = <String>{};
     void _addParamAddIndiv(
@@ -1306,6 +1298,7 @@ class FuncDescriptor extends StatelessWidget {
       andCheckTraitIds: vals?.SnapShotParamAddFieldIndividualityAndCheck,
       isSnapShot: true,
     );
+    _addParamAddIndiv("${S.current.mystic_code} ${S.current.skill}", andCheckTraitIds: vals?.TypeIndividualityEachFunc);
 
     // CondParamAdd
     final condParamType = vals?.CondParamRangeType ?? vals?.CondParamAddType ?? 0;
@@ -1338,6 +1331,20 @@ class FuncDescriptor extends StatelessWidget {
           '{maxCount}': (_) => [TextSpan(text: condParamMaxCount?.format())],
           '{type}': (_) => [TextSpan(text: '$condParamType')],
         }),
+      );
+    }
+
+    int? paramAddMaxCount = vals?.ParamAddMaxCount ?? vals?.SnapShotParamAddMaxCount;
+    int? paramAddValue = vals?.ParamAdd ?? vals?.ParamAddValue;
+    int? paramAddMaxValue = vals?.ParamMax ?? vals?.ParamAddMaxValue;
+    if (paramAddValue != null && paramAddMaxValue != null && paramAddMaxValue % paramAddValue == 0) {
+      paramAddMaxCount ??= paramAddMaxValue ~/ paramAddValue;
+    }
+    if (paramAddMaxCount != null) {
+      _condSpans.add(
+        SharedBuilder.replaceSpan(Transl.miscFunction('ParamAddMaxCount'), '{0}', [
+          TextSpan(text: '$paramAddMaxCount'),
+        ]),
       );
     }
 
@@ -1440,7 +1447,8 @@ class FuncDescriptor extends StatelessWidget {
     }
 
     if (buff != null) {
-      _addTraits(Transl.special.buffCheckSelf, buff.ckSelfIndv, useAnd: buff.script.checkIndvTypeAnd == true);
+      final script = buff.script;
+      _addTraits(Transl.special.buffCheckSelf, buff.ckSelfIndv, useAnd: script.checkIndvTypeAnd == true);
       if (buff.type == BuffType.upToleranceSubstate &&
           buff.ckOpIndv.toSet().equalTo(Trait.upToleranceSubstateBuffTraits.map((e) => e.value).toSet())) {
         _condSpans.add([
@@ -1453,9 +1461,8 @@ class FuncDescriptor extends StatelessWidget {
           buff.ckOpIndv.first == -Trait.ignoreGuts.value) {
         //
       } else {
-        _addTraits(Transl.special.buffCheckOpposite, buff.ckOpIndv, useAnd: buff.script.checkIndvTypeAnd == true);
+        _addTraits(Transl.special.buffCheckOpposite, buff.ckOpIndv, useAnd: script.checkIndvTypeAnd == true);
       }
-      final script = buff.script;
       if (script.TargetIndiv != null) {
         _addTraits('Target Indiv: ', [script.TargetIndiv!]);
       }
@@ -1463,16 +1470,16 @@ class FuncDescriptor extends StatelessWidget {
       _condSpans.addAll(_buildOwnerIndiv(context, buff, script));
 
       for (final (target, ckCountIndiv) in [
-        (Transl.special.buffCheckSelf, buff.script.ckSelfCountIndividuality),
-        (Transl.special.buffCheckOpposite, buff.script.ckOpCountIndividuality),
+        (Transl.special.buffCheckSelf, script.ckSelfCountIndividuality),
+        (Transl.special.buffCheckOpposite, script.ckOpCountIndividuality),
       ]) {
         if (ckCountIndiv == null || ckCountIndiv.isEmpty) continue;
         _condSpans.add([
           TextSpan(text: target),
           ...SharedBuilder.replaceSpan(Transl.special.buffOwnerIndiv, '{0}', [
             ...SharedBuilder.traitSpans(context: context, traits: ckCountIndiv, useAndJoin: false),
-            if (buff.script.ckIndvCountBelow != null) TextSpan(text: '≤${buff.script.ckIndvCountBelow}'),
-            if (buff.script.ckIndvCountAbove != null) TextSpan(text: '≥${buff.script.ckIndvCountAbove}'),
+            if (script.ckIndvCountBelow != null) TextSpan(text: '≤${script.ckIndvCountBelow}'),
+            if (script.ckIndvCountAbove != null) TextSpan(text: '≥${script.ckIndvCountAbove}'),
           ]),
         ]);
       }
@@ -1494,11 +1501,20 @@ class FuncDescriptor extends StatelessWidget {
       if (script.fromCommandSpell == 1) {
         _condSpans.add([TextSpan(text: Transl.miscFunction('fromCommandSpell'))]);
       }
+      if (script.condGrantorRelativePosition != null) {
+        _condSpans.add([
+          TextSpan(
+            text: Transl.miscFunction(
+              'condGrantorRelativePosition_${script.condGrantorRelativePosition! > 0 ? 'positive' : 'negative'}',
+            ).replaceFirst('{0}', script.condGrantorRelativePosition!.abs().toString()),
+          ),
+        ]);
+      }
       if (buff.type == BuffType.npattackPrevBuff) {
         _condSpans.add([TextSpan(text: '替换宝具效果中的第${(vals?.Value ?? 0) + 1}个效果(包含敌方效果)')]);
       }
 
-      final condBuffValues = buff.script.condBuffValue ?? [];
+      final condBuffValues = script.condBuffValue ?? [];
       for (final condBuffValue in condBuffValues) {
         final buffType = BuffType.fromId(condBuffValue.buffType ?? -1);
         final buffIndivs = condBuffValue.buffIndividualitie ?? [];
@@ -1631,7 +1647,7 @@ class FuncDescriptor extends StatelessWidget {
         SharedBuilder.replaceSpan(Transl.special.funcEventOnly, '{0}', [
           TextSpan(
             text: eventName,
-            style: TextStyle(color: AppTheme(context).tertiary),
+            style: TextStyle(color: Theme.of(context).colorScheme.primary),
             recognizer: TapGestureRecognizer()
               ..onTap = () {
                 router.push(url: Routes.eventI(vals!.EventId!));

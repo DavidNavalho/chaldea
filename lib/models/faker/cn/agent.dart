@@ -34,6 +34,7 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
   @override
   AutoLoginDataCN get user => network.user;
 
+  DateTime _appStartTime = DateTime.now();
   String rguid = '';
   String usk = '';
   String sguid = '';
@@ -180,7 +181,12 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
 
   Future<FResponse> _member() async {
     network.cookies.clear();
-    final request = FRequestCN(network: network, path: '$host/rongame_beta/rgfate/60_member/member.php', key: 'member');
+    _appStartTime = DateTime.now().subtract(Duration(seconds: 30));
+    final request = FRequestCN(
+      network: network,
+      path: '$host//rongame_beta/rgfate/60_member/member.php',
+      key: 'member',
+    );
     final params = <String, Object>{
       "deviceid": "",
       "t": "22360",
@@ -311,10 +317,13 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
     Map<String, Object>? params4,
     Duration? sendDelay,
   }) async {
+    // _clientLocalTime added in 2.129.0
+    double _clientLocalTime = DateTime.now().difference(_appStartTime).inMicroseconds / 1000_000;
     // has Set-Cookie
     final request = FRequestCN(
       network: network,
-      path: '$host/rongame_beta/rgfate/60_1001/ac.php?_userId=$sguid&_key=$key',
+      path:
+          '$host/rongame_beta/rgfate/60_1001/ac.php?_userId=$sguid&_key=$key&_clientLocalTime=${_clientLocalTime.toStringAsFixed(5)}',
       key: key,
     );
     if (sendDelay != null) request.sendDelay = sendDelay;
@@ -621,7 +630,7 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
         "randomLimitCountSupport": randomSettingSupport,
         "limitCountSupport": limitCountSupport,
         "isPush": isPush.toInt(),
-        // TODO: CN 20270401 Francesca
+        // TODO_CN 20270401 Francesca
         // "imageLimitCount2": imageLimitCount2,
         // "dispLimitCount2": dispLimitCount2,
         // "commandCardLimitCount2": commandCardLimitCount2,
@@ -682,7 +691,7 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
   @override
   Future<FResponse> servantFriendshipExceed({required int64_t baseUserSvtId}) {
     return _acPhp(
-      key: 'cardfriendshipexceed',
+      key: 'cardfriendshipexeceed', // typo: execeed not exceed
       nid: 'card_friendship_exceed',
       params2: {"baseUserSvtId": baseUserSvtId},
     );
@@ -865,9 +874,17 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
     int32_t followerRandomLimitCount = 0, //?
     String choiceRandomLimitCounts = "{}",
     int32_t followerSpoilerProtectionLimitCount = 4, //?
+    int32_t followerDispLimitCount = 0,
+    int32_t followerIconLimitCount = 0,
+    int32_t followerPortraitLimitCount = 0,
+    int32_t followerCommandCardLimitCount = 0,
     int32_t followerTransformRandomLimitCount = 0,
     String choiceTransformRandomLimitCounts = "{}",
     int32_t followerTransformSpoilerProtectionLimitCount = 0,
+    int32_t followerTransformDispLimitCount = 0,
+    int32_t followerTransformIconLimitCount = 0,
+    int32_t followerTransformPortraitLimitCount = 0,
+    int32_t followerTransformCommandCardLimitCount = 0,
     int32_t recommendSupportIdx = 0,
     required int32_t followerSupportDeckId,
     int32_t campaignItemId = 0,
@@ -896,11 +913,23 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
         "followerType": followerType,
         "followerRandomLimitCount": followerRandomLimitCount,
         "followerSpoilerProtectionLimitCount": followerSpoilerProtectionLimitCount,
-        "followerSupportDeckId": followerSupportDeckId,
-        // TODO: CN 20270401 Francesca
+        // TODO_CN 20270417
+        // "followerDispLimitCount": followerDispLimitCount,
+        // "followerIconLimitCount": followerIconLimitCount,
+        // "followerPortraitLimitCount": followerPortraitLimitCount,
+        // "followerCommandCardLimitCount": followerCommandCardLimitCount,
+        // "followerSupportDeckId": followerSupportDeckId,
+
+        // TODO_CN 20270401 Francesca
         // "choiceTransformRandomLimitCounts": choiceTransformRandomLimitCounts,
         // "followerTransformRandomLimitCount": followerTransformRandomLimitCount,
         // "followerTransformSpoilerProtectionLimitCount": followerTransformSpoilerProtectionLimitCount,
+
+        // TODO_CN 20270417
+        // "followerTransformDispLimitCount": followerTransformDispLimitCount,
+        // "followerTransformIconLimitCount": followerTransformIconLimitCount,
+        // "followerTransformPortraitLimitCount": followerTransformPortraitLimitCount,
+        // "followerTransformCommandCardLimitCount": followerTransformCommandCardLimitCount,
         "recommendSupportIdx": 0,
         "campaignItemId": campaignItemId,
         "restartWave": restartWave,

@@ -11,6 +11,7 @@ import '../gacha/gacha_draw.dart';
 import '../mission/mission_receive.dart';
 import '../present_box/present_box.dart';
 import '../runtime.dart';
+import '../shop/ex_room_shop.dart';
 import '../shop/shop.dart';
 
 class FakerReminders extends StatelessWidget {
@@ -25,6 +26,7 @@ class FakerReminders extends StatelessWidget {
     final now = DateTime.now().timestamp;
     List<Widget> children = [
       ...getGachas(context, now),
+      ...getExRoomShop(context, now),
       ...getShops(context, now),
       ...getMissions(context, now),
       ...getPresents(context, now),
@@ -103,6 +105,68 @@ class FakerReminders extends StatelessWidget {
     }
   }
 
+  List<Widget> getExRoomShop(BuildContext context, int now) {
+    final todayKey = ShopDailyInfo.getTodayKey(runtime.region);
+    final shops = mstData.mstShopDaily.where((e) => e.dayKey == todayKey).toList();
+    shops.sortByList((e) => [-e.lineupGroup, e.shopId]);
+    List<Widget> children = [];
+    for (final shopDaily in shops) {
+      final useItemId = shopDaily.useItemIds.firstOrNull ?? 0, useItemOwnNum = mstData.getItemOrSvtNum(useItemId);
+      final targetItemId = ConstData.shopDailyTargets[shopDaily.shopId] ?? 0,
+          targetItemOwnNum = mstData.getItemOrSvtNum(targetItemId);
+      if (targetItemOwnNum > useItemOwnNum + 200) continue;
+      final buyNum = mstData.userShopDaily[shopDaily.shopId]?.validate(shopDaily.dayKey)?.num ?? 0;
+      if (buyNum >= shopDaily.dailyLimitNum) continue;
+      final suggestBuy = targetItemOwnNum < useItemOwnNum;
+      children.add(
+        Row(
+          mainAxisSize: .min,
+          children: [
+            Opacity(
+              opacity: 0.5,
+              child: Item.iconBuilder(
+                context: context,
+                item: null,
+                itemId: useItemId,
+                text: useItemOwnNum.format(),
+                width: 28,
+              ),
+            ),
+            Opacity(
+              opacity: suggestBuy ? 1 : 0.75,
+              child: Item.iconBuilder(
+                context: context,
+                item: null,
+                itemId: targetItemId,
+                text: [(shopDaily.dailyLimitNum - buyNum).format(), targetItemOwnNum.format()].join('\n'),
+                width: 32,
+                option: suggestBuy
+                    ? ImageWithTextOption(
+                        shadowColor: Colors.white,
+                        shadowSize: 1,
+                        textStyle: TextStyle(color: Colors.red, fontWeight: .bold),
+                      )
+                    : null,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    if (children.isEmpty) return [];
+    return [
+      ListTile(
+        dense: true,
+        // leading: ,
+        title: Wrap(spacing: 6, runSpacing: 2, children: children),
+        trailing: Icon(DirectionalIcons.keyboard_arrow_forward(context)),
+        onTap: () {
+          router.pushPage(ExRoomShopPage(runtime: runtime));
+        },
+      ),
+    ];
+  }
+
   List<Widget> getShops(BuildContext context, int now) {
     List<Widget> children = [];
     List<NiceShop> _shownShops = [];
@@ -116,6 +180,7 @@ class FakerReminders extends StatelessWidget {
         if (item != null) {
           if (item.type == ItemType.friendshipUpItem || item.type == ItemType.stormpod) return true;
           if (shop.shopType == ShopType.mana && item.type == ItemType.commandCardPrmUp) return true;
+          if (shop.shopType == ShopType.mana && const [5000, 5001, 5002, 5003].contains(item.id)) return true;
         }
         final entity = db.gameData.entities[targetId];
         if (entity != null) {
@@ -239,10 +304,11 @@ class FakerReminders extends StatelessWidget {
         if (quest.flags.contains(QuestFlag.branch) || quest.flags.contains(QuestFlag.branchScenario)) {
           return false;
         }
+        if (quest.flags.contains(QuestFlag.raid)) return false;
       }
       final svt = svtQuests[questId];
       if (checkSvt && svt != null) {
-        if (mstData.userSvtCollection[svt.id]?.isOwned != true) return false;
+        if (mstData.userSvtCollection[svt.id]?.isGet != true) return false;
         if (runtime.region != .jp) {
           final releasedAt = db.gameData.mappingData.questRelease[questId]?.ofRegion(runtime.region);
           if (releasedAt != null && releasedAt > now) return false;
@@ -271,7 +337,7 @@ class FakerReminders extends StatelessWidget {
           continue;
         }
         if (_shownInterludes.contains(quest.id)) continue;
-        if (interludeSvt != null && mstData.userSvtCollection[interludeSvt.id]?.isOwned == true) continue;
+        if (interludeSvt != null && mstData.userSvtCollection[interludeSvt.id]?.isGet == true) continue;
         _shownInterludes.add(quest.id);
         _shownQuestIds.add(quest.id);
         yield ListTile(
@@ -280,7 +346,7 @@ class FakerReminders extends StatelessWidget {
           title: Text('[${S.current.interlude}] ${quest.lName.l}', maxLines: 1, overflow: TextOverflow.ellipsis),
           subtitle: Text(
             [
-              if (interludeSvt != null && mstData.isSvtOwned(interludeSvt.id)) kStarChar2,
+              if (interludeSvt != null && runtime.condCheck.isServantGet(interludeSvt.id)) kStarChar2,
               '${release.endedAt.sec2date().toCustomString(year: false, second: false)}:',
               'phase ${userQuest?.questPhase ?? "-"}',
               'clear ${userQuest?.clearNum ?? "-"}',
@@ -359,8 +425,12 @@ class FakerReminders extends StatelessWidget {
         if (event.id == 71619) {
           uncleared.removeWhere((e) => const [94002702, 94002701, 94005501, 94008401, 913300101, 93040451].contains(e));
         }
+        if (event.name.contains('期間限定 ストーム・ポッド消費なし！') || event.name.contains('限时 不消耗风暴罐！')) {
+          if (campaign.target == .questAp && campaign.value == 1000) {
+            uncleared.retainWhere((e) => db.gameData.quests.containsKey(e));
+          }
+        }
 
-        // final uncleared = questIds.take(10).toList();
         if (uncleared.isEmpty) continue;
         _shownQuestIds.addAll(uncleared);
 

@@ -89,7 +89,7 @@ class Event with RouteInfo {
     required this.endedAt,
     int? finishedAt,
     // required this.materialOpenedAt,
-    List<int> warIds = const [],
+    this._warIds = const [],
     this.eventAdds = const [],
     this.eventDetail,
     this.svts = const [],
@@ -121,7 +121,6 @@ class Event with RouteInfo {
     this.voicePlays = const [],
     this.voices = const [],
   }) : _shortName = ['', '-'].contains(shortName) ? null : shortName,
-       _warIds = warIds,
        noticeAt = noticeAt ?? startedAt,
        finishedAt = finishedAt ?? endedAt;
 
@@ -343,9 +342,6 @@ class Event with RouteInfo {
   Map<int, int> itemWarBoard = {};
   @JsonKey(includeFromJson: false, includeToJson: false)
   Map<int, Map<int, int>> itemTreasureBox = {}; //treasureBox.id
-  @protected
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  Map<int, int> itemDigging = {};
   @JsonKey(includeFromJson: false, includeToJson: false)
   Map<int, int> itemWarReward = {};
   @JsonKey(includeFromJson: false, includeToJson: false)
@@ -491,17 +487,18 @@ class Event with RouteInfo {
       }
     }
 
-    itemDigging.clear();
-    if (digging != null) {
-      for (final reward in digging!.rewards) {
-        for (final gift in reward.gifts) {
-          if (gift.isStatItem) {
-            itemDigging.addNum(gift.objectId, gift.num);
-            statItemExtra.add(gift.objectId);
-          }
+    void _addStatItemExtra(Iterable<Gift>? gifts) {
+      if (gifts == null) return;
+      for (final gift in gifts) {
+        if (gift.isStatItem) {
+          statItemExtra.add(gift.objectId);
         }
       }
     }
+
+    _addStatItemExtra(digging?.rewards.expand((e) => e.gifts));
+    _addStatItemExtra(recipes.expand((e) => e.recipeGifts).expand((e) => e.gifts));
+
     if (extra != null) {
       for (final e in extra.extraFixedItems) {
         statItemFixed.addDict(e.items);
@@ -620,6 +617,7 @@ class MstMasterMission with RouteInfo {
     if (a == 1) return MissionType.weekly;
     if (a == 2) return MissionType.limited;
     if (a == 3) return MissionType.daily;
+    if (a == 4) return MissionType.exRoom;
     final b = id ~/ 10000;
     if (b == 8) return MissionType.complete;
     if (id == MasterMission.kExtraMasterMissionId) return MissionType.extra;
@@ -1712,6 +1710,7 @@ class EventCooltime {
 class EventRecipeGift {
   int idx;
   int displayOrder;
+  @protected
   int topIconId;
   @GiftsConverter()
   List<Gift> gifts;
@@ -1721,6 +1720,8 @@ class EventRecipeGift {
   factory EventRecipeGift.fromJson(Map<String, dynamic> json) => _$EventRecipeGiftFromJson(json);
 
   Map<String, dynamic> toJson() => _$EventRecipeGiftToJson(this);
+
+  bool get isRateUp => topIconId == 1;
 }
 
 @JsonSerializable()
@@ -2109,7 +2110,7 @@ class EventSvtScript {
   Map<String, dynamic> toJson() => _$EventSvtScriptToJson(this);
 }
 
-enum EventOverwriteType { unknown, bgImage, bgm, name, banner, noticeBanner, eventLogo }
+enum EventOverwriteType { unknown, bgImage, bgm, name, banner, noticeBanner, eventLogo, materialFolderName }
 
 enum EventFlag {
   typePoint,
@@ -2208,7 +2209,9 @@ enum ShopType {
   revivalItem(15),
   eventSvtEquip(16),
   exchangeSvtCoin(17),
-  classBoardReset(18);
+  classBoardReset(18),
+  exRoomShop(19),
+  exRoomShopDaily(20);
 
   const ShopType(this.value);
   final int value;
@@ -2235,7 +2238,7 @@ enum MissionProgressType {
   bool get isClearOrAchieve => this == clear || this == achieve;
 }
 
-enum MissionType { none, event, weekly, daily, extra, limited, complete, random, servant }
+enum MissionType { none, event, weekly, daily, extra, limited, complete, random, exRoom }
 
 enum MissionRewardType { gift, extra, set }
 
@@ -2340,6 +2343,27 @@ enum EventMissionCondDetailType {
   purchaseShopNum(41),
   itemUseQuestNum(42), // storm pod
   battleMissionValue(43),
+
+  mapGimmickCountOnce(44),
+  questClearTurnNumBelow(45),
+  questClearTurnNumAbove(46),
+  questClearWithSvtIndividualityOnly(47),
+  questClearWithMyDeckSvtNumEqual(48),
+  questClearWithMyDeckSvtNumAbove(49),
+  questClearWithMyDeckSvtNumBelow(50),
+  questClearWithSvtRarityEqual(51),
+  questClearWithSvtRarityAbove(52),
+  questClearWithSvtRarityBelow(53),
+  questClearWithTotalCostAbove(54),
+  questClearWithTotalCostBelow(55),
+  questClearWithTreasureDeviceTypeSvtOnly(56),
+  questClearWithSvtFriendshipRankAbove(57),
+  questClearWithSvtIndividualityNumAboveOnlyStartingMember(58),
+  questClearWithSvtRarityEqualNumAboveOnlyStartingMember(59),
+  questClearWithSvtRarityAboveNumAboveOnlyStartingMember(60),
+  questClearWithSvtRarityBelowNumAboveOnlyStartingMember(61),
+  questClearWithSvtFriendshipRankAboveNumAboveOnlyStartingMember(62),
+  questClearWithEquip(63),
 
   /// custom, only used in app
   questClearIndividuality(999);

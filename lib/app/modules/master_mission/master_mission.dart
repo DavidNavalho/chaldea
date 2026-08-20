@@ -203,7 +203,7 @@ class _MasterMissionPageState extends State<MasterMissionPage> with RegionBasedS
                   router.push(child: CustomMissionPage(initMissions: [customMission]));
                 },
                 icon: const Icon(Icons.search),
-                color: AppTheme(context).tertiary,
+                color: Theme.of(context).colorScheme.primary,
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 constraints: const BoxConstraints(minWidth: 24),
               ),
@@ -233,7 +233,7 @@ class _MasterMissionPageState extends State<MasterMissionPage> with RegionBasedS
     return OverflowBar(
       alignment: MainAxisAlignment.center,
       children: [
-        ElevatedButton.icon(
+        FilledButton.icon(
           onPressed: () {
             final customMissions = masterMission.missions
                 .map((e) => CustomMission.fromEventMission(e))

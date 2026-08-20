@@ -363,10 +363,12 @@ class _Database {
         'x-chaldea-uuid': AppInfo.uuid,
         'x-chaldea-lang': Language.current.code,
         'x-chaldea-platform': PlatformU.operatingSystem,
+        'x-chaldea-client': 'app',
       },
     ),
   );
 
+  // @Deprecated('Use ChaldeaServerApi — see chaldea_server.dart')
   Dio get apiServerDio => DioE(
     BaseOptions(
       baseUrl: HostsX.apiHost,

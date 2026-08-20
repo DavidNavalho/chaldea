@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:chaldea/app/app.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/gamedata/effect.dart';
 import 'package:chaldea/models/gamedata/individuality.dart';
@@ -63,8 +64,10 @@ class ServantFilterPage extends FilterPage<SvtFilterData> {
         if (!svtStat.isReachBondLimit) SvtPlanScope.bond,
         if ([
           svtPlan.grail > svtStat.cur.grail,
-          svtPlan.fouHp > svtStat.cur.fouHp,
-          svtPlan.fouAtk > svtStat.cur.fouAtk,
+          svtPlan.fouHp5 > svtStat.cur.fouHp5,
+          svtPlan.fouAtk5 > svtStat.cur.fouAtk5,
+          svtPlan.fouHp4 > svtStat.cur.fouHp4,
+          svtPlan.fouAtk4 > svtStat.cur.fouAtk4,
           svtPlan.fouHp3 > svtStat.cur.fouHp3,
           svtPlan.fouAtk3 > svtStat.cur.fouAtk3,
         ].any((e) => e))
@@ -96,10 +99,13 @@ class ServantFilterPage extends FilterPage<SvtFilterData> {
     ])) {
       return false;
     }
-    final comparedBond = filterData.bondValue.radioValue;
-    if (comparedBond != null && filterData.bondCompare.options.isNotEmpty) {
+
+    int? comparedBond = filterData.bondValue.radioValue;
+    if (comparedBond == -1 && filterData.customBondValue >= 0) comparedBond = filterData.customBondValue;
+
+    if (comparedBond != null && comparedBond >= 0 && filterData.bondCompare.options.isNotEmpty) {
       final bond = svtStat.bond;
-      if (filterData.bondCompare.options.every((c) => !c.test(bond, comparedBond))) {
+      if (filterData.bondCompare.options.every((c) => !c.test(bond, comparedBond!))) {
         return false;
       }
     }
@@ -376,6 +382,8 @@ class _ServantFilterPageState extends FilterPageState<SvtFilterData, ServantFilt
               FilterGroup<CompareOperator>(
                 combined: true,
                 padding: EdgeInsets.zero,
+                minimumSize: const Size(36, 36),
+                innerPadding: const .symmetric(horizontal: 12),
                 options: CompareOperator.values,
                 values: filterData.bondCompare,
                 optionBuilder: (v) => Text(v.text),
@@ -398,13 +406,64 @@ class _ServantFilterPageState extends FilterPageState<SvtFilterData, ServantFilt
               FilterGroup<int>(
                 combined: true,
                 padding: EdgeInsets.zero,
-                options: const [5, 6, 10, 15],
                 minimumSize: const Size(36, 36),
+                innerPadding: const .symmetric(horizontal: 12),
+                options: const [5, 6, 9, 10, -1],
                 values: filterData.bondValue,
-                onFilterChanged: (v, _) {
-                  setState(() {
-                    update();
-                  });
+                optionBuilder: (v) {
+                  String text;
+                  if (v >= 0) {
+                    text = v.toString();
+                  } else {
+                    if (filterData.bondValue.radioValue == -1 && filterData.customBondValue >= 0) {
+                      text = filterData.customBondValue.toString();
+                    } else {
+                      text = 'X';
+                    }
+                  }
+                  return Text(text);
+                },
+                onFilterChanged: (_, lastChanged) async {
+                  if (lastChanged != -1) {
+                    setState(() {
+                      filterData.customBondValue = -1;
+                      update();
+                    });
+                    return;
+                  }
+                  if (!mounted) return;
+                  final int? selectedBond = await router.showDialog(
+                    builder: (context) => SimpleDialog(
+                      title: Text(S.current.general_custom),
+                      children: [
+                        SimpleDialogOption(
+                          child: Text(S.current.reset),
+                          onPressed: () {
+                            Navigator.pop(context, null);
+                          },
+                        ),
+                        for (final bond in range(5, kBondLvMax + 1))
+                          SimpleDialogOption(
+                            child: Text('${S.current.bond} $bond'),
+                            onPressed: () {
+                              Navigator.pop(context, bond);
+                            },
+                          ),
+                      ],
+                    ),
+                  );
+                  if (selectedBond != null) {
+                    filterData.bondValue.set(-1);
+                    filterData.customBondValue = selectedBond;
+                  } else {
+                    filterData.bondValue.reset();
+                    filterData.customBondValue = -1;
+                  }
+                  if (mounted) {
+                    setState(() {
+                      update();
+                    });
+                  }
                 },
               ),
               FilterGroup<int>(

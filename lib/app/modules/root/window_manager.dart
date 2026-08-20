@@ -125,11 +125,17 @@ class WrapSideBar extends StatelessWidget {
     final mqData = MediaQuery.of(
       context,
     ).removePadding(removeLeft: ltr == TextDirection.ltr, removeRight: ltr == TextDirection.rtl);
-    final headerIcon = Container(
-      color: Theme.of(context).primaryColorDark,
-      height: kToolbarHeight,
-      padding: const EdgeInsets.all(6),
-      child: Icon(Icons.menu, color: Theme.of(context).colorScheme.onPrimary.withAlpha(204)),
+    final headerIcon = SafeArea(
+      top: true,
+      left: false,
+      right: false,
+      bottom: false,
+      child: Container(
+        color: Theme.of(context).primaryColorDark,
+        height: kToolbarHeight,
+        padding: const EdgeInsets.all(6),
+        child: Icon(Icons.menu, color: Theme.of(context).colorScheme.onPrimary.withAlpha(204)),
+      ),
     );
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -157,11 +163,17 @@ class WrapSideBar extends StatelessWidget {
                   icon: const Icon(Icons.add),
                   iconSize: 18,
                 ),
-                IconButton(
-                  onPressed: () {
-                    root.appState.windowState = WindowStateEnum.windowManager;
-                  },
-                  icon: const Icon(Icons.grid_view),
+                SafeArea(
+                  top: false,
+                  left: false,
+                  right: false,
+                  bottom: true,
+                  child: IconButton(
+                    onPressed: () {
+                      root.appState.windowState = WindowStateEnum.windowManager;
+                    },
+                    icon: const Icon(Icons.grid_view),
+                  ),
                 ),
               ],
             ),
@@ -372,10 +384,7 @@ class _MultipleWindowState extends State<MultipleWindow> {
           );
         },
         itemCount: bookmarks.length,
-        onReorder: (int oldIndex, int newIndex) {
-          if (oldIndex < newIndex) {
-            newIndex -= 1;
-          }
+        onReorderItem: (int oldIndex, int newIndex) {
           final item = bookmarks.removeAt(oldIndex);
           bookmarks.insert(newIndex, item);
           db.notifyUserdata();
@@ -411,7 +420,6 @@ class WindowThumb extends StatelessWidget {
       child: LayoutBuilder(
         builder: (context, constraints) {
           final biggest = constraints.biggest;
-          biggest.isFinite;
           return FittedBox(
             fit: BoxFit.contain,
             child: SizedBox.fromSize(
@@ -480,7 +488,7 @@ class WindowThumb extends StatelessWidget {
                     title: Text('Move Up'),
                     onTap: () {
                       Navigator.pop(context);
-                      root.appState.onReorder(index, index - 1);
+                      root.appState.onReorderItem(index, index - 1);
                     },
                   ),
                   ListTile(
@@ -488,7 +496,7 @@ class WindowThumb extends StatelessWidget {
                     title: Text('Move Down'),
                     onTap: () {
                       Navigator.pop(context);
-                      root.appState.onReorder(index, index + 2);
+                      root.appState.onReorderItem(index, index + 1);
                     },
                   ),
                   kIndentDivider,
@@ -497,7 +505,7 @@ class WindowThumb extends StatelessWidget {
                     title: Text('Move Top'),
                     onTap: () {
                       Navigator.pop(context);
-                      root.appState.onReorder(index, 0);
+                      root.appState.onReorderItem(index, 0);
                     },
                   ),
                   ListTile(
@@ -505,7 +513,7 @@ class WindowThumb extends StatelessWidget {
                     title: Text('Move Bottom'),
                     onTap: () {
                       Navigator.pop(context);
-                      root.appState.onReorder(index, root.appState.children.length);
+                      root.appState.onReorderItem(index, root.appState.children.length - 1);
                     },
                   ),
                 ],
@@ -562,7 +570,8 @@ class WindowThumb extends StatelessWidget {
         color: Colors.yellowAccent,
         padding: const EdgeInsets.all(4),
         iconSize: 16,
-        constraints: const BoxConstraints(minWidth: 0),
+        constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+        style: IconButton.styleFrom(tapTargetSize: .shrinkWrap),
       );
     });
 
@@ -574,7 +583,8 @@ class WindowThumb extends StatelessWidget {
       icon: const Icon(Icons.clear),
       padding: const EdgeInsets.all(4),
       iconSize: 16,
-      constraints: const BoxConstraints(minWidth: 24),
+      constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+      style: IconButton.styleFrom(tapTargetSize: .shrinkWrap),
     );
 
     return DecoratedBox(
@@ -584,7 +594,7 @@ class WindowThumb extends StatelessWidget {
           top: BorderSide(width: 1, color: Theme.of(context).dividerColor),
           bottom: BorderSide(
             width: 3,
-            color: index == root.appState.activeIndex ? AppTheme(context).tertiary : Colors.transparent,
+            color: index == root.appState.activeIndex ? Theme.of(context).colorScheme.primary : Colors.transparent,
           ),
         ),
       ),

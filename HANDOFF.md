@@ -24,7 +24,7 @@ Update it at the end of each working session.
    - legacy (if needed): `./scripts/sync_fork.sh`
 5. Install deps if needed:
    - `brew install fvm`
-   - `fvm install 3.41.7 && fvm use 3.41.7`
+   - `fvm install 3.44.8 && fvm use 3.44.8`
    - `fvm flutter pub get`
    - `fvm flutter precache --ios`
    - `(cd ios && pod install)`
@@ -32,13 +32,27 @@ Update it at the end of each working session.
    - `fvm flutter run -d macos`
 
 ## Last Session Snapshot
-- Date: 2026-08-20
-- Branch: sharp-ocean
+- Date: 2026-08-21
+- Branch: `automation/upstream-sync-2026-08-20`
 - Last commit: run `git log -1 --oneline` for the current hash
-- Working tree status: expected clean after committing and pushing this
-  approved, tested TestFlight-isolation refactor
-- Active feature(s): personal iOS bundle/team/App Group configuration for this fork; TestFlight setup complete
+- Working tree status: expected clean after committing and pushing the tested
+  upstream 2.6.0 sync
+- Active feature(s): upstream 2.6.0 sync plus personal iOS/TestFlight isolation
 - What is done:
+  - merged `upstream/main` (2.6.0) into the fork from the updated `origin/main`
+  - resolved the two merge conflicts by retaining all upstream Xcode/auth
+    changes and reapplying only the two registrant paths and two My Box imports
+  - updated `.fvmrc` to upstream's required Flutter 3.44.8 / Dart 3.12.2
+  - installed Flutter 3.44.8 under `/Volumes/mini-ssd/DevData/FVM`; the older
+    internal Flutter 3.41.7 installation remains untouched
+  - extended the fork-only iOS preparer for Flutter 3.44's generated Swift
+    package targets and product wrappers without changing the upstream Podfile
+  - validated an unsigned 2.6.0 (990) archive on Xcode 27 beta 5
+    - app: bundle `io.github.davidnavalho.chaldea`, minimum iOS 15.0
+    - widget: bundle `io.github.davidnavalho.chaldea.FakerStatusWidget`, minimum iOS 18.1
+    - compiled app contains the personal App Group and not the upstream default
+  - full analysis has no errors or warnings and the same 15 informational lints
+  - `test/custom/box_coverage/box_coverage_service_test.dart` passes (2 tests)
   - isolated the fork identity settings in
     `ios/Flutter/ForkIdentity.xcconfig`, supplied externally with
     `xcodebuild -xcconfig` rather than wiring them into the upstream project
@@ -55,15 +69,15 @@ Update it at the end of each working session.
     `CHALDEA_IOS_APP_GROUP_ID`, with the upstream App Group retained as default
   - kept the one Swift widget adapter plus the fork-only Swift identity file
   - kept the one bridging-header correction and the matching two Xcode project
-    file-reference corrections for Flutter 3.41's generated registrant
+    file-reference corrections for Flutter's generated registrant
   - verified resolved Xcode settings and entitlement plist syntax
-  - installed FVM 4.1.2 through Homebrew and Flutter 3.41.7 through FVM
+  - installed FVM 4.1.2 through Homebrew; Flutter SDKs are managed through FVM
   - aligned `.fvmrc` with `pubspec.yaml`
   - completed `fvm flutter pub get`, iOS precache, and `pod install`
   - replaced Xcode 27 beta 1 with Xcode 27 beta 5 (`27A5237l`) and selected
     `/Applications/Xcode-27.0.0-Beta.5.app/Contents/Developer`
-  - applied the fork-scoped iOS 15 Pod workaround only to ignored generated
-    CocoaPods output; all 99 generated deployment settings resolve to iOS 15
+  - applied the fork-scoped iOS 15 workaround only to ignored generated
+    CocoaPods/Swift-package output
   - registered the personal App Group and both App IDs under team `WAF9PC2Y8K`
   - associated both App IDs with `group.io.github.davidnavalho.chaldea.shared`
   - created the App Store Connect app `Chaldea Personal` (app ID `6801619927`)
@@ -99,7 +113,7 @@ Update it at the end of each working session.
   - `fvm dart analyze lib/packages/home_widget.dart`, syntax/plist checks, and
     `git diff --check` pass
 - What is next:
-  - review the updated diff and checks on PR #24
+  - review the upstream 2.6.0 sync PR and its checks
   - verify shared App Group data and the widget on a device where the widget is available
   - use a build number above 990 for the next App Store Connect upload
 - Known blockers:
@@ -107,6 +121,9 @@ Update it at the end of each working session.
   - Xcode Organizer reports a non-blocking missing dSYM warning for `objective_c.framework`; Apple accepted the upload
   - build 989 has the upstream NA metadata bug and should not be used for NA account login; build 990 supersedes it
   - a stable Xcode may still be required for a future production App Store release
+  - Flutter warns that four plugins do not yet support Swift Package Manager;
+    Flutter 3.44 falls back to CocoaPods for them, but a future Flutter may stop
+    accepting that fallback
   - tests run with `--dart-define=APP_PATH=/path/to/repository`, but six suites require an offline game-data payload that is not present in this worktree (14 tests pass before those data-loading failures)
 ## Files Touched In Current Workstream
 - `ios/Chaldea.xcodeproj/project.pbxproj`
@@ -127,8 +144,8 @@ Update it at the end of each working session.
 - `TESTFLIGHT_RUNBOOK.md`
 
 ## Validation Commands
-- `scripts/fork/build_ios_testflight.sh --build-name 2.5.27 --build-number 990`
-- `scripts/fork/build_ios_testflight.sh --build-name 2.5.27 --build-number 990 --codesign`
+- `scripts/fork/build_ios_testflight.sh --build-name 2.6.0 --build-number 990`
+- `scripts/fork/build_ios_testflight.sh --build-name 2.6.0 --build-number 991 --codesign`
 - `xcodebuild -workspace ios/Chaldea.xcworkspace -scheme Runner -configuration Release -xcconfig ios/Flutter/ForkIdentity.xcconfig -showBuildSettings`
 - `xcodebuild -workspace ios/Chaldea.xcworkspace -scheme FakerStatusWidgetExtension -configuration Release -xcconfig ios/Flutter/ForkIdentity.xcconfig -showBuildSettings`
 - `plutil -lint ios/Chaldea/Fork.entitlements ios/FakerStatusWidgetExtension.fork.entitlements`

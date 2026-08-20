@@ -355,6 +355,7 @@ class Items {
   static const int torchNovaId = 51;
   static const int torchMorningStarId = 52;
   static const int torchPolarStarId = 53;
+  static const int exRoomItemId = 80;
   static const int summonTicketId = 4001;
   static const int goldAppleId = 100;
   static const int silverAppleId = 101;
@@ -365,6 +366,7 @@ class Items {
   static const int grailFragId = 7998;
   static const int grailId = 7999;
   static const int lanternId = 1000;
+  static const int greatLanternId = 1001;
 
   // not item, icon only
   static const int teapotId = 94065901;
@@ -385,6 +387,8 @@ class Items {
 
   static Item? get rarePrism => _items[rarePrismId];
 
+  static Item? get exRoomItem => _items[exRoomItemId];
+
   static Item? get revivalItem => _items[revivalItemId];
 
   static Item? get summonTicket => _items[summonTicketId];
@@ -402,23 +406,26 @@ class Items {
   static Item? get grail => _items[grailId];
 
   static Item? get lantern => _items[lanternId];
+  static Item? get greatLantern => _items[greatLanternId];
 
   static const List<int> specialItems = [
     //
     qpId, stoneId, quartzFragmentId, manaPrismId, purePrismId, rarePrismId,
     revivalItemId, stellarSandId, torchNovaId, torchMorningStarId, torchPolarStarId,
     summonTicketId, goldAppleId, silverAppleId, bronzeAppleId, blueSaplingId,
-    blueAppleId, grailFragId, grailId, grailToCrystalId, lanternId,
+    blueAppleId, grailFragId, grailId, grailToCrystalId, lanternId, greatLanternId, exRoomItemId,
   ];
   static const List<int> specialSvtMat = [...fous, ...embers];
   static const apples = [goldAppleId, silverAppleId, blueAppleId, bronzeAppleId];
-  static const fous = [hpFou3, hpFou4, hpFou5, atkFou3, atkFou4, atkFou5];
+  static const fous = [hpFou3, hpFou4, hpFou5, hpFou5b, atkFou3, atkFou4, atkFou5, atkFou5b];
   static const int hpFou3 = 9570300;
   static const int hpFou4 = 9570400;
   static const int hpFou5 = 9570500;
+  static const int hpFou5b = 9570600;
   static const int atkFou3 = 9670300;
   static const int atkFou4 = 9670400;
   static const int atkFou5 = 9670500;
+  static const int atkFou5b = 9670600;
 
   static const embers = [ember3, ember4, ember5];
   static const int ember3 = 9770300;

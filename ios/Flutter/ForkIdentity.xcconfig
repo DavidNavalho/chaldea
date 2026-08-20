@@ -1,5 +1,5 @@
 #include? "Generated.xcconfig"
-#include? "ephemeral/ForkIdentityPods.xcconfig"
+#include? "ephemeral/ForkIdentityDependencies.xcconfig"
 
 // Identity values for this fork's personal iOS distribution.
 CHALDEA_IOS_TEAM_ID = WAF9PC2Y8K
@@ -11,7 +11,7 @@ CHALDEA_IOS_ENTITLEMENTS_FakerStatusWidgetExtension = FakerStatusWidgetExtension
 CHALDEA_IOS_DEPLOYMENT_TARGET_Chaldea = 15.0
 CHALDEA_IOS_DEPLOYMENT_TARGET_FakerStatusWidgetExtension = 18.1
 
-// Resolve the correct values for each app, widget, or generated CocoaPods target.
+// Resolve the correct values for each app, widget, or generated dependency target.
 PRODUCT_BUNDLE_IDENTIFIER = $(CHALDEA_IOS_BUNDLE_ID_$(TARGET_NAME:c99extidentifier))
 CODE_SIGN_ENTITLEMENTS = $(CHALDEA_IOS_ENTITLEMENTS_$(TARGET_NAME:c99extidentifier))
 IPHONEOS_DEPLOYMENT_TARGET = $(CHALDEA_IOS_DEPLOYMENT_TARGET_$(TARGET_NAME:c99extidentifier))

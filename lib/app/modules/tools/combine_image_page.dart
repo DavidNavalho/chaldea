@@ -105,11 +105,8 @@ class _CombineImagePageState extends State<CombineImagePage> {
       scrollDirection: Axis.horizontal,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      onReorder: (int oldIndex, int newIndex) {
+      onReorderItem: (int oldIndex, int newIndex) {
         setState(() {
-          if (oldIndex < newIndex) {
-            newIndex -= 1;
-          }
           final item = urls.removeAt(oldIndex);
           urls.insert(newIndex, item);
           if (_selected == oldIndex) _selected = newIndex;
@@ -226,10 +223,9 @@ class _CombineImagePageState extends State<CombineImagePage> {
               onPressed: kIsWeb
                   ? null
                   : () async {
-                      final result = await FilePickerU.pickFiles(type: FileType.image, withData: false);
-                      final fp = result?.files.getOrNull(0)?.path;
-                      if (fp != null) {
-                        _onChangeUrl(Uri.file(fp));
+                      final file = await FilePickerU.pickFile(type: FileType.image);
+                      if (file != null) {
+                        _onChangeUrl(file.uri);
                       }
                     },
               child: const Text('File'),

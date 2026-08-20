@@ -116,6 +116,9 @@ class MessageLookup extends MessageLookupByLibrary {
     "auth_data_hints": MessageLookupByLibrary.simpleMessage(
       "안내:\n- 여기에 있는 유저 ID는 친구 페이지에 있는 친구 코드가 아닙니다.\n- 위의 키나 스크린샷을 다른 사람과 공유하지 마세요!!!\n- 가져오려면 다음 방법 중 하나를 선택하세요.",
     ),
+    "auth_email_not_received_hint": MessageLookupByLibrary.simpleMessage(
+      "코드를 받지 못하셨나요? 스팸 폴더를 확인하거나 당사의 이메일을 허용 목록에 추가한 후 재전송하세요.",
+    ),
     "authfile_login_warning": MessageLookupByLibrary.simpleMessage("사용법과 주의사항을 먼저 읽어보세요!"),
     "auto_reset": MessageLookupByLibrary.simpleMessage("자동 리셋"),
     "auto_update": MessageLookupByLibrary.simpleMessage("자동 업데이트"),
@@ -560,6 +563,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "login_new_password": MessageLookupByLibrary.simpleMessage("새 비밀번호"),
     "login_password": MessageLookupByLibrary.simpleMessage("비밀번호"),
     "login_password_error": MessageLookupByLibrary.simpleMessage("6-18자리의 문자와 숫자만, 최소한 하나 이상의 영어 문자를 포함하십시오."),
+    "login_password_error_confirm_mismatch": MessageLookupByLibrary.simpleMessage("비밀번호가 일치하지 않습니다"),
     "login_password_error_same_as_old": MessageLookupByLibrary.simpleMessage("이전 비밀번호와 같음"),
     "login_signup": MessageLookupByLibrary.simpleMessage("회원가입"),
     "login_username": MessageLookupByLibrary.simpleMessage("사용자 이름"),

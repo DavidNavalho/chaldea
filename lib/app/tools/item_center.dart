@@ -134,6 +134,10 @@ class ItemCenter {
     final cur = user.svtStatusOf(svtId).cur;
     final consumed = calcOneSvt(svt, SvtPlan.empty()..favorite = cur.favorite, cur, priorityFiltered: true);
     final demands = calcOneSvt(svt, cur, user.svtPlanOf(svtId), priorityFiltered: true);
+    // Lanterns of Chaldea only displays the amount consumed, the demands are always 0
+    demands.special.remove(Items.lanternId);
+    demands.special.remove(Items.greatLanternId);
+    demands.all = Maths.sumDict(demands.parts);
 
     _svtCur._sparseMatrix.remove(svtId);
     for (final itemId in consumed.allKeys) {
@@ -207,13 +211,16 @@ class ItemCenter {
     if (svt.collectionNo == 1) grailStart = max(2, grailStart);
 
     detail.special = {
-      Items.hpFou4: max(0, target.fouHp - cur.fouHp),
-      Items.atkFou4: max(0, target.fouAtk - cur.fouAtk),
+      Items.hpFou5b: max(0, target.fouHp5 - cur.fouHp5),
+      Items.atkFou5b: max(0, target.fouAtk5 - cur.fouAtk5),
+      Items.hpFou4: max(0, target.fouHp4 - cur.fouHp4),
+      Items.atkFou4: max(0, target.fouAtk4 - cur.fouAtk4),
       Items.hpFou3: max(0, target.fouHp3 - cur.fouHp3),
       Items.atkFou3: max(0, target.fouAtk3 - cur.fouAtk3),
       // Mash 80-90 doesn't need grail
       Items.grailId: max(0, target.grail - grailStart),
-      // Items.lanternId: max(0, target.bondLimit - cur.bondLimit),
+      Items.lanternId: max(0, min(kNormalLanternBondLvMax, target.bondLimit) - cur.bondLimit),
+      Items.greatLanternId: max(0, target.bondLimit - max(kNormalLanternBondLvMax, cur.bondLimit)),
       Items.qpId:
           QpCost.grail(svt.rarity, grailStart, target.grail) + QpCost.bondLimit(cur.bondLimit, target.bondLimit),
       ?coinId: coin,

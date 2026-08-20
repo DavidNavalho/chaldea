@@ -20,7 +20,9 @@ import 'package:chaldea/widgets/tile_items.dart';
 const _kDiscordLink = 'https://discord.gg/5M6w5faqjP';
 
 class FeedbackPage extends StatefulWidget {
-  FeedbackPage({super.key});
+  FeedbackPage({super.key, this.prefilledContext});
+
+  final Map<String, String>? prefilledContext;
 
   @override
   _FeedbackPageState createState() => _FeedbackPageState();
@@ -42,6 +44,15 @@ class _FeedbackPageState extends State<FeedbackPage> {
   @override
   void initState() {
     super.initState();
+    // Pre-fill body with UUID when entering from the password recovery flow.
+    if (widget.prefilledContext?['source'] == 'forgot_password') {
+      subjectController.text = '[${Language.isZH ? '忘记密码' : 'Forgot Password'}]';
+      bodyController.text =
+          '${S.current.login_username}:<${S.current.login_username}>\n'
+          '${S.current.auth_device_id}: ${AppInfo.uuid}\n'
+          '${S.current.email}: <email>\n\n'
+          '${S.current.general_others}...';
+    }
     contactController.addListener(_onTextFieldChanged);
     subjectController.addListener(_onTextFieldChanged);
     bodyController.addListener(_onTextFieldChanged);
@@ -82,6 +93,24 @@ class _FeedbackPageState extends State<FeedbackPage> {
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
         children: [
+          if (widget.prefilledContext?['source'] == 'forgot_password')
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.errorContainer.withAlpha(100),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, color: Theme.of(context).colorScheme.error),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(S.current.feedback_password_recovery_banner)),
+                  ],
+                ),
+              ),
+            ),
           Text(Language.isZH ? '目前无人管理反馈' : 'Nobody maintain the feedback now.', textAlign: TextAlign.center),
           Card(
             elevation: 4,
@@ -244,7 +273,7 @@ class _FeedbackPageState extends State<FeedbackPage> {
                 width: double.infinity,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: ElevatedButton(onPressed: sendEmail, child: Text(S.current.feedback_send)),
+                  child: FilledButton(onPressed: sendEmail, child: Text(S.current.feedback_send)),
                 ),
               ),
             ],
@@ -259,18 +288,10 @@ class _FeedbackPageState extends State<FeedbackPage> {
   Map<String, Uint8List> attachFiles = {};
 
   void _addAttachments() async {
-    final result = await SharedBuilder.pickImageOrFiles(context: context, allowMultiple: true).catchError((e, s) async {
-      logger.e('pick attachment failed', e, s);
-      EasyLoading.showError(e.toString());
-      return null;
-    });
+    final files = await SharedBuilder.pickImageOrFiles(context: context);
 
-    if (result != null) {
-      for (final file in result.files) {
-        if (file.bytes != null) {
-          attachFiles[file.name] = file.bytes!;
-        }
-      }
+    for (final file in files) {
+      attachFiles[file.name] = await file.readAsBytes();
     }
     if (mounted) {
       setState(() {});
@@ -310,8 +331,8 @@ class _FeedbackPageState extends State<FeedbackPage> {
       if (!result) {
         throw S.current.sending_failed;
       }
-      subjectController.text = '';
-      bodyController.text = '';
+      // subjectController.text = '[SENT] ${subjectController.text}';
+      // bodyController.text = '';
       EasyLoading.showSuccess(S.current.sent);
     } catch (e, s) {
       logger.e('send feedback failed', e, s);

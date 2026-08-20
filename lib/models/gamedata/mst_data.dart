@@ -10,6 +10,7 @@ import '../db.dart';
 import '../userdata/userdata.dart';
 import '_helper.dart';
 import 'common.dart';
+import 'constants.dart';
 import 'event.dart';
 import 'item.dart';
 import 'mst_tables.dart';
@@ -195,13 +196,14 @@ class FateResponseDetail {
 }
 
 class MasterDataManager extends MasterDataManagerBase {
+  late final _MasterDataHelper helper = _MasterDataHelper(this);
+
   bool get isLoggedIn => user != null && userSvt.isNotEmpty;
 
   bool get isCurPlanUser => db.curUser.lastImportId != null && db.curUser.lastImportId == user?.friendCode;
 
   Iterable<UserServantEntity> get userSvtAndStorage => userSvt.followedBy(userSvtStorage);
   UserServantEntity? getUserSvt(int userSvtId) => userSvt[userSvtId] ?? userSvtStorage[userSvtId];
-  bool isSvtOwned(int svtId) => userSvtCollection[svtId]?.isOwned == true;
 
   MagusGrade? get magusGrade {
     if (isQuestClear(4000709)) {
@@ -388,11 +390,13 @@ class MasterDataManager extends MasterDataManagerBase {
         appendSkills: getSvtAppendSkillLvs(userSvt),
         costumes: collection?.costumeIdsTo01(),
         grail: userSvt.exceedCount,
-        fouHp: max(0, (userSvt.adjustHp - 100) ~/ 2),
-        fouAtk: max(0, (userSvt.adjustAtk - 100) ~/ 2),
+        fouHp5: max(0, (userSvt.adjustHp - 200) ~/ 10),
+        fouAtk5: max(0, (userSvt.adjustAtk - 200) ~/ 10),
+        fouHp4: max(0, (userSvt.adjustHp - 100) ~/ 2),
+        fouAtk4: max(0, (userSvt.adjustAtk - 100) ~/ 2),
         fouHp3: min(100, userSvt.adjustHp ~/ 5),
         fouAtk3: min(100, userSvt.adjustAtk ~/ 5),
-        bondLimit: collection?.maxFriendshipRank ?? 10,
+        bondLimit: collection?.maxFriendshipRank ?? kBondLvDefaultMax,
         npLv: userSvt.treasureDeviceLv1,
       ),
       priority: status0.priority,
@@ -408,6 +412,20 @@ class MasterDataManager extends MasterDataManagerBase {
 
   CraftStatus getSvtEquipStatus(UserServantEntity userSvt) {
     return CraftStatus(status: CraftStatus.owned, lv: userSvt.lv, limitCount: userSvt.limitCount);
+  }
+}
+
+class _MasterDataHelper {
+  @protected
+  final MasterDataManager mstData;
+  const _MasterDataHelper(this.mstData);
+
+  int getQuestClearCountFromIds(List<int> questIds) {
+    return Maths.sum(questIds.map((e) => mstData.userQuest[e]?.clearNum ?? 0));
+  }
+
+  int getQuestChallengeCountFromIds(List<int> questIds) {
+    return Maths.sum(questIds.map((e) => mstData.userQuest[e]?.challengeNum ?? 0));
   }
 }
 

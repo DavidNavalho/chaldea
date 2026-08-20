@@ -1,8 +1,8 @@
 import 'dart:math' show min;
 
-import 'package:chaldea/app/battle/functions/add_battle_point.dart';
 import 'package:chaldea/app/battle/functions/add_field_change_to_field.dart';
 import 'package:chaldea/app/battle/functions/add_state.dart';
+import 'package:chaldea/app/battle/functions/battle_point_calc.dart';
 import 'package:chaldea/app/battle/functions/break_gauge_up.dart';
 import 'package:chaldea/app/battle/functions/damage.dart';
 import 'package:chaldea/app/battle/functions/damage_np_counter.dart';
@@ -160,7 +160,11 @@ class FunctionExecutor {
         if (askillId != null && askillId != 0) {
           final askill =
               db.gameData.baseSkills[askillId] ?? await showEasyLoading(() => AtlasApi.skill(askillId), mask: true);
-          final aSkillInfo = BattleSkillInfoData(askill, type: SkillInfoType.skillAdditional, skillLv: askillLv);
+          final aSkillInfo = BattleSkillInfoData(
+            askill,
+            type: skillInfoType ?? SkillInfoType.skillAdditional,
+            skillLv: askillLv,
+          );
           await aSkillInfo.activate(battleData, activator: activator);
         }
       }
@@ -492,7 +496,24 @@ class FunctionExecutor {
           DamageNpCounter.damageNpCounter(battleData, dataVals, activator, targets);
           break;
         case FuncType.addBattlePoint:
-          AddBattlePoint.addBattlePoint(battleData, dataVals, targets, overchargeState, ignoreBattlePoints);
+          BattlePointCalc.changeBattlePoint(
+            battleData,
+            dataVals,
+            targets,
+            overchargeState,
+            ignoreBattlePoints,
+            isAddition: true,
+          );
+          break;
+        case FuncType.subBattlePoint:
+          BattlePointCalc.changeBattlePoint(
+            battleData,
+            dataVals,
+            targets,
+            overchargeState,
+            ignoreBattlePoints,
+            isAddition: false,
+          );
           break;
         case FuncType.gainNpFromOtherUsedNpValue:
           GainNp.gainNpFromConsumed(battleData, dataVals, consumedNp ?? 0, targets);
@@ -574,6 +595,12 @@ class FunctionExecutor {
         case FuncType.addBattleMissionValue:
         case FuncType.setBattleMissionValue:
         case FuncType.changeEnemyStatusUiType:
+        case FuncType.setBattleMissionValueAsMax:
+          break;
+        case FuncType.addStateFuncType169:
+        case FuncType.addStateFuncType170:
+          // TODO: new addStateXX FuncType
+          break;
       }
 
       for (final target in targets) {
@@ -752,6 +779,11 @@ class FunctionExecutor {
           targets.add(targetedAlly);
         }
         break;
+      case FuncTargetType.playerAttackPreselectTargetPtOne:
+        if (targetedAlly != null) {
+          targets.add(targetedAlly);
+        }
+        break;
       case FuncTargetType.enemy:
         if (targetedEnemy != null) {
           targets.add(targetedEnemy);
@@ -895,6 +927,11 @@ class FunctionExecutor {
           'Function ID: $funcId, '
           'Activator: ${activator?.lBattleName}',
         );
+        break;
+      case .unknown:
+        assert(() {
+          throw Exception('Unknown FuncTargetType');
+        }());
         break;
     }
 
@@ -1138,6 +1175,7 @@ class FunctionExecutor {
     targets.retainWhere((target) => triggeredPositionTargetCheck(battleData, dataVals, target));
 
     targets.retainWhere((target) => battlePointCheck(dataVals, target));
+    targets.retainWhere((target) => battlePointRateCheck(dataVals, target));
 
     if (dataVals.CheckDuplicate == 1) {
       final Map<int, bool>? previousExecutionResults = battleData.checkDuplicateFuncData[funcIndex]?[function.funcId];
@@ -1156,8 +1194,19 @@ class FunctionExecutor {
   static bool battlePointCheck(final DataVals dataVals, final BattleServantData target) {
     final checkBattlePointPhaseRanges = dataVals.CheckBattlePointPhaseRange ?? [];
     for (final phaseRange in checkBattlePointPhaseRanges) {
-      final curPhase = target.determineBattlePointPhase(phaseRange.battlePointId);
+      final curPhase = BattlePointCalc.determineBattlePointPhase(target, phaseRange.battlePointId);
       if (!DataVals.isSatisfyRangeText(curPhase, ranges: phaseRange.range)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static bool battlePointRateCheck(final DataVals dataVals, final BattleServantData target) {
+    final checkBattlePointRateRanges = dataVals.TriggeredTargetBattlePointRateRange ?? [];
+    for (final rateRange in checkBattlePointRateRanges) {
+      final curRate = BattlePointCalc.getBattlePointRate(target, rateRange.battlePointId);
+      if (!DataVals.isSatisfyRangeText(curRate, ranges: rateRange.range)) {
         return false;
       }
     }

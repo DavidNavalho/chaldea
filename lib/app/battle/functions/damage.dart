@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:chaldea/app/battle/functions/battle_point_calc.dart';
 import 'package:chaldea/app/battle/models/battle.dart';
 import 'package:chaldea/app/battle/utils/battle_utils.dart';
 import 'package:chaldea/generated/l10n.dart';
@@ -50,23 +51,25 @@ class Damage {
         await activator.activateBuffs(
           battleData,
           [
-            BuffAction.functionCommandcodeattackBefore,
             if (isMainTarget) BuffAction.functionCommandcodeattackBeforeMainOnly,
+            BuffAction.functionCommandcodeattackBefore,
           ],
           opponent: target,
           card: currentCard,
+          buffsOrder: BuffsOrder.passiveFirst,
         );
         await activator.activateBuffs(
           battleData,
           [
-            if (!currentCard.isTD) BuffAction.functionCommandattackBefore,
             if (!currentCard.isTD && isMainTarget) BuffAction.functionCommandattackBeforeMainOnly,
-            BuffAction.functionAttackBefore,
+            if (!currentCard.isTD) BuffAction.functionCommandattackBefore,
             if (isMainTarget) BuffAction.functionAttackBeforeMainOnly,
+            BuffAction.functionAttackBefore,
             // if (isComboStart) BuffAction.functionComboStart,
           ],
           opponent: target,
           card: currentCard,
+          buffsOrder: BuffsOrder.passiveFirst,
         );
       }
     }
@@ -155,8 +158,9 @@ class Damage {
           final damageNpSEDecision = battleData.delegate?.damageNpSE?.call(activator, damageFunction, dataVals);
 
           final battlePointId = dataVals.Target!;
-          int curPhase = damageNpSEDecision?.indivSumCount ?? activator.determineBattlePointPhase(battlePointId);
-          curPhase = curPhase.clamp(0, activator.getMaxBattlePointPhase(battlePointId));
+          int curPhase =
+              damageNpSEDecision?.indivSumCount ?? BattlePointCalc.determineBattlePointPhase(activator, battlePointId);
+          curPhase = curPhase.clamp(0, BattlePointCalc.getMaxBattlePointPhase(activator, battlePointId));
           final specifiedPhase = dataVals.DamageRateBattlePointPhase?.firstWhereOrNull(
             (phase) => phase.battlePointPhase == curPhase,
           );
@@ -408,11 +412,15 @@ class Damage {
         currentCard,
         multiAttack,
       );
-      totalDamage = overwriteFixedDefenceDamage(battleData, target, totalDamage);
+
+      var absorbDamage = false;
+      if (!skipDamage) {
+        absorbDamage = await target.hasBuff(battleData, BuffAction.reactiveDamageGainHp);
+        totalDamage = overwriteFixedDefenceDamage(battleData, target, totalDamage);
+      }
       if (funcType == FuncType.damageNpSafe && target.hp > 0 && totalDamage >= target.hp) {
         totalDamage = target.hp - 1;
       }
-      final absorbDamage = await target.hasBuff(battleData, BuffAction.reactiveDamageGainHp);
 
       // calc min/max first, since it doesn't change original target/activator
       final minResult = await _calc(
@@ -527,23 +535,25 @@ class Damage {
         await activator.activateBuffs(
           battleData,
           [
-            BuffAction.functionCommandcodeattackAfter,
             if (isMainTarget) BuffAction.functionCommandcodeattackAfterMainOnly,
+            BuffAction.functionCommandcodeattackAfter,
           ],
           opponent: target,
           card: currentCard,
+          buffsOrder: BuffsOrder.passiveFirst,
         );
         await activator.activateBuffs(
           battleData,
           [
-            if (!currentCard.isTD) BuffAction.functionCommandattackAfter,
             if (!currentCard.isTD && isMainTarget) BuffAction.functionCommandattackAfterMainOnly,
-            BuffAction.functionAttackAfter,
+            if (!currentCard.isTD) BuffAction.functionCommandattackAfter,
             if (isMainTarget) BuffAction.functionAttackAfterMainOnly,
+            BuffAction.functionAttackAfter,
             // if (isComboEnd) BuffAction.functionComboEnd,
           ],
           opponent: target,
           card: currentCard,
+          buffsOrder: BuffsOrder.passiveFirst,
         );
       }
     }

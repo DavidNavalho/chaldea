@@ -13,6 +13,7 @@ import 'package:chaldea/app/modules/quest/quest_list.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/gamedata/mst_data.dart';
 import 'package:chaldea/models/models.dart';
+import 'package:chaldea/packages/app_info.dart';
 import 'package:chaldea/packages/language.dart';
 import 'package:chaldea/packages/logger.dart';
 import 'package:chaldea/utils/utils.dart';
@@ -107,7 +108,7 @@ class _FgoAnnualReportPageState extends State<FgoAnnualReportPage> {
     ThemeData themeData = ThemeData(
       brightness: Brightness.dark,
       useMaterial3: db.settings.useMaterial3,
-      colorSchemeSeed: db.settings.colorSeed?.color,
+      colorSchemeSeed: db.settings.colorSeed,
       tooltipTheme: const TooltipThemeData(waitDuration: Duration(milliseconds: 500)),
     );
     themeData = themeData.copyWith(
@@ -279,7 +280,7 @@ class _FgoAnnualReportRealPageState extends State<FgoAnnualReportRealPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               _topTitle(),
-              if (report.errors.isNotEmpty) _warningCard(),
+              ?_warningCard(report.errors),
               _userInfoCard(),
               ?_pushAndFavoriteSvts(),
               _gachaLuck(),
@@ -297,19 +298,20 @@ class _FgoAnnualReportRealPageState extends State<FgoAnnualReportRealPage> {
     );
   }
 
-  Widget _warningCard() {
+  Widget? _warningCard(List<ErrorDetail> errors) {
+    if (errors.isEmpty) return null;
     return ReportCard(
       header: Text(S.current.error),
       color: Colors.red.withAlpha(100),
       child: Column(
         mainAxisSize: .min,
         children: [
-          for (final error in report.errors)
+          for (final error in errors)
             ListTile(
               dense: true,
               minTileHeight: 24,
               title: Text(
-                '$kULLeading ${error.toString()}',
+                '$kULLeading ${error.message.toString()}',
                 maxLines: 3,
                 overflow: .ellipsis,
                 style: TextStyle(
@@ -1064,14 +1066,139 @@ class _FgoAnnualReportRealPageState extends State<FgoAnnualReportRealPage> {
     if (luckyGrade == .veryUnlucky) {
       bgImage = 'https://static.atlasacademy.io/JP/Servants/Status/1100100/status_servant_1.png';
     }
+    final gachaErrors = report.errors.where((e) => e.type == .gacha).toList();
+
+    Widget child = Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              AutoSizeText.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '${summonRate.toStringAsFixed(2)}%',
+                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                      children: [if (gachaErrors.isNotEmpty) const TextSpan(text: '❓')],
+                    ),
+                    TextSpan(
+                      text: ' ${S.current.gacha_draw_rate}',
+                      style: TextStyle(color: _greyColor),
+                    ),
+                  ],
+                ),
+                maxLines: 1,
+                minFontSize: 8,
+              ),
+              const SizedBox(height: 12),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: summonRate / 2,
+                  minHeight: 10,
+                  backgroundColor: Colors.grey.shade200,
+                  color: Color.lerp(Colors.amber.shade100, Colors.amber.shade900, summonRate / 2),
+                ),
+              ),
+              const SizedBox(height: 12),
+              AutoSizeText.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '${report.summonSsrCount}',
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                      children: [if (gachaErrors.isNotEmpty) const TextSpan(text: '❓')],
+                    ),
+                    TextSpan(
+                      text: ' / ${report.summonPullCount} ${S.current.summon_pull_unit}',
+                      style: TextStyle(color: _greyColor),
+                    ),
+                  ],
+                ),
+                maxLines: 1,
+                minFontSize: 8,
+              ),
+              // const SizedBox(height: 12),
+              Divider(height: 12, endIndent: 12),
+              InkWell(
+                borderRadius: .circular(8),
+                onTap: () {
+                  router.pushPage(UserGachaListPage(report: report, userGachas: report.luckyBagGachas.toList()));
+                },
+                child: AutoSizeText.rich(
+                  TextSpan(
+                    children: [
+                      TextSpan(
+                        text: '+${report.luckyBagGachas.length}',
+                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                        children: [if (gachaErrors.isNotEmpty) const TextSpan(text: '❓')],
+                      ),
+                      TextSpan(
+                        text: ' ${S.current.lucky_bag} ',
+                        style: TextStyle(color: _greyColor),
+                      ),
+                    ],
+                  ),
+                  maxLines: 1,
+                  minFontSize: 8,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            mainAxisSize: .min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(S.current.chaldea_report_likely, style: TextStyle(color: _greyColor)),
+              const SizedBox(height: 6),
+              Text(
+                gachaErrors.isEmpty ? luckyGrade.shownName : '❓',
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 12),
+              AutoSizeText(
+                gachaErrors.isEmpty ? luckyGrade.comment : '???',
+                maxLines: 3,
+                minFontSize: 8,
+                style: TextStyle(fontSize: 14),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+    if (gachaErrors.isNotEmpty) {
+      child = Column(
+        mainAxisSize: .min,
+        children: [
+          child,
+          for (final error in gachaErrors)
+            ListTile(
+              dense: true,
+              minTileHeight: 24,
+              title: Text(
+                '$kULLeading ${error.message.toString()}',
+                maxLines: 3,
+                overflow: .ellipsis,
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+        ],
+      );
+    }
     return ReportCard(
       header: Text(S.current.chaldea_report_5star_pull(kStarChar2), style: TextStyle(fontWeight: .bold)),
       onTap: () => SimpleConfirmDialog(
         showCancel: false,
         scrollable: true,
         title: Text(S.current.chaldea_report_5star_pull_prob(kStarChar2)),
-        content: Text("""${S.current.chaldea_report_5star_stat_dis_detail}
-${S.current.chaldea_report_5star_stat_dis_ent}"""),
+        content: Text(
+          "${S.current.chaldea_report_5star_stat_dis_detail}\n${S.current.chaldea_report_5star_stat_dis_ent}",
+        ),
       ).showDialog(context),
       backgrounds: [
         Positioned(
@@ -1086,98 +1213,7 @@ ${S.current.chaldea_report_5star_stat_dis_ent}"""),
           ),
         ),
       ],
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                AutoSizeText.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: '${summonRate.toStringAsFixed(2)}%',
-                        style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
-                      ),
-                      TextSpan(
-                        text: ' ${S.current.gacha_draw_rate}',
-                        style: TextStyle(color: _greyColor),
-                      ),
-                    ],
-                  ),
-                  maxLines: 1,
-                  minFontSize: 8,
-                ),
-                const SizedBox(height: 12),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: LinearProgressIndicator(
-                    value: summonRate / 2,
-                    minHeight: 10,
-                    backgroundColor: Colors.grey.shade200,
-                    color: Color.lerp(Colors.amber.shade100, Colors.amber.shade900, summonRate / 2),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                AutoSizeText.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: '${report.summonSsrCount}',
-                        style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                      ),
-                      TextSpan(
-                        text: ' / ${report.summonPullCount} ${S.current.summon_pull_unit}',
-                        style: TextStyle(color: _greyColor),
-                      ),
-                    ],
-                  ),
-                  maxLines: 1,
-                  minFontSize: 8,
-                ),
-                // const SizedBox(height: 12),
-                Divider(height: 12, endIndent: 12),
-                InkWell(
-                  borderRadius: .circular(8),
-                  onTap: () {
-                    router.pushPage(UserGachaListPage(report: report, userGachas: report.luckyBagGachas.toList()));
-                  },
-                  child: AutoSizeText.rich(
-                    TextSpan(
-                      children: [
-                        TextSpan(
-                          text: '+${report.luckyBagGachas.length}',
-                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-                        ),
-                        TextSpan(
-                          text: ' ${S.current.lucky_bag} ',
-                          style: TextStyle(color: _greyColor),
-                        ),
-                      ],
-                    ),
-                    maxLines: 1,
-                    minFontSize: 8,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              mainAxisSize: .min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(S.current.chaldea_report_likely, style: TextStyle(color: _greyColor)),
-                const SizedBox(height: 6),
-                Text(luckyGrade.shownName, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 12),
-                AutoSizeText(luckyGrade.comment, maxLines: 3, minFontSize: 8, style: TextStyle(fontSize: 14)),
-              ],
-            ),
-          ),
-        ],
-      ),
+      child: child,
     );
   }
 
@@ -1392,6 +1428,8 @@ ${S.current.chaldea_report_5star_stat_dis_ent}"""),
   Widget _miscTile() {
     // 圣晶石购入
     const largeFontSize = 18.0;
+    final usedGreatLanternCount = report.usedGreatLanternCount + 2;
+    final ownGreatLanternCount = mstData.getItemOrSvtNum(Items.greatLanternId) + 3;
     return ReportCard(
       padding: .symmetric(vertical: 16),
       child: Column(
@@ -1408,15 +1446,26 @@ ${S.current.chaldea_report_5star_stat_dis_ent}"""),
               TextSpan(
                 children: [
                   TextSpan(
-                    text: ' ${report.usedLanternCount} ',
+                    text: ' ${report.usedLanternCount}',
                     style: const TextStyle(fontWeight: FontWeight.bold, fontSize: largeFontSize),
                   ),
+                  if (usedGreatLanternCount > 0)
+                    TextSpan(
+                      text: '+$usedGreatLanternCount ',
+                      style: const TextStyle(fontWeight: FontWeight.normal),
+                    ),
                   TextSpan(
-                    text: ' +${report.mstData.getItemOrSvtNum(Items.lanternId)} ',
+                    text: ' +${report.mstData.getItemOrSvtNum(Items.lanternId)}',
                     style: TextStyle(color: _greyColor),
                   ),
+                  if (ownGreatLanternCount > 0)
+                    TextSpan(
+                      text: '+$ownGreatLanternCount',
+                      style: TextStyle(color: _greyColor),
+                    ),
                   TextSpan(
-                    text: ' =${report.usedLanternCount + report.mstData.getItemOrSvtNum(Items.lanternId)} ',
+                    text:
+                        '  =${report.usedLanternCount + usedGreatLanternCount + report.mstData.getItemOrSvtNum(Items.lanternId) + ownGreatLanternCount} ',
                     style: TextStyle(color: _greyColor),
                   ),
                 ],
@@ -1626,7 +1675,7 @@ ${S.current.chaldea_report_5star_stat_dis_ent}"""),
         spacing: 2,
         children: [
           Text(
-            'by Chaldea App',
+            'by Chaldea App v${AppInfo.versionString}',
             style: const TextStyle(color: Colors.white60, fontSize: 14, fontWeight: FontWeight.w500),
             textAlign: .center,
           ),

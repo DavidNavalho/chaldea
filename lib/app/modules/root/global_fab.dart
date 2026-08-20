@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 
 import 'package:chaldea/_test_page.dart';
@@ -116,6 +117,7 @@ class _DebugFabState extends State<DebugFab> {
         if (context == null) return;
         showDialog(
           context: context,
+          // barrierColor: kDebugMode ? Colors.transparent : null,
           builder: (context) => _DebugMenuDialog(state: this),
         ).then((value) {
           isMenuShowing = false;
@@ -153,6 +155,7 @@ class __DebugMenuDialogState extends State<_DebugMenuDialog> {
   Widget build(BuildContext context) {
     return SimpleDialog(
       title: Text(S.current.debug_menu),
+      constraints: const BoxConstraints(minWidth: 280.0, maxWidth: 320),
       children: [
         ListTile(
           leading: const Icon(Icons.dark_mode),
@@ -163,6 +166,51 @@ class __DebugMenuDialogState extends State<_DebugMenuDialog> {
             db.notifyAppUpdate();
           },
         ),
+        if (1 > 2)
+          Container(
+            padding: .symmetric(horizontal: 16),
+            constraints: BoxConstraints(maxWidth: 360),
+            child: DropdownButton<FlexScheme>(
+              isExpanded: true,
+              value: db.settings.resolvedFlexScheme,
+              items: [
+                for (final item in AppTheme.kFlexSchemes)
+                  DropdownMenuItem(
+                    value: item,
+                    child: Row(
+                      mainAxisSize: .min,
+                      spacing: 8,
+                      crossAxisAlignment: .center,
+                      children: [
+                        for (final isDark in const [false, true])
+                          SizedBox(
+                            height: 30,
+                            child: FlexThemeModeOptionButton(
+                              flexSchemeColor: isDark ? item.data.dark : item.data.light,
+                              backgroundColor: isDark ? Colors.grey.shade800 : Colors.white,
+                              selected: false,
+                              optionButtonPadding: .zero,
+                              optionButtonMargin: .all(1),
+                              height: 10,
+                              width: 10,
+                              padding: .all(2),
+                            ),
+                          ),
+                        Flexible(child: Text(item.data.name, maxLines: 1, overflow: .ellipsis)),
+                      ],
+                    ),
+                  ),
+              ],
+              onChanged: (v) {
+                if (db.settings.flexScheme != v) {
+                  setState(() {
+                    db.settings.flexScheme = v;
+                    db.notifyAppUpdate();
+                  });
+                }
+              },
+            ),
+          ),
         ListTile(
           leading: const Icon(Icons.language),
           title: Text(S.current.settings_language),
@@ -225,14 +273,6 @@ class __DebugMenuDialogState extends State<_DebugMenuDialog> {
           },
         ),
         ListTile(
-          leading: const Icon(Icons.color_lens_outlined),
-          title: const Text('Switch M2/M3'),
-          onTap: () {
-            db.settings.useMaterial3 = !db.settings.useMaterial3;
-            db.notifyAppUpdate();
-          },
-        ),
-        ListTile(
           title: Text(S.current.show_frame_rate),
           onTap: () {
             setState(() {
@@ -287,6 +327,20 @@ class __DebugMenuDialogState extends State<_DebugMenuDialog> {
               rootRouter.appState.windowState = WindowStateEnum.screenshot;
             },
           ),
+        SwitchListTile.adaptive(
+          value: db.settings.display.showWindowFab,
+          title: Text(S.current.display_show_window_fab),
+          onChanged: (v) {
+            db.settings.display.showWindowFab = v;
+            db.saveSettings();
+            if (v) {
+              WindowManagerFab.createOverlay(context);
+            } else {
+              WindowManagerFab.removeOverlay();
+            }
+            setState(() {});
+          },
+        ),
         ListTile(
           title: const Text('Pop one page'),
           onTap: () {
