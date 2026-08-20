@@ -72,11 +72,21 @@ misleading domain ownership without requiring a broad application refactor.
 
 ## Fork Isolation Design
 
-The primary identity values live in:
+The primary identity values live in the fork-only external build overlay:
 
 `ios/Flutter/ForkIdentity.xcconfig`
 
-That file defines the Team ID, bundle IDs, App Group, and iOS deployment floor.
+That file defines the Team ID, bundle IDs, App Group, entitlements, versions,
+and iOS deployment floors. It is passed to `xcodebuild` with `-xcconfig`; it is
+deliberately not wired into the upstream Xcode project.
+
+Fork-only build entry points:
+
+- `scripts/fork/build_ios_testflight.sh` configures Flutter, regenerates Pods,
+  applies the external overlay, creates an archive, and validates its identity.
+- `scripts/fork/prepare_ios_testflight.rb` updates only ignored CocoaPods build
+  output for Xcode 27 and creates an ignored per-Pod target map consumed by the
+  overlay.
 
 Fork-only entitlement files:
 
@@ -86,25 +96,33 @@ Fork-only entitlement files:
 Both active entitlement files contain only the personal App Group. They do not
 claim the upstream universal-link domain.
 
-Fork-only App Group constants:
+App Group adapters:
 
-- Dart: `lib/custom/ios/fork_identity.dart`
-- Swift: `ios/FakerStatusWidget/ForkIdentity.swift`
+- Dart: the existing `lib/packages/home_widget.dart` statement reads the
+  `CHALDEA_IOS_APP_GROUP_ID` compile-time value and retains the upstream App
+  Group as its default.
+- Swift: `ios/FakerStatusWidget/ForkIdentity.swift` contains the fork value.
 
 Thin adapters in upstream-owned files:
 
-- `lib/packages/home_widget.dart` reads the Dart fork App Group constant.
+- `lib/packages/home_widget.dart` adds the one build-time App Group lookup.
 - `ios/FakerStatusWidget/FakerStatusWidget.swift` reads the Swift fork App
   Group constant.
-- `ios/Chaldea.xcodeproj/project.pbxproj` points targets to fork variables and
-  entitlements, applies the iOS 15 variable, and synchronizes widget versions.
-- `ios/Podfile` forces all generated Pod project and target deployment settings
-  to iOS 15 after Flutter applies its settings. Xcode 27 rejects the older Pod
-  deployment defaults.
+- `ios/Chaldea.xcodeproj/project.pbxproj` changes only the two file-reference
+  paths for Flutter's generated plugin registrant.
 - `ios/Chaldea/Chaldea-Bridging-Header.h` and the Xcode project point to
   Flutter 3.41's generated registrant under `ios/Runner`. The native app source
   folder is named `Chaldea`, but current Flutter always generates the files in
   its standard `Runner` folder.
+
+`ios/Podfile` and `ios/Podfile.lock` remain identical to upstream. Xcode 27
+rejects some older generated Pod deployment defaults, so the preparer changes
+only `ios/Pods/Pods.xcodeproj` after `pod install`. Both that project and the
+generated `ios/Flutter/ephemeral/ForkIdentityPods.xcconfig` are ignored.
+
+Direct `flutter build ipa` commands do not apply the personal overlay and are
+not the fork's TestFlight build path. Use the wrapper so the repository's
+upstream defaults remain untouched.
 
 Do not commit generated files from `ios/Runner`, `ios/Pods`, `build`, or Xcode
 DerivedData.
@@ -166,9 +184,10 @@ cd ..
 CocoaPods currently resolves 27 dependencies and 29 total Pods.
 
 If dependencies are regenerated, confirm every generated Pod deployment target
-is iOS 15:
+is iOS 15 after running the fork preparer:
 
 ```sh
+ruby scripts/fork/prepare_ios_testflight.rb
 rg -o 'IPHONEOS_DEPLOYMENT_TARGET = [^;]+' \
   ios/Pods/Pods.xcodeproj/project.pbxproj | sort -u
 ```
@@ -181,10 +200,10 @@ IPHONEOS_DEPLOYMENT_TARGET = 15.0
 
 ## Completed Build and TestFlight Validation
 
-The following command succeeds with Xcode 27 beta 5:
+The following unsigned validation command succeeds with Xcode 27 beta 5:
 
 ```sh
-fvm flutter build ipa --release --no-codesign
+scripts/fork/build_ios_testflight.sh --build-name 2.5.27 --build-number 990
 ```
 
 Successful archive:
@@ -207,20 +226,30 @@ Widget extension:
   Minimum iOS: 18.1
 ```
 
+On 2026-08-20, both unsigned and signed wrapper archives completed. The signed
+app and widget identifiers use team `WAF9PC2Y8K`, both signed bundles contain
+the personal App Group, and the compiled Flutter binary contains the personal
+App Group rather than the upstream default.
+
 The archive is a generated, ignored artifact and may not exist on another
-machine. Rebuild it with the command above if needed.
+machine. The wrapper also checks the app and widget bundle IDs, versions, and
+build numbers before reporting success.
 
 The signed archive command also succeeds:
 
 ```sh
-fvm flutter build ipa --release --export-method app-store
+scripts/fork/build_ios_testflight.sh \
+  --build-name 2.5.27 \
+  --build-number 991 \
+  --codesign \
+  --allow-provisioning-updates
 ```
 
-The command-line archive succeeds, but its IPA export may report `No Accounts`
-or a missing `iOS Distribution` certificate. Xcode Organizer's recommended App
-Store Connect distribution flow successfully resolved cloud-managed signing,
-uploaded the build, and was accepted by Apple. Xcode reported a non-blocking
-missing dSYM warning for `objective_c.framework`; the upload still completed.
+Open the resulting archive in Xcode Organizer and use the recommended App Store
+Connect distribution flow. That flow successfully resolved cloud-managed
+signing, uploaded the previous builds, and was accepted by Apple. Xcode
+reported a non-blocking missing dSYM warning for `objective_c.framework`; the
+upload still completed.
 
 Current App Store Connect/TestFlight state:
 
@@ -399,10 +428,12 @@ on this worktree.
 
 ```sh
 security find-identity -v -p codesigning
+ruby scripts/fork/prepare_ios_testflight.rb
 xcodebuild -workspace ios/Chaldea.xcworkspace \
   -scheme Runner \
   -configuration Release \
   -destination 'generic/platform=iOS' \
+  -xcconfig ios/Flutter/ForkIdentity.xcconfig \
   -showBuildSettings | \
   rg '^\s*(CODE_SIGN_ENTITLEMENTS|CODE_SIGN_IDENTITY|CODE_SIGN_STYLE|DEVELOPMENT_TEAM|PRODUCT_BUNDLE_IDENTIFIER|PROVISIONING_PROFILE_SPECIFIER)\s*='
 ```
@@ -423,6 +454,7 @@ xcodebuild -workspace ios/Chaldea.xcworkspace \
   -scheme FakerStatusWidgetExtension \
   -configuration Release \
   -destination 'generic/platform=iOS' \
+  -xcconfig ios/Flutter/ForkIdentity.xcconfig \
   -showBuildSettings | \
   rg '^\s*(CODE_SIGN_ENTITLEMENTS|DEVELOPMENT_TEAM|IPHONEOS_DEPLOYMENT_TARGET|PRODUCT_BUNDLE_IDENTIFIER|CURRENT_PROJECT_VERSION|MARKETING_VERSION)\s*='
 ```
@@ -435,6 +467,7 @@ fvm flutter precache --ios
 cd ios
 pod install
 cd ..
+ruby scripts/fork/prepare_ios_testflight.rb
 ```
 
 Do not run broad dependency upgrades merely to produce the TestFlight build.
@@ -444,30 +477,26 @@ Do not run broad dependency upgrades merely to produce the TestFlight build.
 First try:
 
 ```sh
-fvm flutter build ipa --release --export-method app-store
+scripts/fork/build_ios_testflight.sh \
+  --build-name 2.5.27 \
+  --build-number 991 \
+  --codesign \
+  --allow-provisioning-updates
 ```
 
 With Xcode signed in and both identifiers registered, automatic signing should
-create or download the necessary profiles for the main app and widget.
+create or download the necessary profiles for the main app and widget. Open
+the resulting archive in Xcode Organizer to validate and upload it.
 
-If Flutter still reports missing profiles:
+If Xcode still reports missing profiles, check the registered App IDs, App
+Group assignments, account, and certificates. Do not select the personal team
+or bundle IDs in the Xcode project editor: that would write the fork identity
+back into the upstream-owned project file. Inspect resolved values with the
+`xcodebuild -xcconfig` commands above instead.
 
-1. Open `ios/Chaldea.xcworkspace` in Xcode.
-2. Select the `Chaldea` target.
-3. Open Signing & Capabilities.
-4. Confirm Automatically manage signing is enabled.
-5. Select team `WAF9PC2Y8K`.
-6. Repeat for `FakerStatusWidgetExtension`.
-7. Confirm both targets show the intended bundle IDs and App Group.
-8. Let Xcode resolve signing, then retry the Flutter build.
-
-The workspace is `Chaldea.xcworkspace`; Flutter's generic error may incorrectly
-suggest opening `Runner.xcworkspace`, which does not exist here.
-
-If command-line provisioning requires explicit permission, archive/export with
-Xcode using `-allowProvisioningUpdates`, or use Xcode Organizer. Do not create
-or commit manual provisioning-profile files unless automatic signing genuinely
-cannot resolve the setup.
+The workspace is `Chaldea.xcworkspace`; `Runner.xcworkspace` does not exist
+here. Do not create or commit manual provisioning-profile files unless
+automatic signing genuinely cannot resolve the setup.
 
 ### 5. Build-Number Rules
 
@@ -483,11 +512,11 @@ must not be reused for another upload. For the next upload, either update the
 version in `pubspec.yaml` or build with an override:
 
 ```sh
-fvm flutter build ipa \
-  --release \
-  --export-method app-store \
+scripts/fork/build_ios_testflight.sh \
   --build-name 2.5.27 \
-  --build-number 991
+  --build-number 991 \
+  --codesign \
+  --allow-provisioning-updates
 ```
 
 Do not increase the build number merely because a local build failed before
@@ -495,10 +524,13 @@ upload. Increase it after App Store Connect has accepted that build number.
 
 ### 6. Validate the Signed Artifact
 
-Flutter should produce:
+The wrapper should produce:
 
 - Archive: `build/ios/archive/Chaldea.xcarchive`
-- IPA directory: `build/ios/ipa/`
+
+Upload the signed archive through Xcode Organizer. The wrapper does not export
+an IPA because Organizer is the path already proven to work with this
+account's cloud-managed signing.
 
 Inspect the archive metadata:
 
@@ -624,11 +656,18 @@ plutil -lint \
   ios/FakerStatusWidgetExtension.fork.entitlements
 
 ruby -c ios/Podfile
+bash -n scripts/fork/build_ios_testflight.sh
+ruby -c scripts/fork/prepare_ios_testflight.rb
 git diff --check
 ```
 
 `fvm flutter analyze` previously completed with 15 pre-existing informational
-lints. There were no findings in the fork identity files.
+lints. There were no findings in the fork identity files. For the thin Dart
+adapter alone, run:
+
+```sh
+fvm dart analyze lib/packages/home_widget.dart
+```
 
 The test command must include the repository path:
 
@@ -678,10 +717,11 @@ Resolution: Both identifiers and both signed bundles must use exactly:
 
 Cause: The app or a generated Pod resolved below iOS 15.
 
-Resolution: Confirm `CHALDEA_IOS_DEPLOYMENT_TARGET = 15.0` in
-`ForkIdentity.xcconfig`, rerun `pod install`, and verify that the generated Pods
-project contains only iOS 15 deployment values. Do not edit the generated Pods
-project directly.
+Resolution: Confirm the `Chaldea` deployment mapping is `15.0` in
+`ForkIdentity.xcconfig`, rerun `pod install`, then run
+`ruby scripts/fork/prepare_ios_testflight.rb`. Verify that the generated Pods
+project contains only iOS 15 deployment values. Do not put this workaround in
+the upstream Podfile.
 
 ### `GeneratedPluginRegistrant.h` not found
 
@@ -696,9 +736,9 @@ building. Do not commit the generated files.
 
 Cause: Widget target version settings were reset to hard-coded `1.0 (1)`.
 
-Resolution: Preserve the widget target settings based on
-`FLUTTER_BUILD_NAME` and `FLUTTER_BUILD_NUMBER`, then rebuild and inspect both
-Info.plists.
+Resolution: Build through `scripts/fork/build_ios_testflight.sh`. Its external
+overlay maps both targets to `FLUTTER_BUILD_NAME` and `FLUTTER_BUILD_NUMBER`,
+and the wrapper verifies both Info.plists.
 
 ### App Store Connect does not list the bundle ID
 

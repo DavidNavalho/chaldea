@@ -34,23 +34,36 @@ Update it at the end of each working session.
 ## Last Session Snapshot
 - Date: 2026-08-20
 - Branch: sharp-ocean
-- Last commit: this branch's TestFlight preparation commit (run `git log -1 --oneline` for the current hash)
-- Working tree status: expected clean after committing this snapshot
+- Last commit: run `git log -1 --oneline` for the current hash
+- Working tree status: expected clean after committing and pushing this
+  approved, tested TestFlight-isolation refactor
 - Active feature(s): personal iOS bundle/team/App Group configuration for this fork; TestFlight setup complete
 - What is done:
-  - added the fork identity settings in `ios/Flutter/ForkIdentity.xcconfig`
-  - switched the iOS app and widget targets to the personal Team ID and bundle IDs
+  - isolated the fork identity settings in
+    `ios/Flutter/ForkIdentity.xcconfig`, supplied externally with
+    `xcodebuild -xcconfig` rather than wiring them into the upstream project
+  - reduced the complete Xcode project PR diff to two generated-registrant path
+    corrections; all identity, signing, entitlement, deployment, and version
+    edits were removed from the project file
+  - restored `ios/Podfile` and `ios/Podfile.lock` to exact upstream contents
+  - added `scripts/fork/prepare_ios_testflight.rb` to update only ignored
+    CocoaPods build output for Xcode 27 and generate an ignored per-target map
+  - added `scripts/fork/build_ios_testflight.sh` as the fork-only archive entry
+    point; it applies the identity overlay and validates archive metadata
   - added fork-specific entitlements using a personal App Group and without the upstream universal-link claim
-  - routed the widget's Dart and Swift shared-container access through isolated fork identity files
+  - changed the one Dart App Group statement to use the build-time
+    `CHALDEA_IOS_APP_GROUP_ID`, with the upstream App Group retained as default
+  - kept the one Swift widget adapter plus the fork-only Swift identity file
+  - kept the one bridging-header correction and the matching two Xcode project
+    file-reference corrections for Flutter 3.41's generated registrant
   - verified resolved Xcode settings and entitlement plist syntax
   - installed FVM 4.1.2 through Homebrew and Flutter 3.41.7 through FVM
   - aligned `.fvmrc` with `pubspec.yaml`
   - completed `fvm flutter pub get`, iOS precache, and `pod install`
   - replaced Xcode 27 beta 1 with Xcode 27 beta 5 (`27A5237l`) and selected
     `/Applications/Xcode-27.0.0-Beta.5.app/Contents/Developer`
-  - added a fork-scoped iOS 15 minimum and applied the same floor to all CocoaPods targets
-  - adapted the renamed native folder to Flutter 3.41's generated plugin registrant location
-  - synchronized the widget version/build with the containing Flutter app
+  - applied the fork-scoped iOS 15 Pod workaround only to ignored generated
+    CocoaPods output; all 99 generated deployment settings resolve to iOS 15
   - registered the personal App Group and both App IDs under team `WAF9PC2Y8K`
   - associated both App IDs with `group.io.github.davidnavalho.chaldea.shared`
   - created the App Store Connect app `Chaldea Personal` (app ID `6801619927`)
@@ -71,7 +84,22 @@ Update it at the end of each working session.
   - uploaded build 990; App Store Connect shows it `Complete`, `Ready to Submit`, and in `Chaldea Internal`
   - installed build 990 from TestFlight and confirmed that NA Account File login now succeeds on-device
   - added `TESTFLIGHT_RUNBOOK.md` as the complete owner/agent continuation guide
+  - ran both unsigned and signed end-to-end archives with the new wrapper on
+    Xcode 27 beta 5
+    - app: Chaldea 2.5.27 (990), bundle
+      `io.github.davidnavalho.chaldea`, minimum iOS 15.0
+    - widget: 2.5.27 (990), bundle
+      `io.github.davidnavalho.chaldea.FakerStatusWidget`, minimum iOS 18.1
+    - signed identifiers use team `WAF9PC2Y8K`; both signed entitlements contain
+      only `group.io.github.davidnavalho.chaldea.shared`
+    - compiled Flutter binary contains the personal App Group and not the
+      upstream App Group
+    - temporary validation archives were built on the external SSD and moved
+      to that drive's Trash; the existing archive was not changed
+  - `fvm dart analyze lib/packages/home_widget.dart`, syntax/plist checks, and
+    `git diff --check` pass
 - What is next:
+  - review the updated diff and checks on PR #24
   - verify shared App Group data and the widget on a device where the widget is available
   - use a build number above 990 for the next App Store Connect upload
 - Known blockers:
@@ -88,23 +116,26 @@ Update it at the end of each working session.
 - `ios/FakerStatusWidgetExtension.fork.entitlements`
 - `ios/FakerStatusWidget/ForkIdentity.swift`
 - `ios/FakerStatusWidget/FakerStatusWidget.swift`
-- `ios/Podfile`
-- `ios/Podfile.lock`
-- `lib/custom/ios/fork_identity.dart`
 - `lib/app/api/atlas.dart`
 - `lib/app/modules/import_data/autologin/autologin_page.dart`
 - `lib/models/faker/jp/agent.dart`
 - `lib/packages/home_widget.dart`
+- `scripts/fork/build_ios_testflight.sh`
+- `scripts/fork/prepare_ios_testflight.rb`
 - `.fvmrc`
 - `HANDOFF.md`
 - `TESTFLIGHT_RUNBOOK.md`
 
 ## Validation Commands
-- `xcodebuild -workspace ios/Chaldea.xcworkspace -scheme Runner -configuration Release -showBuildSettings`
-- `xcodebuild -workspace ios/Chaldea.xcworkspace -scheme FakerStatusWidgetExtension -configuration Release -showBuildSettings`
+- `scripts/fork/build_ios_testflight.sh --build-name 2.5.27 --build-number 990`
+- `scripts/fork/build_ios_testflight.sh --build-name 2.5.27 --build-number 990 --codesign`
+- `xcodebuild -workspace ios/Chaldea.xcworkspace -scheme Runner -configuration Release -xcconfig ios/Flutter/ForkIdentity.xcconfig -showBuildSettings`
+- `xcodebuild -workspace ios/Chaldea.xcworkspace -scheme FakerStatusWidgetExtension -configuration Release -xcconfig ios/Flutter/ForkIdentity.xcconfig -showBuildSettings`
 - `plutil -lint ios/Chaldea/Fork.entitlements ios/FakerStatusWidgetExtension.fork.entitlements`
 - `ruby -c ios/Podfile`
-- `fvm flutter build ipa --release --no-codesign`
+- `bash -n scripts/fork/build_ios_testflight.sh`
+- `ruby -c scripts/fork/prepare_ios_testflight.rb`
+- `fvm dart analyze lib/packages/home_widget.dart`
 - `fvm flutter analyze`
 - `fvm flutter test --dart-define=APP_PATH=/path/to/repository`
 - `fvm flutter build macos --debug`

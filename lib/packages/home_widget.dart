@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:home_widget/home_widget.dart';
 
-import 'package:chaldea/custom/ios/fork_identity.dart';
 import 'package:chaldea/models/models.dart';
 import 'platform/platform.dart';
 
@@ -14,7 +13,9 @@ class HomeWidgetX {
   static Future<bool?> init() async {
     if (!isSupported) return null;
     if (PlatformU.isIOS) {
-      return HomeWidget.setAppGroupId(chaldeaForkIosAppGroupId);
+      return HomeWidget.setAppGroupId(
+        const String.fromEnvironment('CHALDEA_IOS_APP_GROUP_ID', defaultValue: 'group.cc.narumi.chaldea.shared'),
+      );
     }
     return null;
   }
