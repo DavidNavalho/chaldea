@@ -1,6 +1,6 @@
 # Chaldea Personal Fork: iOS and TestFlight Runbook
 
-Last updated: 2026-08-20
+Last updated: 2026-08-21
 
 This document is the complete handoff for building, signing, uploading, and
 installing this personal Chaldea fork through TestFlight. It is intended for
@@ -268,6 +268,49 @@ Current App Store Connect/TestFlight state:
 
 Future uploaded Xcode builds are automatically distributed to the internal
 group.
+
+## Xcode Cloud Automation
+
+The fork uses Xcode Cloud, rather than the inherited upstream GitHub Actions,
+for hosted TestFlight automation. The workflow configuration lives in App
+Store Connect, so an upstream merge cannot overwrite its triggers or TestFlight
+post-action.
+
+All repository support is isolated in new files under `ios/ci_scripts/`:
+
+- `ci_post_clone.sh` installs the exact Flutter version from `.fvmrc`, creates
+  generated iOS configuration using `CI_BUILD_NUMBER`, resolves CocoaPods, and
+  applies the existing generated-dependency compatibility map.
+- `ci_pre_xcodebuild.sh` resolves both app and widget build settings and fails
+  before archiving unless they contain only the personal Team ID, bundle IDs,
+  entitlements, and deployment targets.
+- `ci_post_xcodebuild.sh` validates the signed archive, including the personal
+  App Group and absence of upstream identity and Associated Domains.
+
+Configure the first workflow as documented in `ios/ci_scripts/README.md`:
+
+- Repository: `DavidNavalho/chaldea`
+- Branch: `main`
+- Initial trigger: manual
+- Action: archive `Runner` for iOS using Release
+- Post-action: distribute to `Chaldea Internal`
+- Initial Xcode Cloud build number: `991`
+- Environment variable:
+  `XCODE_XCCONFIG_FILE=/Volumes/workspace/repository/ios/Flutter/ForkIdentity.xcconfig`
+
+`XCODE_XCCONFIG_FILE` is deliberate. Xcode gives this external configuration
+the same highest-priority overlay behavior used by the local wrapper, allowing
+Cloud builds to use the personal identity without wiring it into the upstream
+Xcode project. The Cloud scripts verify the resolved file and settings and fail
+closed if Apple changes the temporary repository path or the overlay is absent.
+
+The scripts require no App Store Connect API key, password, certificate, or
+provisioning profile in Git. Xcode Cloud manages signing and upload using the
+Apple Developer team configuration.
+
+After one manual Cloud build has been processed and installed successfully,
+the workflow can remain manual or use a `main` branch-change trigger. Manual is
+preferred if not every reviewed merge should produce a TestFlight build.
 
 ### NA Account Login Fix in Build 990
 
