@@ -258,11 +258,11 @@ upload still completed.
 Current App Store Connect/TestFlight state:
 
 - App: `Chaldea Personal` (numeric app ID `6801619927`)
-- Uploaded build: `2.5.27 (990)`
-- Build state: processed and `Ready to Submit`
+- Latest uploaded build: `2.6.0 (5)`, delivered by Xcode Cloud on 2026-08-22
+- Latest build state: processed, `Testing`, and expires in 90 days
 - Internal group: `Chaldea Internal`
 - Automatic distribution: enabled
-- Builds in group: 2 (`989` and `990`)
+- Builds in group: 3 (`989`, `990`, and `2.6.0 (5)`)
 - Internal tester: owner's App Store Connect account
 - On-device result: build 990 installs from TestFlight and NA Account File login succeeds
 
@@ -287,16 +287,20 @@ All repository support is isolated in new files under `ios/ci_scripts/`:
 - `ci_post_xcodebuild.sh` validates the signed archive, including the personal
   App Group and absence of upstream identity and Associated Domains.
 
-Configure the first workflow as documented in `ios/ci_scripts/README.md`:
+The active workflow is `Manual TestFlight Delivery`
+(`cae29f8a-2bfa-4830-beec-bb88072853c9`), configured as documented in
+`ios/ci_scripts/README.md`:
 
 - Repository: `DavidNavalho/chaldea`
-- Branch: `main`
-- Initial trigger: manual
+- Branch scope: any branch
+- Trigger: manual
 - Action: archive `Runner` for iOS using Release
 - Post-action: distribute to `Chaldea Internal`
-- Initial Xcode Cloud build number: `991`
-- Environment variable:
-  `XCODE_XCCONFIG_FILE=/Volumes/workspace/repository/ios/Flutter/ForkIdentity.xcconfig`
+- Xcode: Latest Beta or Release
+- macOS: Latest Release
+- Environment variables:
+  - `XCODE_XCCONFIG_FILE=/Volumes/workspace/repository/ios/Flutter/ForkIdentity.xcconfig`
+  - `CHALDEA_XCODE_CLOUD_MIN_BUILD_NUMBER=1`
 
 `XCODE_XCCONFIG_FILE` is deliberate. Xcode gives this external configuration
 the same highest-priority overlay behavior used by the local wrapper, allowing
@@ -308,9 +312,29 @@ The scripts require no App Store Connect API key, password, certificate, or
 provisioning profile in Git. Xcode Cloud manages signing and upload using the
 Apple Developer team configuration.
 
-After one manual Cloud build has been processed and installed successfully,
-the workflow can remain manual or use a `main` branch-change trigger. Manual is
-preferred if not every reviewed merge should produce a TestFlight build.
+The Cloud sequence started at a low build number, but this is valid for iOS:
+App Store Connect requires the marketing-version/build-number pair to be
+unique. Therefore `2.6.0 (5)` does not conflict with the earlier
+`2.5.27 (990)`. The workflow's minimum-build override is explicit; without it,
+the fork script retains its conservative default minimum of `991` for manual
+continuations of the older version line.
+
+Verified Xcode Cloud delivery on 2026-08-22:
+
+- Cloud build: `5`
+- Source: commit `cf6ca61e2` on `automation/xcode-cloud-testflight`
+- Xcode/macOS: Xcode 27 beta 5 / macOS Tahoe 26.6.2
+- Archive action: succeeded
+- TestFlight Internal Testing post-action: succeeded
+- App Store Connect: `2.6.0 (5)` is Complete, Testing, and assigned to
+  `Chaldea Internal`
+
+The earlier bootstrap workflow `Manual TestFlight`
+(`08697A88-8BA0-452D-87DD-923F8A0645B3`) is deactivated and should remain so.
+
+The workflow can remain manual or later use a `main` branch-change trigger.
+Manual is preferred if not every reviewed merge should produce a TestFlight
+build.
 
 ### NA Account Login Fix in Build 990
 

@@ -32,7 +32,7 @@ Update it at the end of each working session.
    - `fvm flutter run -d macos`
 
 ## Last Session Snapshot
-- Date: 2026-08-21
+- Date: 2026-08-22
 - Branch: `automation/xcode-cloud-testflight`
 - Last commit: run `git log -1 --oneline` for the current hash
 - Working tree status: expected clean after committing and pushing the Xcode
@@ -64,6 +64,25 @@ Update it at the end of each working session.
     widget build settings
   - validated the existing signed 2.5.27 (990) archive with the new Cloud
     post-build validator
+  - connected `DavidNavalho/chaldea` to Xcode Cloud without committing an
+    Xcode project mutation
+  - added the shared Xcode Cloud product manifest under
+    `ios/Chaldea.xcodeproj/xcshareddata/xcodecloud/`
+  - created the active manual workflow `Manual TestFlight Delivery`
+    (`cae29f8a-2bfa-4830-beec-bb88072853c9`)
+    - any branch, manual start
+    - Archive `Runner` for iOS
+    - Latest Beta or Release Xcode and Latest Release macOS
+    - internal TestFlight distribution to `Chaldea Internal`
+  - deactivated the earlier bootstrap workflow `Manual TestFlight`
+    (`08697A88-8BA0-452D-87DD-923F8A0645B3`)
+  - completed Xcode Cloud build 5 from commit `cf6ca61e2` on 2026-08-22
+    - Xcode 27 beta 5 / macOS Tahoe 26.6.2
+    - archive and App Store export succeeded
+    - fork post-clone, identity preflight, and archive validation all passed
+    - internal TestFlight post-action succeeded
+  - confirmed App Store Connect processed `2.6.0 (5)` as Complete and Testing
+    and assigned it to `Chaldea Internal`
   - full analysis has no errors or warnings and the same 15 informational lints
   - `test/custom/box_coverage/box_coverage_service_test.dart` passes (2 tests)
   - isolated the fork identity settings in
@@ -126,15 +145,13 @@ Update it at the end of each working session.
   - `fvm dart analyze lib/packages/home_widget.dart`, syntax/plist checks, and
     `git diff --check` pass
 - What is next:
-  - publish and review the Xcode Cloud automation PR
-  - finish the one-time Xcode Cloud connection after signing back in to App Store Connect
-  - configure the initial manual workflow and set its first build number to 991
-  - run the first Cloud archive and verify automatic distribution to `Chaldea Internal`
-  - disable inherited GitHub Actions at repository level; the owner is handling this setting
+  - review and merge draft PR #26 for the Xcode Cloud automation
+  - install `2.6.0 (5)` from TestFlight and smoke-test the app on-device
+  - keep the Cloud trigger manual unless automatic delivery from `main` is
+    explicitly desired later
   - verify shared App Group data and the widget on a device where the widget is available
-  - use a build number above 990 for the next App Store Connect upload
 - Known blockers:
-  - App Store Connect requested a fresh sign-in before showing the Xcode Cloud setup page
+  - no remaining blocker for Xcode Cloud archive or internal TestFlight delivery
   - no remaining blocker for internal TestFlight installation or NA Account File login
   - Xcode Organizer reports a non-blocking missing dSYM warning for `objective_c.framework`; Apple accepted the upload
   - build 989 has the upstream NA metadata bug and should not be used for NA account login; build 990 supersedes it
@@ -161,6 +178,7 @@ Update it at the end of each working session.
 - `ios/ci_scripts/ci_post_clone.sh`
 - `ios/ci_scripts/ci_pre_xcodebuild.sh`
 - `ios/ci_scripts/ci_post_xcodebuild.sh`
+- `ios/Chaldea.xcodeproj/xcshareddata/xcodecloud/manifest.json`
 - `.fvmrc`
 - `HANDOFF.md`
 - `TESTFLIGHT_RUNBOOK.md`
@@ -175,8 +193,8 @@ Update it at the end of each working session.
 - `bash -n scripts/fork/build_ios_testflight.sh`
 - `ruby -c scripts/fork/prepare_ios_testflight.rb`
 - `bash -n ios/ci_scripts/ci_post_clone.sh ios/ci_scripts/ci_pre_xcodebuild.sh ios/ci_scripts/ci_post_xcodebuild.sh`
-- `CI_XCODE_CLOUD=TRUE CI_PRIMARY_REPOSITORY_PATH="$PWD" CI_BUILD_NUMBER=991 XCODE_XCCONFIG_FILE="$PWD/ios/Flutter/ForkIdentity.xcconfig" ios/ci_scripts/ci_post_clone.sh`
-- `CI_XCODE_CLOUD=TRUE CI_PRIMARY_REPOSITORY_PATH="$PWD" CI_BUILD_NUMBER=991 CI_XCODEBUILD_ACTION=archive XCODE_XCCONFIG_FILE="$PWD/ios/Flutter/ForkIdentity.xcconfig" ios/ci_scripts/ci_pre_xcodebuild.sh`
+- `CI_XCODE_CLOUD=TRUE CI_PRIMARY_REPOSITORY_PATH="$PWD" CI_BUILD_NUMBER=5 CHALDEA_XCODE_CLOUD_MIN_BUILD_NUMBER=1 XCODE_XCCONFIG_FILE="$PWD/ios/Flutter/ForkIdentity.xcconfig" ios/ci_scripts/ci_post_clone.sh`
+- `CI_XCODE_CLOUD=TRUE CI_PRIMARY_REPOSITORY_PATH="$PWD" CI_BUILD_NUMBER=5 CHALDEA_XCODE_CLOUD_MIN_BUILD_NUMBER=1 CI_XCODEBUILD_ACTION=archive XCODE_XCCONFIG_FILE="$PWD/ios/Flutter/ForkIdentity.xcconfig" ios/ci_scripts/ci_pre_xcodebuild.sh`
 - `fvm dart analyze lib/packages/home_widget.dart`
 - `fvm flutter analyze`
 - `fvm flutter test --dart-define=APP_PATH=/path/to/repository`
