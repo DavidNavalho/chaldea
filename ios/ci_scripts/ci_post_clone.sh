@@ -10,6 +10,17 @@ fail() {
   exit 1
 }
 
+flutter_framework_version() {
+  local flutter_executable="$1"
+
+  "$flutter_executable" --version --machine | /usr/bin/ruby -rjson -e '
+    output = STDIN.read
+    json_start = output.index("{")
+    raise JSON::ParserError, "Flutter did not emit machine-readable version JSON" unless json_start
+    print JSON.parse(output[json_start..-1]).fetch("frameworkVersion")
+  '
+}
+
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="${CI_PRIMARY_REPOSITORY_PATH:-$(git -C "$script_dir" rev-parse --show-toplevel)}"
 cd "$repo_root"
@@ -25,7 +36,7 @@ if [[ -x .fvm/flutter_sdk/bin/flutter ]]; then
   flutter_bin="$repo_root/.fvm/flutter_sdk/bin/flutter"
 elif command -v flutter >/dev/null 2>&1; then
   candidate_flutter="$(command -v flutter)"
-  candidate_version="$("$candidate_flutter" --version --machine | /usr/bin/ruby -rjson -e 'print JSON.parse(STDIN.read).fetch("frameworkVersion")')"
+  candidate_version="$(flutter_framework_version "$candidate_flutter")"
   if [[ "$candidate_version" == "$flutter_version" ]]; then
     flutter_bin="$candidate_flutter"
   fi
@@ -40,7 +51,7 @@ if [[ -z "$flutter_bin" ]]; then
   flutter_bin="$flutter_root/bin/flutter"
 fi
 
-resolved_flutter_version="$("$flutter_bin" --version --machine | /usr/bin/ruby -rjson -e 'print JSON.parse(STDIN.read).fetch("frameworkVersion")')"
+resolved_flutter_version="$(flutter_framework_version "$flutter_bin")"
 [[ "$resolved_flutter_version" == "$flutter_version" ]] || {
   fail "Expected Flutter $flutter_version, found $resolved_flutter_version at $flutter_bin."
 }
