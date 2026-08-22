@@ -19,7 +19,8 @@ The delivery workflow is `Main TestFlight Delivery`
   - `XCODE_XCCONFIG_FILE=/Volumes/workspace/repository/ios/Flutter/ForkIdentity.xcconfig`
   - `CHALDEA_XCODE_CLOUD_MIN_BUILD_NUMBER=1`
 
-The separate `PR Validation` workflow should be configured with:
+The separate `PR Validation` workflow
+(`2bf09f44-4d89-45dd-9211-281187afcf66`) is configured with:
 
 - Pull-request changes targeting `main`, with auto-cancel enabled
 - Action: build the shared `Runner` scheme for iOS
@@ -33,6 +34,12 @@ payload into Xcode Cloud's temporary workspace, and runs the complete Flutter
 test suite. The subsequent Xcode Cloud build action then verifies that the iOS
 app compiles. The flag fails closed if it is accidentally enabled for a
 non-pull-request Cloud build.
+
+GitHub ruleset `xcode-cloud-pr-validation` (`21213751`) applies to the default
+branch and requires the `Chaldea | PR Validation` status, with no bypass actors.
+The first complete PR run was Xcode Cloud build `7` on 2026-08-22: analysis had
+only the existing 15 informational lints, all 254 Flutter tests passed, and the
+iOS build succeeded in 5m42s.
 
 The Xcode Cloud repository path above is Apple's documented default. The
 post-clone script resolves and verifies it against `CI_PRIMARY_REPOSITORY_PATH`

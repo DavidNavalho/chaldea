@@ -86,6 +86,19 @@ Update it at the end of each working session.
     and assigned it to `Chaldea Internal`
   - merged Xcode Cloud automation PR #26 into `main` as `55b1d2280`
   - automatic Xcode Cloud delivery started for that merge
+  - created and activated the `PR Validation` workflow
+    (`2bf09f44-4d89-45dd-9211-281187afcf66`)
+    - pull-request changes from any source branch into `main`
+    - auto-cancel superseded builds
+    - Build `Runner` for iOS with no distribution or post-action
+    - fork-only post-clone validation runs Flutter analysis and the full test suite
+  - opened draft PR #27 for the isolated PR-validation hook and helper
+  - completed Xcode Cloud PR build 7 from commit `1f5424956`
+    - the same 15 informational analysis lints were non-fatal
+    - all 254 Flutter tests passed with Cloud-only offline game data
+    - the subsequent iOS build passed in 5m42s
+  - created active GitHub ruleset `xcode-cloud-pr-validation` (`21213751`)
+    for the default branch, requiring `Chaldea | PR Validation` with no bypass
   - full analysis has no errors or warnings and the same 15 informational lints
   - `test/custom/box_coverage/box_coverage_service_test.dart` passes (2 tests)
   - isolated the fork identity settings in
@@ -148,8 +161,9 @@ Update it at the end of each working session.
   - `fvm dart analyze lib/packages/home_widget.dart`, syntax/plist checks, and
     `git diff --check` pass
 - What is next:
-  - create and prove the `PR Validation` Xcode Cloud workflow
-  - require its GitHub status check before merging to `main`
+  - review and merge draft PR #27 after its final Xcode Cloud check passes
+  - confirm the merge starts `Main TestFlight Delivery` and not another PR
+    validation run
   - install `2.6.0 (5)` from TestFlight and smoke-test the app on-device
   - verify shared App Group data and the widget on a device where the widget is available
 - Known blockers:
@@ -161,7 +175,9 @@ Update it at the end of each working session.
   - Flutter warns that four plugins do not yet support Swift Package Manager;
     Flutter 3.44 falls back to CocoaPods for them, but a future Flutter may stop
     accepting that fallback
-  - tests run with `--dart-define=APP_PATH=/path/to/repository`, but six suites require an offline game-data payload that is not present in this worktree (14 tests pass before those data-loading failures)
+  - local full tests require an offline game-data payload that is not present in
+    this worktree; `PR Validation` clones it only into Xcode Cloud's temporary machine
+
 ## Files Touched In Current Workstream
 - `ios/Chaldea.xcodeproj/project.pbxproj`
 - `ios/Chaldea/Chaldea-Bridging-Header.h`

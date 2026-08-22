@@ -304,12 +304,18 @@ The delivery workflow is `Main TestFlight Delivery`
   - `XCODE_XCCONFIG_FILE=/Volumes/workspace/repository/ios/Flutter/ForkIdentity.xcconfig`
   - `CHALDEA_XCODE_CLOUD_MIN_BUILD_NUMBER=1`
 
-The separate `PR Validation` workflow is intended to start for pull-request changes targeting
-`main`, with auto-cancel enabled. It has an iOS Build action for `Runner`, no
-distribution or post-action, and the same environment variables plus
-`CHALDEA_XCODE_CLOUD_VALIDATE_PR=1`. The flag runs Flutter analysis and tests
-before the iOS compilation. Once the workflow reports its first status to
-GitHub, branch protection can require that result before merging to `main`.
+The separate `PR Validation` workflow
+(`2bf09f44-4d89-45dd-9211-281187afcf66`) starts for pull-request changes
+targeting `main`, with auto-cancel enabled. It has an iOS Build action for
+`Runner`, no distribution or post-action, and the same environment variables
+plus `CHALDEA_XCODE_CLOUD_VALIDATE_PR=1`. The flag runs Flutter analysis and
+tests before the iOS compilation. GitHub ruleset `xcode-cloud-pr-validation`
+(`21213751`) requires the resulting `Chaldea | PR Validation` status before
+updating `main` and has no bypass actors.
+
+The first PR run was Xcode Cloud build `7` on 2026-08-22. Analysis completed
+with the existing 15 informational lints, all 254 Flutter tests passed, and the
+subsequent iOS build succeeded in 5m42s.
 
 `XCODE_XCCONFIG_FILE` is deliberate. Xcode gives this external configuration
 the same highest-priority overlay behavior used by the local wrapper, allowing
