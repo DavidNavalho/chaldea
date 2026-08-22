@@ -99,10 +99,32 @@ if ! command -v pod >/dev/null 2>&1; then
 fi
 
 log 'Resolving CocoaPods dependencies from the committed lockfile.'
+podfile_lock_snapshot="$(mktemp)"
+trap 'rm -f "$podfile_lock_snapshot"' EXIT
+git show HEAD:ios/Podfile.lock >"$podfile_lock_snapshot"
 (
   cd ios
   pod install
 )
+
+if ! cmp -s "$podfile_lock_snapshot" ios/Podfile.lock; then
+  if /usr/bin/ruby -ryaml -e '
+    metadata_keys = ["COCOAPODS", "PODFILE CHECKSUM", "SPEC CHECKSUMS"]
+    committed = YAML.load_file(ARGV.fetch(0))
+    generated = YAML.load_file(ARGV.fetch(1))
+    metadata_keys.each do |key|
+      committed.delete(key)
+      generated.delete(key)
+    end
+    exit(committed == generated ? 0 : 1)
+  ' "$podfile_lock_snapshot" ios/Podfile.lock; then
+    log 'CocoaPods changed lockfile metadata only; restoring the committed lockfile.'
+    cp "$podfile_lock_snapshot" ios/Podfile.lock
+  else
+    git diff -- ios/Podfile.lock >&2
+    fail 'CocoaPods changed the resolved dependency graph.'
+  fi
+fi
 
 log 'Applying the fork deployment compatibility map to generated dependencies.'
 /usr/bin/ruby scripts/fork/prepare_ios_testflight.rb
