@@ -292,8 +292,8 @@ The active workflow is `Manual TestFlight Delivery`
 `ios/ci_scripts/README.md`:
 
 - Repository: `DavidNavalho/chaldea`
-- Branch scope: any branch
-- Trigger: manual
+- Automatic trigger: branch changes to `main`, with auto-cancel enabled
+- Manual fallback: any branch
 - Action: archive `Runner` for iOS using Release
 - Post-action: distribute to `Chaldea Internal`
 - Xcode: Latest Beta or Release
@@ -332,9 +332,9 @@ Verified Xcode Cloud delivery on 2026-08-22:
 The earlier bootstrap workflow `Manual TestFlight`
 (`08697A88-8BA0-452D-87DD-923F8A0645B3`) is deactivated and should remain so.
 
-The workflow can remain manual or later use a `main` branch-change trigger.
-Manual is preferred if not every reviewed merge should produce a TestFlight
-build.
+Every change merged or pushed to `main` starts an archive and internal
+TestFlight delivery. Manual start remains available for a reviewed branch or a
+rebuild that should not require another source-code change.
 
 ### NA Account Login Fix in Build 990
 

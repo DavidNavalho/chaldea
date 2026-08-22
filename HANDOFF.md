@@ -68,9 +68,10 @@ Update it at the end of each working session.
     Xcode project mutation
   - added the shared Xcode Cloud product manifest under
     `ios/Chaldea.xcodeproj/xcshareddata/xcodecloud/`
-  - created the active manual workflow `Manual TestFlight Delivery`
+  - created the active workflow `Manual TestFlight Delivery`
     (`cae29f8a-2bfa-4830-beec-bb88072853c9`)
-    - any branch, manual start
+    - manual start for any branch
+    - automatic branch-change start for `main`, with auto-cancel enabled
     - Archive `Runner` for iOS
     - Latest Beta or Release Xcode and Latest Release macOS
     - internal TestFlight distribution to `Chaldea Internal`
@@ -146,9 +147,8 @@ Update it at the end of each working session.
     `git diff --check` pass
 - What is next:
   - review and merge draft PR #26 for the Xcode Cloud automation
+  - confirm that merging PR #26 starts the first automatic `main` delivery
   - install `2.6.0 (5)` from TestFlight and smoke-test the app on-device
-  - keep the Cloud trigger manual unless automatic delivery from `main` is
-    explicitly desired later
   - verify shared App Group data and the widget on a device where the widget is available
 - Known blockers:
   - no remaining blocker for Xcode Cloud archive or internal TestFlight delivery

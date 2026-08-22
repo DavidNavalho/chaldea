@@ -9,8 +9,8 @@ The active App Store Connect workflow is `Manual TestFlight Delivery`
 
 - Product: Chaldea Personal (`io.github.davidnavalho.chaldea`)
 - Repository: `DavidNavalho/chaldea`
-- Branch: any branch, so a reviewed branch can be validated before merging
-- Start condition: manual
+- Automatic start condition: changes to `main`, with auto-cancel enabled
+- Manual fallback: any branch, so a reviewed branch can be validated before merging
 - Action: archive the shared `Runner` scheme for iOS using Release
 - Post-action: distribute to the internal TestFlight group `Chaldea Internal`
 - Xcode: Latest Beta or Release
@@ -51,6 +51,6 @@ An earlier bootstrap workflow named `Manual TestFlight`
 (`08697A88-8BA0-452D-87DD-923F8A0645B3`) is deactivated. Leave it deactivated
 so only the clean delivery workflow can start builds.
 
-Keep manual triggering unless every merge should produce a TestFlight build.
-If automatic delivery is later desired, restrict the branch-change trigger to
-`main` after the automation PR has merged.
+Every change merged or pushed to `main` now starts an archive and internal
+TestFlight delivery. Manual start remains available as a fallback and for
+validating a reviewed branch before merging.
