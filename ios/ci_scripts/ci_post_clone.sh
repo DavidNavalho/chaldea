@@ -120,6 +120,7 @@ if ! cmp -s "$podfile_lock_snapshot" ios/Podfile.lock; then
   ' "$podfile_lock_snapshot" ios/Podfile.lock; then
     log 'CocoaPods changed lockfile metadata only; restoring the committed lockfile.'
     cp "$podfile_lock_snapshot" ios/Podfile.lock
+    cp "$podfile_lock_snapshot" ios/Pods/Manifest.lock
   else
     git diff -- ios/Podfile.lock >&2
     fail 'CocoaPods changed the resolved dependency graph.'
