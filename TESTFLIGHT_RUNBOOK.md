@@ -1,6 +1,6 @@
 # Chaldea Personal Fork: iOS and TestFlight Runbook
 
-Last updated: 2026-08-20
+Last updated: 2026-08-21
 
 This document is the complete handoff for building, signing, uploading, and
 installing this personal Chaldea fork through TestFlight. It is intended for
@@ -258,16 +258,83 @@ upload still completed.
 Current App Store Connect/TestFlight state:
 
 - App: `Chaldea Personal` (numeric app ID `6801619927`)
-- Uploaded build: `2.5.27 (990)`
-- Build state: processed and `Ready to Submit`
+- Latest uploaded build: `2.6.0 (5)`, delivered by Xcode Cloud on 2026-08-22
+- Latest build state: processed, `Testing`, and expires in 90 days
 - Internal group: `Chaldea Internal`
 - Automatic distribution: enabled
-- Builds in group: 2 (`989` and `990`)
+- Builds in group: 3 (`989`, `990`, and `2.6.0 (5)`)
 - Internal tester: owner's App Store Connect account
 - On-device result: build 990 installs from TestFlight and NA Account File login succeeds
 
 Future uploaded Xcode builds are automatically distributed to the internal
 group.
+
+## Xcode Cloud Automation
+
+The fork uses Xcode Cloud, rather than the inherited upstream GitHub Actions,
+for hosted TestFlight automation. The workflow configuration lives in App
+Store Connect, so an upstream merge cannot overwrite its triggers or TestFlight
+post-action.
+
+All repository support is isolated in new files under `ios/ci_scripts/`:
+
+- `ci_post_clone.sh` installs the exact Flutter version from `.fvmrc`, creates
+  generated iOS configuration using `CI_BUILD_NUMBER`, resolves CocoaPods, and
+  applies the existing generated-dependency compatibility map.
+- `ci_pre_xcodebuild.sh` resolves both app and widget build settings and fails
+  before archiving unless they contain only the personal Team ID, bundle IDs,
+  entitlements, and deployment targets.
+- `ci_post_xcodebuild.sh` validates the signed archive, including the personal
+  App Group and absence of upstream identity and Associated Domains.
+
+The active workflow is `Manual TestFlight Delivery`
+(`cae29f8a-2bfa-4830-beec-bb88072853c9`), configured as documented in
+`ios/ci_scripts/README.md`:
+
+- Repository: `DavidNavalho/chaldea`
+- Automatic trigger: branch changes to `main`, with auto-cancel enabled
+- Manual fallback: any branch
+- Action: archive `Runner` for iOS using Release
+- Post-action: distribute to `Chaldea Internal`
+- Xcode: Latest Beta or Release
+- macOS: Latest Release
+- Environment variables:
+  - `XCODE_XCCONFIG_FILE=/Volumes/workspace/repository/ios/Flutter/ForkIdentity.xcconfig`
+  - `CHALDEA_XCODE_CLOUD_MIN_BUILD_NUMBER=1`
+
+`XCODE_XCCONFIG_FILE` is deliberate. Xcode gives this external configuration
+the same highest-priority overlay behavior used by the local wrapper, allowing
+Cloud builds to use the personal identity without wiring it into the upstream
+Xcode project. The Cloud scripts verify the resolved file and settings and fail
+closed if Apple changes the temporary repository path or the overlay is absent.
+
+The scripts require no App Store Connect API key, password, certificate, or
+provisioning profile in Git. Xcode Cloud manages signing and upload using the
+Apple Developer team configuration.
+
+The Cloud sequence started at a low build number, but this is valid for iOS:
+App Store Connect requires the marketing-version/build-number pair to be
+unique. Therefore `2.6.0 (5)` does not conflict with the earlier
+`2.5.27 (990)`. The workflow's minimum-build override is explicit; without it,
+the fork script retains its conservative default minimum of `991` for manual
+continuations of the older version line.
+
+Verified Xcode Cloud delivery on 2026-08-22:
+
+- Cloud build: `5`
+- Source: commit `cf6ca61e2` on `automation/xcode-cloud-testflight`
+- Xcode/macOS: Xcode 27 beta 5 / macOS Tahoe 26.6.2
+- Archive action: succeeded
+- TestFlight Internal Testing post-action: succeeded
+- App Store Connect: `2.6.0 (5)` is Complete, Testing, and assigned to
+  `Chaldea Internal`
+
+The earlier bootstrap workflow `Manual TestFlight`
+(`08697A88-8BA0-452D-87DD-923F8A0645B3`) is deactivated and should remain so.
+
+Every change merged or pushed to `main` starts an archive and internal
+TestFlight delivery. Manual start remains available for a reviewed branch or a
+rebuild that should not require another source-code change.
 
 ### NA Account Login Fix in Build 990
 

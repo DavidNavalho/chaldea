@@ -32,12 +32,12 @@ Update it at the end of each working session.
    - `fvm flutter run -d macos`
 
 ## Last Session Snapshot
-- Date: 2026-08-21
-- Branch: `automation/upstream-sync-2026-08-20`
+- Date: 2026-08-22
+- Branch: `automation/xcode-cloud-testflight`
 - Last commit: run `git log -1 --oneline` for the current hash
-- Working tree status: expected clean after committing and pushing the tested
-  upstream 2.6.0 sync
-- Active feature(s): upstream 2.6.0 sync plus personal iOS/TestFlight isolation
+- Working tree status: expected clean after committing and pushing the Xcode
+  Cloud automation branch
+- Active feature(s): Xcode Cloud automation for the isolated personal TestFlight build
 - What is done:
   - merged `upstream/main` (2.6.0) into the fork from the updated `origin/main`
   - resolved the two merge conflicts by retaining all upstream Xcode/auth
@@ -51,6 +51,39 @@ Update it at the end of each working session.
     - app: bundle `io.github.davidnavalho.chaldea`, minimum iOS 15.0
     - widget: bundle `io.github.davidnavalho.chaldea.FakerStatusWidget`, minimum iOS 18.1
     - compiled app contains the personal App Group and not the upstream default
+  - merged the upstream 2.6.0 sync PR into `main` as commit `276a47800`
+  - added fork-only Xcode Cloud scripts under `ios/ci_scripts/` without
+    changing any upstream workflow or Xcode project file
+    - post-clone: pinned Flutter setup, build-number configuration, CocoaPods,
+      and generated dependency preparation
+    - pre-build: fail-closed main-app and widget identity verification
+    - post-build: signed archive, version, deployment, and entitlement checks
+  - proved locally that `XCODE_XCCONFIG_FILE` applies the personal identity as
+    a highest-priority overlay without editing `project.pbxproj`
+  - locally prepared Cloud build number 991 and verified the resolved app and
+    widget build settings
+  - validated the existing signed 2.5.27 (990) archive with the new Cloud
+    post-build validator
+  - connected `DavidNavalho/chaldea` to Xcode Cloud without committing an
+    Xcode project mutation
+  - added the shared Xcode Cloud product manifest under
+    `ios/Chaldea.xcodeproj/xcshareddata/xcodecloud/`
+  - created the active workflow `Manual TestFlight Delivery`
+    (`cae29f8a-2bfa-4830-beec-bb88072853c9`)
+    - manual start for any branch
+    - automatic branch-change start for `main`, with auto-cancel enabled
+    - Archive `Runner` for iOS
+    - Latest Beta or Release Xcode and Latest Release macOS
+    - internal TestFlight distribution to `Chaldea Internal`
+  - deactivated the earlier bootstrap workflow `Manual TestFlight`
+    (`08697A88-8BA0-452D-87DD-923F8A0645B3`)
+  - completed Xcode Cloud build 5 from commit `cf6ca61e2` on 2026-08-22
+    - Xcode 27 beta 5 / macOS Tahoe 26.6.2
+    - archive and App Store export succeeded
+    - fork post-clone, identity preflight, and archive validation all passed
+    - internal TestFlight post-action succeeded
+  - confirmed App Store Connect processed `2.6.0 (5)` as Complete and Testing
+    and assigned it to `Chaldea Internal`
   - full analysis has no errors or warnings and the same 15 informational lints
   - `test/custom/box_coverage/box_coverage_service_test.dart` passes (2 tests)
   - isolated the fork identity settings in
@@ -113,10 +146,12 @@ Update it at the end of each working session.
   - `fvm dart analyze lib/packages/home_widget.dart`, syntax/plist checks, and
     `git diff --check` pass
 - What is next:
-  - review the upstream 2.6.0 sync PR and its checks
+  - review and merge draft PR #26 for the Xcode Cloud automation
+  - confirm that merging PR #26 starts the first automatic `main` delivery
+  - install `2.6.0 (5)` from TestFlight and smoke-test the app on-device
   - verify shared App Group data and the widget on a device where the widget is available
-  - use a build number above 990 for the next App Store Connect upload
 - Known blockers:
+  - no remaining blocker for Xcode Cloud archive or internal TestFlight delivery
   - no remaining blocker for internal TestFlight installation or NA Account File login
   - Xcode Organizer reports a non-blocking missing dSYM warning for `objective_c.framework`; Apple accepted the upload
   - build 989 has the upstream NA metadata bug and should not be used for NA account login; build 990 supersedes it
@@ -139,6 +174,11 @@ Update it at the end of each working session.
 - `lib/packages/home_widget.dart`
 - `scripts/fork/build_ios_testflight.sh`
 - `scripts/fork/prepare_ios_testflight.rb`
+- `ios/ci_scripts/README.md`
+- `ios/ci_scripts/ci_post_clone.sh`
+- `ios/ci_scripts/ci_pre_xcodebuild.sh`
+- `ios/ci_scripts/ci_post_xcodebuild.sh`
+- `ios/Chaldea.xcodeproj/xcshareddata/xcodecloud/manifest.json`
 - `.fvmrc`
 - `HANDOFF.md`
 - `TESTFLIGHT_RUNBOOK.md`
@@ -152,6 +192,9 @@ Update it at the end of each working session.
 - `ruby -c ios/Podfile`
 - `bash -n scripts/fork/build_ios_testflight.sh`
 - `ruby -c scripts/fork/prepare_ios_testflight.rb`
+- `bash -n ios/ci_scripts/ci_post_clone.sh ios/ci_scripts/ci_pre_xcodebuild.sh ios/ci_scripts/ci_post_xcodebuild.sh`
+- `CI_XCODE_CLOUD=TRUE CI_PRIMARY_REPOSITORY_PATH="$PWD" CI_BUILD_NUMBER=5 CHALDEA_XCODE_CLOUD_MIN_BUILD_NUMBER=1 XCODE_XCCONFIG_FILE="$PWD/ios/Flutter/ForkIdentity.xcconfig" ios/ci_scripts/ci_post_clone.sh`
+- `CI_XCODE_CLOUD=TRUE CI_PRIMARY_REPOSITORY_PATH="$PWD" CI_BUILD_NUMBER=5 CHALDEA_XCODE_CLOUD_MIN_BUILD_NUMBER=1 CI_XCODEBUILD_ACTION=archive XCODE_XCCONFIG_FILE="$PWD/ios/Flutter/ForkIdentity.xcconfig" ios/ci_scripts/ci_pre_xcodebuild.sh`
 - `fvm dart analyze lib/packages/home_widget.dart`
 - `fvm flutter analyze`
 - `fvm flutter test --dart-define=APP_PATH=/path/to/repository`
