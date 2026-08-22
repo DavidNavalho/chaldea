@@ -84,6 +84,22 @@ log "Preparing Flutter $flutter_version for Chaldea $build_name ($build_number).
 "$flutter_bin" config --no-analytics
 "$flutter_bin" precache --ios
 "$flutter_bin" pub get
+
+case "${CHALDEA_XCODE_CLOUD_VALIDATE_PR:-0}" in
+  0)
+    ;;
+  1)
+    if [[ "${CI_XCODE_CLOUD:-}" == 'TRUE' && -z "${CI_PULL_REQUEST_NUMBER:-}" ]]; then
+      fail 'PR validation was enabled outside an Xcode Cloud pull-request build.'
+    fi
+    log 'Running the fork pull-request validation suite.'
+    CHALDEA_FLUTTER_BIN="$flutter_bin" ios/ci_scripts/ci_validate_pull_request.sh
+    ;;
+  *)
+    fail 'CHALDEA_XCODE_CLOUD_VALIDATE_PR must be 0 or 1.'
+    ;;
+esac
+
 "$flutter_bin" build ios \
   --release \
   --config-only \
