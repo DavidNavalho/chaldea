@@ -281,13 +281,15 @@ All repository support is isolated in new files under `ios/ci_scripts/`:
 - `ci_post_clone.sh` installs the exact Flutter version from `.fvmrc`, creates
   generated iOS configuration using `CI_BUILD_NUMBER`, resolves CocoaPods, and
   applies the existing generated-dependency compatibility map.
+- `ci_validate_pull_request.sh` runs Flutter analysis and the complete test
+  suite against a temporary clone of the public offline game-data payload.
 - `ci_pre_xcodebuild.sh` resolves both app and widget build settings and fails
   before archiving unless they contain only the personal Team ID, bundle IDs,
   entitlements, and deployment targets.
 - `ci_post_xcodebuild.sh` validates the signed archive, including the personal
   App Group and absence of upstream identity and Associated Domains.
 
-The active workflow is `Manual TestFlight Delivery`
+The delivery workflow is `Main TestFlight Delivery`
 (`cae29f8a-2bfa-4830-beec-bb88072853c9`), configured as documented in
 `ios/ci_scripts/README.md`:
 
@@ -301,6 +303,19 @@ The active workflow is `Manual TestFlight Delivery`
 - Environment variables:
   - `XCODE_XCCONFIG_FILE=/Volumes/workspace/repository/ios/Flutter/ForkIdentity.xcconfig`
   - `CHALDEA_XCODE_CLOUD_MIN_BUILD_NUMBER=1`
+
+The separate `PR Validation` workflow
+(`2bf09f44-4d89-45dd-9211-281187afcf66`) starts for pull-request changes
+targeting `main`, with auto-cancel enabled. It has an iOS Build action for
+`Runner`, no distribution or post-action, and the same environment variables
+plus `CHALDEA_XCODE_CLOUD_VALIDATE_PR=1`. The flag runs Flutter analysis and
+tests before the iOS compilation. GitHub ruleset `xcode-cloud-pr-validation`
+(`21213751`) requires the resulting `Chaldea | PR Validation` status before
+updating `main` and has no bypass actors.
+
+The first PR run was Xcode Cloud build `7` on 2026-08-22. Analysis completed
+with the existing 15 informational lints, all 254 Flutter tests passed, and the
+subsequent iOS build succeeded in 5m42s.
 
 `XCODE_XCCONFIG_FILE` is deliberate. Xcode gives this external configuration
 the same highest-priority overlay behavior used by the local wrapper, allowing

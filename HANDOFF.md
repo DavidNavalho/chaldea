@@ -33,11 +33,11 @@ Update it at the end of each working session.
 
 ## Last Session Snapshot
 - Date: 2026-08-22
-- Branch: `automation/xcode-cloud-testflight`
+- Branch: `automation/xcode-cloud-pr-validation`
 - Last commit: run `git log -1 --oneline` for the current hash
 - Working tree status: expected clean after committing and pushing the Xcode
   Cloud automation branch
-- Active feature(s): Xcode Cloud automation for the isolated personal TestFlight build
+- Active feature(s): Xcode Cloud PR validation and protected TestFlight delivery
 - What is done:
   - merged `upstream/main` (2.6.0) into the fork from the updated `origin/main`
   - resolved the two merge conflicts by retaining all upstream Xcode/auth
@@ -68,7 +68,7 @@ Update it at the end of each working session.
     Xcode project mutation
   - added the shared Xcode Cloud product manifest under
     `ios/Chaldea.xcodeproj/xcshareddata/xcodecloud/`
-  - created the active workflow `Manual TestFlight Delivery`
+  - created the delivery workflow `Main TestFlight Delivery`
     (`cae29f8a-2bfa-4830-beec-bb88072853c9`)
     - manual start for any branch
     - automatic branch-change start for `main`, with auto-cancel enabled
@@ -84,6 +84,21 @@ Update it at the end of each working session.
     - internal TestFlight post-action succeeded
   - confirmed App Store Connect processed `2.6.0 (5)` as Complete and Testing
     and assigned it to `Chaldea Internal`
+  - merged Xcode Cloud automation PR #26 into `main` as `55b1d2280`
+  - automatic Xcode Cloud delivery started for that merge
+  - created and activated the `PR Validation` workflow
+    (`2bf09f44-4d89-45dd-9211-281187afcf66`)
+    - pull-request changes from any source branch into `main`
+    - auto-cancel superseded builds
+    - Build `Runner` for iOS with no distribution or post-action
+    - fork-only post-clone validation runs Flutter analysis and the full test suite
+  - opened draft PR #27 for the isolated PR-validation hook and helper
+  - completed Xcode Cloud PR build 7 from commit `1f5424956`
+    - the same 15 informational analysis lints were non-fatal
+    - all 254 Flutter tests passed with Cloud-only offline game data
+    - the subsequent iOS build passed in 5m42s
+  - created active GitHub ruleset `xcode-cloud-pr-validation` (`21213751`)
+    for the default branch, requiring `Chaldea | PR Validation` with no bypass
   - full analysis has no errors or warnings and the same 15 informational lints
   - `test/custom/box_coverage/box_coverage_service_test.dart` passes (2 tests)
   - isolated the fork identity settings in
@@ -146,8 +161,9 @@ Update it at the end of each working session.
   - `fvm dart analyze lib/packages/home_widget.dart`, syntax/plist checks, and
     `git diff --check` pass
 - What is next:
-  - review and merge draft PR #26 for the Xcode Cloud automation
-  - confirm that merging PR #26 starts the first automatic `main` delivery
+  - review and merge draft PR #27 after its final Xcode Cloud check passes
+  - confirm the merge starts `Main TestFlight Delivery` and not another PR
+    validation run
   - install `2.6.0 (5)` from TestFlight and smoke-test the app on-device
   - verify shared App Group data and the widget on a device where the widget is available
 - Known blockers:
@@ -159,7 +175,9 @@ Update it at the end of each working session.
   - Flutter warns that four plugins do not yet support Swift Package Manager;
     Flutter 3.44 falls back to CocoaPods for them, but a future Flutter may stop
     accepting that fallback
-  - tests run with `--dart-define=APP_PATH=/path/to/repository`, but six suites require an offline game-data payload that is not present in this worktree (14 tests pass before those data-loading failures)
+  - local full tests require an offline game-data payload that is not present in
+    this worktree; `PR Validation` clones it only into Xcode Cloud's temporary machine
+
 ## Files Touched In Current Workstream
 - `ios/Chaldea.xcodeproj/project.pbxproj`
 - `ios/Chaldea/Chaldea-Bridging-Header.h`
@@ -176,6 +194,7 @@ Update it at the end of each working session.
 - `scripts/fork/prepare_ios_testflight.rb`
 - `ios/ci_scripts/README.md`
 - `ios/ci_scripts/ci_post_clone.sh`
+- `ios/ci_scripts/ci_validate_pull_request.sh`
 - `ios/ci_scripts/ci_pre_xcodebuild.sh`
 - `ios/ci_scripts/ci_post_xcodebuild.sh`
 - `ios/Chaldea.xcodeproj/xcshareddata/xcodecloud/manifest.json`
