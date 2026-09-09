@@ -5,7 +5,8 @@ Last updated: 2026-09-09
 For routine upstream updates, personal-change PRs, validation, and automatic
 delivery, start with [FORK_NOTES.md](FORK_NOTES.md). This runbook is the detailed
 signing/manual fallback reference. Historical validation below is dated evidence,
-not a live App Store Connect status report; check `HANDOFF.md` for the latest run.
+not a live App Store Connect status report. Check GitHub/Cloud/App Store Connect
+for current run results; `HANDOFF.md` holds durable context and unfinished work.
 
 This document is the complete handoff for building, signing, uploading, and
 installing this personal Chaldea fork through TestFlight. It is intended for
@@ -873,7 +874,9 @@ The TestFlight objective is complete only when all of the following are true:
   devices.
 - Shared App Group functionality is checked on a device where the widget is
   available.
-- `HANDOFF.md` is updated with the final result and any remaining caveats.
+- Any unresolved blocker or durable procedural change is documented in
+  `HANDOFF.md`. Successful PR/build results stay in GitHub/Cloud/App Store
+  Connect and do not require another handoff commit.
 
 ## Relevant Official Apple Documentation
 

@@ -3,8 +3,10 @@
 For the routine upstream/personal PR -> validation -> merge -> delivery procedure,
 see [FORK_NOTES.md](../../FORK_NOTES.md). This file records the hosted workflow
 configuration; it is maintained in App Store Connect, not declared by these
-scripts. Verify live settings and record each trial in `HANDOFF.md`. A passing
-PR check does not prove that the separate delivery run or Apple processing passed.
+scripts. Verify live settings; keep run-specific evidence in GitHub checks/PR
+comments and Cloud/App Store Connect. Reserve `HANDOFF.md` for durable context
+and unresolved work, not completed PRs or builds. A passing PR check does not
+prove that the separate delivery run or Apple processing passed.
 
 These fork-only scripts prepare and validate Chaldea's personal iOS identity in
 Xcode Cloud. They leave the upstream Xcode project and GitHub Actions workflows
