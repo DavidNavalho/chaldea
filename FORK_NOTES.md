@@ -5,7 +5,7 @@ changes to GitHub, and delivering the altered app through internal TestFlight.
 
 - **Upstream:** `https://github.com/chaldea-center/chaldea.git`
 - **Personal fork / PR destination:** `https://github.com/DavidNavalho/chaldea.git`
-- **Session state and release evidence:** [HANDOFF.md](HANDOFF.md)
+- **Durable context and unfinished work:** [HANDOFF.md](HANDOFF.md)
 - **Signing, manual upload, troubleshooting:** [TESTFLIGHT_RUNBOOK.md](TESTFLIGHT_RUNBOOK.md)
 - **Hosted workflow configuration:** [ios/ci_scripts/README.md](ios/ci_scripts/README.md)
 
@@ -176,8 +176,13 @@ Merging into personal `main` triggers Xcode Cloud **Main TestFlight Delivery**:
 4. Install that build in TestFlight. Smoke-test launch, Team Search 3T/replay,
    My Box/coverage, account login as appropriate, and widget shared data on a
    supported device. Back up existing app data before testing migrations.
-5. Record the source SHA, PR, Cloud run/build, Apple processing state, validation
-   results, and remaining on-device checks in `HANDOFF.md`.
+5. Keep run-specific evidence in GitHub checks/PR comments and Cloud/App Store
+   Connect. Update `HANDOFF.md` only for a methodology change, unresolved blocker,
+   or genuine unfinished work—not to record which PR or build succeeded.
+
+Commit relevant handoff changes with the intentional work. Do not create a
+follow-up handoff commit merely because a merge or delivery finished; that
+creates another release without advancing the upstream-maintenance objective.
 
 A successful PR check is **not** evidence of delivery; a pushed feature branch
 is **not** automatically a release. Cloud configuration lives in App Store

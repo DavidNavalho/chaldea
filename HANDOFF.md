@@ -1,280 +1,65 @@
 # Session Handoff
 
-Use this file to resume work from another computer after `git pull`.
-Update it at the end of each working session.
+Keep this file focused on durable maintenance context and genuine unfinished
+work. It is not a PR, commit, build, or deployment log. Obtain those details
+from Git, GitHub checks, and Xcode Cloud / App Store Connect when needed.
+
+Update the snapshot when the methodology, a blocker, or an outstanding task
+changes. Commit useful changes in the same intentional PR as the work they
+support. A PR merging or a build finishing does not require another handoff
+edit, follow-up PR, or documentation-only release.
 
 ## Current Purpose
-- This fork tracks upstream `chaldea` and adds automation-focused features:
-  - Laplace Auto 3T team identification/search
-  - Shared Teams "My Box" compatibility and batch simulation tools
-  - My Box Coverage overview page
-- Design constraint: keep upstream-core changes minimal and keep custom logic in
-  `lib/custom/...` whenever possible.
 
-## Maintenance and TestFlight Runbooks
-- End-to-end upstream sync / personal PR / validation / delivery checklist:
-  [FORK_NOTES.md](FORK_NOTES.md)
-- Detailed iOS signing, manual upload, and troubleshooting:
-  [TESTFLIGHT_RUNBOOK.md](TESTFLIGHT_RUNBOOK.md)
-- Hosted workflow configuration: [ios/ci_scripts/README.md](ios/ci_scripts/README.md)
+Keep the personal Chaldea app up to date with original upstream changes while
+preserving the fork's automation features:
+
+- Laplace Auto 3T team identification/search
+- Shared Teams "My Box" compatibility and batch simulation tools
+- My Box Coverage overview
+
+Upstream remains the source of truth for the core app. Keep custom logic under
+`lib/custom/` and upstream integration hooks thin. Keep personal iOS identity
+in the fork-only build overlay rather than the upstream Xcode project.
+
+## Maintenance References
+
+- [FORK_NOTES.md](FORK_NOTES.md): upstream sync, personal changes, validation,
+  protected PR merge, and automatic TestFlight delivery.
+- [TESTFLIGHT_RUNBOOK.md](TESTFLIGHT_RUNBOOK.md): signing, manual fallback,
+  troubleshooting, and on-device verification.
+- [ios/ci_scripts/README.md](ios/ci_scripts/README.md): hosted workflow
+  configuration and fork identity checks.
 
 ## Quick Resume Checklist
+
 1. Inspect `git status --short --branch`, `git worktree list`, and this snapshot.
-   Preserve local changes and nested worktrees before switching or pulling.
+   Preserve local changes, stashes, and nested worktrees before switching or pulling.
 2. `git fetch --all --prune`
 3. When safe: `git switch main` and `git pull --ff-only origin main`.
-   Do not reset divergence or overwrite a newer handoff with an old local copy.
-4. Follow `FORK_NOTES.md` for upstream sync or personal-change PRs.
-   Do not rerun branch preparation on an in-progress sync branch.
-5. Install the pinned toolchain/dependencies if needed:
-   - `fvm install` (read `.fvmrc`; verify it agrees with `pubspec.yaml`)
-   - `fvm flutter pub get`
-6. Local launch: `fvm flutter run -d macos`.
-   For iOS releases, use Cloud or the fork build wrapper, not a plain IPA build.
+   Inspect divergence rather than resetting or overwriting unrelated work.
+4. Run `./scripts/fork/check_upstream_updates.sh`:
+   - Exit `0`: no incoming updates; no sync PR is needed.
+   - Exit `10`: updates available; follow `FORK_NOTES.md`.
+   - Exit `1`: investigate the failure; do not treat it as "up to date".
+5. If building locally, use `fvm install` and `fvm flutter pub get`.
+   Read toolchain versions from `.fvmrc` and `pubspec.yaml`, not old session notes.
+6. Do not rerun branch preparation on an in-progress sync branch: it resets
+   from `origin/main`. Resume conflict resolution, validation, or publication
+   from the actual repository/PR state instead.
 
 ## Last Session Snapshot
-- Date: 2026-09-09
-- Branch: `automation/upstream-sync-2026-09-09`
-- Active work: maintenance documentation cleanup and end-to-end upstream sync trial
-- What is done:
-  - preserved the older local handoff in a named Git stash before fast-forwarding
-    this checkout by 123 commits to `origin/main` (`da4f11f07`)
-  - left `.dev/worktree/sharp-ocean` untouched; it has existing local changes to
-    `ios/Chaldea.xcodeproj/project.pbxproj` and `ios/Chaldea/Info-Debug.plist`
-  - verified GitHub authentication, no open fork PRs, and active required check
-    `Chaldea | PR Validation` with strict up-to-date checks and no bypass actors
-  - update detector reported 28 upstream-only commits through `9fa75655c`
-    (including 2.6.1, battle-engine updates, and local-settings migration)
-  - prepared this sync branch using the existing `scripts/fork/` entrypoint
-  - consolidated `FORK_NOTES.md` into the end-to-end checklist and refreshed stale
-    TestFlight worktree, build-number, test-data, and recovery instructions
-  - merged all 28 incoming commits without conflicts as `01049e16c`; repository
-    version is now `2.6.1+991`, Flutter remains `3.44.8`
-  - verified unchanged custom modules, fork identity overlay/entitlements, Cloud
-    scripts, and thin route/registrant/App Group integration hooks
-  - `validate_upstream_sync.sh` with the macOS/data-aware `VALIDATION_CMD` passed:
-    no analysis errors/warnings (15 existing info lints), all 255 Flutter tests passed
-  - shell/Ruby syntax and fork documentation diff checks passed; full merge diff
-    has only upstream trailing whitespace at `web/flutter_bootstrap.js:23,29`
-  - GitHub Actions are disabled in the fork; Xcode Cloud is the active PR/delivery path
-  - the previous `main` merge `da4f11f07` has a successful Cloud delivery archive
-    check on GitHub (Apple processing for that historical run was not rechecked)
-- What is next:
-  - push/open this sync PR using the existing helpers, require the hosted check,
-    then merge and verify the separate Cloud/TestFlight delivery
-  - record exact PR/SHA/build outcomes; owner on-device smoke testing remains required
-- Local preservation: named stash `Preserve pre-update local handoff before
-  2026-09-09 workflow trial`; do not blindly pop it over this newer handoff
-- Release state: August evidence below is historical; no September delivery
-  verified yet
 
-## Historical Session Snapshot (2026-08-22)
-- Date: 2026-08-22
-- Branch: `automation/xcode-cloud-pr-validation`
-- Last commit: run `git log -1 --oneline` for the current hash
-- Working tree status: expected clean after committing and pushing the Xcode
-  Cloud automation branch
-- Active feature(s): Xcode Cloud PR validation and protected TestFlight delivery
-- What is done:
-  - merged `upstream/main` (2.6.0) into the fork from the updated `origin/main`
-  - resolved the two merge conflicts by retaining all upstream Xcode/auth
-    changes and reapplying only the two registrant paths and two My Box imports
-  - updated `.fvmrc` to upstream's required Flutter 3.44.8 / Dart 3.12.2
-  - installed Flutter 3.44.8 under `/Volumes/mini-ssd/DevData/FVM`; the older
-    internal Flutter 3.41.7 installation remains untouched
-  - extended the fork-only iOS preparer for Flutter 3.44's generated Swift
-    package targets and product wrappers without changing the upstream Podfile
-  - validated an unsigned 2.6.0 (990) archive on Xcode 27 beta 5
-    - app: bundle `io.github.davidnavalho.chaldea`, minimum iOS 15.0
-    - widget: bundle `io.github.davidnavalho.chaldea.FakerStatusWidget`, minimum iOS 18.1
-    - compiled app contains the personal App Group and not the upstream default
-  - merged the upstream 2.6.0 sync PR into `main` as commit `276a47800`
-  - added fork-only Xcode Cloud scripts under `ios/ci_scripts/` without
-    changing any upstream workflow or Xcode project file
-    - post-clone: pinned Flutter setup, build-number configuration, CocoaPods,
-      and generated dependency preparation
-    - pre-build: fail-closed main-app and widget identity verification
-    - post-build: signed archive, version, deployment, and entitlement checks
-  - proved locally that `XCODE_XCCONFIG_FILE` applies the personal identity as
-    a highest-priority overlay without editing `project.pbxproj`
-  - locally prepared Cloud build number 991 and verified the resolved app and
-    widget build settings
-  - validated the existing signed 2.5.27 (990) archive with the new Cloud
-    post-build validator
-  - connected `DavidNavalho/chaldea` to Xcode Cloud without committing an
-    Xcode project mutation
-  - added the shared Xcode Cloud product manifest under
-    `ios/Chaldea.xcodeproj/xcshareddata/xcodecloud/`
-  - created the delivery workflow `Main TestFlight Delivery`
-    (`cae29f8a-2bfa-4830-beec-bb88072853c9`)
-    - manual start for any branch
-    - automatic branch-change start for `main`, with auto-cancel enabled
-    - Archive `Runner` for iOS
-    - Latest Beta or Release Xcode and Latest Release macOS
-    - internal TestFlight distribution to `Chaldea Internal`
-  - deactivated the earlier bootstrap workflow `Manual TestFlight`
-    (`08697A88-8BA0-452D-87DD-923F8A0645B3`)
-  - completed Xcode Cloud build 5 from commit `cf6ca61e2` on 2026-08-22
-    - Xcode 27 beta 5 / macOS Tahoe 26.6.2
-    - archive and App Store export succeeded
-    - fork post-clone, identity preflight, and archive validation all passed
-    - internal TestFlight post-action succeeded
-  - confirmed App Store Connect processed `2.6.0 (5)` as Complete and Testing
-    and assigned it to `Chaldea Internal`
-  - merged Xcode Cloud automation PR #26 into `main` as `55b1d2280`
-  - automatic Xcode Cloud delivery started for that merge
-  - created and activated the `PR Validation` workflow
-    (`2bf09f44-4d89-45dd-9211-281187afcf66`)
-    - pull-request changes from any source branch into `main`
-    - auto-cancel superseded builds
-    - Build `Runner` for iOS with no distribution or post-action
-    - fork-only post-clone validation runs Flutter analysis and the full test suite
-  - opened draft PR #27 for the isolated PR-validation hook and helper
-  - completed Xcode Cloud PR build 7 from commit `1f5424956`
-    - the same 15 informational analysis lints were non-fatal
-    - all 254 Flutter tests passed with Cloud-only offline game data
-    - the subsequent iOS build passed in 5m42s
-  - created active GitHub ruleset `xcode-cloud-pr-validation` (`21213751`)
-    for the default branch, requiring `Chaldea | PR Validation` with no bypass
-  - full analysis has no errors or warnings and the same 15 informational lints
-  - `test/custom/box_coverage/box_coverage_service_test.dart` passes (2 tests)
-  - isolated the fork identity settings in
-    `ios/Flutter/ForkIdentity.xcconfig`, supplied externally with
-    `xcodebuild -xcconfig` rather than wiring them into the upstream project
-  - reduced the complete Xcode project PR diff to two generated-registrant path
-    corrections; all identity, signing, entitlement, deployment, and version
-    edits were removed from the project file
-  - restored `ios/Podfile` and `ios/Podfile.lock` to exact upstream contents
-  - added `scripts/fork/prepare_ios_testflight.rb` to update only ignored
-    CocoaPods build output for Xcode 27 and generate an ignored per-target map
-  - added `scripts/fork/build_ios_testflight.sh` as the fork-only archive entry
-    point; it applies the identity overlay and validates archive metadata
-  - added fork-specific entitlements using a personal App Group and without the upstream universal-link claim
-  - changed the one Dart App Group statement to use the build-time
-    `CHALDEA_IOS_APP_GROUP_ID`, with the upstream App Group retained as default
-  - kept the one Swift widget adapter plus the fork-only Swift identity file
-  - kept the one bridging-header correction and the matching two Xcode project
-    file-reference corrections for Flutter's generated registrant
-  - verified resolved Xcode settings and entitlement plist syntax
-  - installed FVM 4.1.2 through Homebrew; Flutter SDKs are managed through FVM
-  - aligned `.fvmrc` with `pubspec.yaml`
-  - completed `fvm flutter pub get`, iOS precache, and `pod install`
-  - replaced Xcode 27 beta 1 with Xcode 27 beta 5 (`27A5237l`) and selected
-    `/Applications/Xcode-27.0.0-Beta.5.app/Contents/Developer`
-  - applied the fork-scoped iOS 15 workaround only to ignored generated
-    CocoaPods/Swift-package output
-  - registered the personal App Group and both App IDs under team `WAF9PC2Y8K`
-  - associated both App IDs with `group.io.github.davidnavalho.chaldea.shared`
-  - created the App Store Connect app `Chaldea Personal` (app ID `6801619927`)
-  - built and validated the signed release archive at `build/ios/archive/Chaldea.xcarchive`
-    - app: Chaldea 2.5.27 (990), bundle `io.github.davidnavalho.chaldea`, minimum iOS 15.0
-    - widget: 2.5.27 (990), bundle `io.github.davidnavalho.chaldea.FakerStatusWidget`, minimum iOS 18.1
-  - uploaded build 989 successfully through Xcode Organizer using beta 5
-  - confirmed App Store Connect processed build 989 as `Ready to Submit`
-  - created internal TestFlight group `Chaldea Internal` with automatic distribution enabled
-  - added the owner's App Store Connect account as the sole internal tester
-  - diagnosed build 989's NA account-login failure as the known upstream wrong-game-top bug
-  - applied upstream commit `b3a096eb8` exactly across its three original files
-    - NA metadata now uses `tops.of(user.region)` instead of `tops.jp`
-    - region-info requests preserve the selected region
-    - Account File login fetches fresh game metadata instead of retaining stale page state
-  - built, signed, and exported `2.5.27 (990)` with a build-number override
-  - validated build 990's app/widget signatures, Team ID, bundle IDs, versions, and App Group entitlements
-  - uploaded build 990; App Store Connect shows it `Complete`, `Ready to Submit`, and in `Chaldea Internal`
-  - installed build 990 from TestFlight and confirmed that NA Account File login now succeeds on-device
-  - added `TESTFLIGHT_RUNBOOK.md` as the complete owner/agent continuation guide
-  - ran both unsigned and signed end-to-end archives with the new wrapper on
-    Xcode 27 beta 5
-    - app: Chaldea 2.5.27 (990), bundle
-      `io.github.davidnavalho.chaldea`, minimum iOS 15.0
-    - widget: 2.5.27 (990), bundle
-      `io.github.davidnavalho.chaldea.FakerStatusWidget`, minimum iOS 18.1
-    - signed identifiers use team `WAF9PC2Y8K`; both signed entitlements contain
-      only `group.io.github.davidnavalho.chaldea.shared`
-    - compiled Flutter binary contains the personal App Group and not the
-      upstream App Group
-    - temporary validation archives were built on the external SSD and moved
-      to that drive's Trash; the existing archive was not changed
-  - `fvm dart analyze lib/packages/home_widget.dart`, syntax/plist checks, and
-    `git diff --check` pass
-- Historical follow-up:
-  - PR #27 was subsequently merged as `da4f11f07` on 2026-08-23; no merge action remains
-  - install the latest verified TestFlight build and smoke-test the app on-device
-  - verify shared App Group data and the widget on a device where the widget is available
-- Known blockers:
-  - no remaining blocker for Xcode Cloud archive or internal TestFlight delivery
-  - no remaining blocker for internal TestFlight installation or NA Account File login
-  - Xcode Organizer reports a non-blocking missing dSYM warning for `objective_c.framework`; Apple accepted the upload
-  - build 989 has the upstream NA metadata bug and should not be used for NA account login; build 990 supersedes it
-  - a stable Xcode may still be required for a future production App Store release
-  - Flutter warns that four plugins do not yet support Swift Package Manager;
-    Flutter 3.44 falls back to CocoaPods for them, but a future Flutter may stop
-    accepting that fallback
-  - local full tests require an offline game-data payload that is not present in
-    this worktree; `PR Validation` clones it only into Xcode Cloud's temporary machine
-
-## Files Touched In Current Workstream
-- `FORK_NOTES.md`
-- `HANDOFF.md`
-- `TESTFLIGHT_RUNBOOK.md`
-- `AGENTS.md`
-- `ios/ci_scripts/README.md`
-
-## Historical Files Touched (August iOS Workstream)
-- `ios/Chaldea.xcodeproj/project.pbxproj`
-- `ios/Chaldea/Chaldea-Bridging-Header.h`
-- `ios/Flutter/ForkIdentity.xcconfig`
-- `ios/Chaldea/Fork.entitlements`
-- `ios/FakerStatusWidgetExtension.fork.entitlements`
-- `ios/FakerStatusWidget/ForkIdentity.swift`
-- `ios/FakerStatusWidget/FakerStatusWidget.swift`
-- `lib/app/api/atlas.dart`
-- `lib/app/modules/import_data/autologin/autologin_page.dart`
-- `lib/models/faker/jp/agent.dart`
-- `lib/packages/home_widget.dart`
-- `scripts/fork/build_ios_testflight.sh`
-- `scripts/fork/prepare_ios_testflight.rb`
-- `ios/ci_scripts/README.md`
-- `ios/ci_scripts/ci_post_clone.sh`
-- `ios/ci_scripts/ci_validate_pull_request.sh`
-- `ios/ci_scripts/ci_pre_xcodebuild.sh`
-- `ios/ci_scripts/ci_post_xcodebuild.sh`
-- `ios/Chaldea.xcodeproj/xcshareddata/xcodecloud/manifest.json`
-- `.fvmrc`
-- `HANDOFF.md`
-- `TESTFLIGHT_RUNBOOK.md`
-
-## Validation Commands
-- September trial:
-  - `./scripts/fork/check_upstream_updates.sh` (exit 10; 28 incoming commits)
-  - `SYNC_BRANCH=automation/upstream-sync-2026-09-09 ./scripts/fork/prepare_upstream_sync_branch.sh`
-  - `git merge --no-edit upstream/main` (no conflicts)
-  - `fvm install` and `fvm flutter pub get`
-  - `VALIDATION_CMD='CHALDEA_FLUTTER_BIN="$PWD/.fvm/flutter_sdk/bin/flutter" ios/ci_scripts/ci_validate_pull_request.sh' ./scripts/fork/validate_upstream_sync.sh`
-  - validation log (local, temporary): `/tmp/chaldea-sync-2026-09-09-validation.log`
-  - `bash -n scripts/sync_fork_pr.sh scripts/sync_fork.sh scripts/fork/*.sh ios/ci_scripts/*.sh`
-  - `ruby -c scripts/fork/prepare_ios_testflight.rb`
-
-### Historical August Validation Commands
-- `scripts/fork/build_ios_testflight.sh --build-name 2.6.0 --build-number 990`
-- `scripts/fork/build_ios_testflight.sh --build-name 2.6.0 --build-number 991 --codesign`
-- `xcodebuild -workspace ios/Chaldea.xcworkspace -scheme Runner -configuration Release -xcconfig ios/Flutter/ForkIdentity.xcconfig -showBuildSettings`
-- `xcodebuild -workspace ios/Chaldea.xcworkspace -scheme FakerStatusWidgetExtension -configuration Release -xcconfig ios/Flutter/ForkIdentity.xcconfig -showBuildSettings`
-- `plutil -lint ios/Chaldea/Fork.entitlements ios/FakerStatusWidgetExtension.fork.entitlements`
-- `ruby -c ios/Podfile`
-- `bash -n scripts/fork/build_ios_testflight.sh`
-- `ruby -c scripts/fork/prepare_ios_testflight.rb`
-- `bash -n ios/ci_scripts/ci_post_clone.sh ios/ci_scripts/ci_pre_xcodebuild.sh ios/ci_scripts/ci_post_xcodebuild.sh`
-- `CI_XCODE_CLOUD=TRUE CI_PRIMARY_REPOSITORY_PATH="$PWD" CI_BUILD_NUMBER=5 CHALDEA_XCODE_CLOUD_MIN_BUILD_NUMBER=1 XCODE_XCCONFIG_FILE="$PWD/ios/Flutter/ForkIdentity.xcconfig" ios/ci_scripts/ci_post_clone.sh`
-- `CI_XCODE_CLOUD=TRUE CI_PRIMARY_REPOSITORY_PATH="$PWD" CI_BUILD_NUMBER=5 CHALDEA_XCODE_CLOUD_MIN_BUILD_NUMBER=1 CI_XCODEBUILD_ACTION=archive XCODE_XCCONFIG_FILE="$PWD/ios/Flutter/ForkIdentity.xcconfig" ios/ci_scripts/ci_pre_xcodebuild.sh`
-- `fvm dart analyze lib/packages/home_widget.dart`
-- `fvm flutter analyze`
-- `fvm flutter test --dart-define=APP_PATH=/path/to/repository`
-- `fvm flutter build macos --debug`
-
-## Notes For Safe Upstream Updates
-- Prefer `./scripts/sync_fork_pr.sh --open-pr` for protected-main syncs; use `./scripts/sync_fork.sh` only for manual/non-protected flows.
-- For machine-driven automation, prefer the new `scripts/fork/` entrypoints over the human wrapper when finer control is needed.
-- Resolve conflicts by preserving upstream behavior first, then re-apply custom
-  integration hooks.
-- Re-check custom module wiring after any upstream UI changes in battle modules.
+- Focus: repeatable upstream maintenance, not release bookkeeping.
+- The existing workflow supports detection, reviewed upstream merges, data-aware
+  validation, protected PRs, and automatic internal TestFlight delivery.
+- Full local tests need offline game data. Use the data-aware validation helper
+  documented in `FORK_NOTES.md`, not an arbitrary checkout as `APP_PATH`.
+- No known maintenance-pipeline blocker. Recheck live validation and delivery
+  results for each update; past success is not proof of a new release.
+- On-device verification remains the owner's step: back up app data, confirm
+  TestFlight availability, then check Team Search/replay, My Box/coverage,
+  settings migrations, account login, and supported widget shared data.
+- Next maintenance action: check upstream for changes and run the existing
+  workflow when updates are available. Do not update this snapshot merely to
+  record which PR merged or which build completed.

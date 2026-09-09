@@ -9,7 +9,9 @@
 
 ### Session Handoff
 - Use `chaldea/HANDOFF.md` as the canonical cross-computer handoff file.
-- At the end of each session, update the "Last Session Snapshot" in `HANDOFF.md`.
+- At the end of each session, review the "Last Session Snapshot" in `HANDOFF.md`; update it only for durable methodology changes, blockers, or genuine unfinished work.
+- Keep PR numbers, commit hashes, build results, and deployment history in Git/GitHub/Cloud, not the handoff. Completing a PR must not require another handoff commit.
+- Commit relevant handoff changes with the intentional work; do not leave useful context local-only.
 - At the start of each session, follow the "Quick Resume Checklist" in `HANDOFF.md`.
 
 ### Core Development Rules For The Fork
