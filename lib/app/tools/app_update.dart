@@ -4,10 +4,11 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 
-import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
-import 'package:path/path.dart';
+import 'package:path/path.dart' as p;
 
+import 'package:chaldea/app/tools/apk_installer.dart';
+import 'package:chaldea/app/tools/desktop_updater.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/models/userdata/version.dart';
@@ -20,8 +21,33 @@ import 'package:chaldea/widgets/widgets.dart';
 class AppUpdater {
   const AppUpdater._();
 
+  /// Name of the marker file in the executable folder that toggles the
+  /// debug same-version upgrade.
+  static const debugUpgradeMarkerFile = 'debug.same_version_upgrade';
+
+  /// Whether a same-version reinstall is allowed to exercise the desktop
+  /// upgrade pipeline. Enabled by placing an (empty) file named
+  /// [debugUpgradeMarkerFile] next to the executable. File-based (rather
+  /// than a source constant or env var) so it can be toggled on a
+  /// GUI-launched app by dropping/removing a file, no rebuild needed.
+  static bool get debugSameVersionUpgrade {
+    if (kIsWeb) return false;
+
+    if (DesktopUpgrader.supported || PlatformU.isAndroid) {
+      try {
+        final marker = File(p.join(DesktopUpgrader.exeFolder, debugUpgradeMarkerFile));
+        if (marker.existsSync()) {
+          return true;
+        }
+      } catch (_) {
+        return false;
+      }
+    }
+    if (kDebugMode) return true;
+    return false;
+  }
+
   static Completer<AppUpdateDetail?>? _checkCmpl;
-  static Completer<String?>? _downloadCmpl;
 
   static Future<void> backgroundUpdate() async {
     if (network.unavailable) return;
@@ -31,12 +57,19 @@ class AppUpdater {
       return;
     }
     if (PlatformU.isAndroid) {
-      showUpdateAlert(detail);
+      final install = await showUpdateAlert(detail);
+      if (install == true && kAppKey.currentContext != null) {
+        await installUpdate(detail);
+      }
       return;
     }
-    final savePath = await download(detail);
-    final install = await showUpdateAlert(detail);
-    if (install == true) installUpdate(detail, savePath);
+    if (DesktopUpgrader.supported) {
+      final install = await showUpdateAlert(detail);
+      if (install == true && kAppKey.currentContext != null) {
+        await showDesktopUpgradeDialog(kAppKey.currentContext!, detail);
+      }
+      return;
+    }
   }
 
   static Future<void> checkAppStoreUpdate() async {
@@ -69,7 +102,10 @@ class AppUpdater {
     }
   }
 
-  static Future showUpdateAlert(AppUpdateDetail detail) {
+  static Future showUpdateAlert(AppUpdateDetail detail) async {
+    // silent manifest-declaration probe: gates the
+    // in-app Install button; never shows a dialog by itself
+    final canInstall = PlatformU.isAndroid && await ApkInstaller.isSupported();
     return showDialog(
       context: kAppKey.currentContext!,
       useRootNavigator: false,
@@ -102,25 +138,14 @@ class AppUpdater {
                 },
                 child: const Text('Google Play'),
               ),
+            if (canInstall)
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context, true);
+                },
+                child: Text(S.current.install),
+              ),
           ],
-        );
-      },
-    );
-  }
-
-  static Future showInstallAlert(AppVersion version) {
-    String body = 'Update downloaded/更新包已下载.';
-    if (PlatformU.isWindows || PlatformU.isLinux) {
-      body += '\nExtract zip and replace the old version\n请解压并替换旧版本程序文件';
-    }
-    return showDialog(
-      context: kAppKey.currentContext!,
-      useRootNavigator: false,
-      builder: (context) {
-        return SimpleConfirmDialog(
-          title: Text('v${version.versionString}'),
-          content: Text(body),
-          confirmText: S.current.install,
         );
       },
     );
@@ -139,29 +164,21 @@ class AppUpdater {
     return _checkCmpl?.future;
   }
 
-  static Future<String?> download(AppUpdateDetail detail) async {
-    if (_downloadCmpl != null) return _downloadCmpl!.future;
-    if (PlatformU.isAndroid) return null;
-    _downloadCmpl = Completer();
-    _downloadFileWithCheck(detail)
-        .then((value) => _downloadCmpl!.complete(value))
-        .catchError((e, s) {
-          logger.e('download app release failed', e, s);
-          _downloadCmpl!.complete(null);
-        })
-        .whenComplete(() => _downloadCmpl = null);
-    return _downloadCmpl?.future;
-  }
-
-  static Future<void> installUpdate(AppUpdateDetail detail, String? fp) async {
+  /// Store/mobile platforms only — desktop upgrades are handled end-to-end
+  /// by [DesktopUpgrader].
+  static Future<void> installUpdate(AppUpdateDetail detail) async {
     await Future.delayed(const Duration(milliseconds: 500));
     if (PlatformU.isApple) {
       launch(kAppStoreLink);
-    } else if (fp == null || PlatformU.isAndroid) {
+    } else if (PlatformU.isAndroid && await ApkInstaller.isSupported()) {
+      final context = kAppKey.currentContext;
+      if (context != null && context.mounted) {
+        var filename = detail.installer.name;
+        if (!filename.toLowerCase().endsWith('.apk')) filename = '$filename.apk';
+        await ApkInstaller.installFromUrl(context, url: detail.installer.downloadUrl, filename: filename);
+      }
+    } else {
       launch(detail.installer.downloadUrl);
-      return;
-    } else if (PlatformU.isLinux || PlatformU.isWindows) {
-      await openFile(dirname(fp));
     }
   }
 
@@ -181,34 +198,13 @@ class AppUpdater {
     final release = await _githubLatestRelease('chaldea-center', 'chaldea');
     final installer = release?.assets.firstWhereOrNull((e) => e.name.contains(os!) && !e.name.contains('sha1'));
     if (release == null || installer == null) return null;
-    if (release.version != null && release.version! <= AppInfo.version) return null;
+    if (release.version != null && release.version! <= AppInfo.version) {
+      final allowSameVersion = debugSameVersionUpgrade && release.version == AppInfo.version;
+      if (!allowSameVersion) return null;
+    }
     AppUpdateDetail? _latest = AppUpdateDetail(release: release, installer: installer);
     db.runtimeData.releaseDetail = _latest;
     return _latest;
-  }
-
-  static Future<String?> _downloadFileWithCheck(AppUpdateDetail detail) async {
-    String? checksum;
-    const prefix = "sha256:";
-    if (detail.installer.digest.startsWith(prefix)) {
-      checksum = detail.installer.digest.substring(prefix.length);
-    }
-    String savePath = joinPaths(db.paths.tempDir, 'installer', detail.installer.name);
-    final file = File(savePath);
-    if (await file.exists() && checksum != null) {
-      final localChecksum = sha256.convert(await file.readAsBytes()).toString().toLowerCase();
-      if (localChecksum == checksum) return savePath;
-    }
-    final resp = await DioE().get(detail.installer.downloadUrl, options: Options(responseType: ResponseType.bytes));
-    final data = List<int>.from(resp.data);
-    if (sha256.convert(data).toString().toLowerCase() == checksum || checksum == null) {
-      file.parent.createSync(recursive: true);
-      await file.writeAsBytes(data);
-      return savePath;
-    } else {
-      logger.e('checksum mismatch');
-    }
-    return null;
   }
 }
 
@@ -221,7 +217,9 @@ class AppUpdateDetail {
 
 Future<_Release?> _githubLatestRelease(String org, String repo) async {
   final dio = DioE();
-  final root = db.settings.proxy.worker ? '${HostsX.worker.cn}/proxy/github/api.github.com' : 'https://api.github.com';
+  final root = db.settings.network.proxy.worker
+      ? '${HostsX.worker.cn}/proxy/github/api.github.com'
+      : 'https://api.github.com';
   final resp = await dio.get('$root/repos/$org/$repo/releases/latest');
   return _Release.fromJson(resp.data);
 }
@@ -265,12 +263,22 @@ class _Asset {
   late final _Release release;
   _Asset({required this.name, required this.size, required this.digest, required this.browserDownloadUrl});
 
-  String get downloadUrl {
-    return db.settings.proxy.worker ? proxyUrl : browserDownloadUrl;
-  }
+  String get downloadUrl => urls.first;
+
+  String get _proxyUrlGlobal =>
+      browserDownloadUrl.replaceFirst('https://github.com/', '${HostsX.worker.global}/proxy/github/github.com/');
+  String get _proxyUrlCN =>
+      browserDownloadUrl.replaceFirst('https://github.com/', '${HostsX.worker.cn}/proxy/github/github.com/');
 
   String get proxyUrl {
-    return browserDownloadUrl.replaceFirst('https://github.com/', '${HostsX.worker.cn}/proxy/github/github.com/');
+    return db.settings.network.proxy.worker ? _proxyUrlCN : _proxyUrlGlobal;
+  }
+
+  Set<String> get urls {
+    if (db.settings.network.proxy.worker) {
+      return {_proxyUrlCN, _proxyUrlGlobal};
+    }
+    return {browserDownloadUrl, _proxyUrlGlobal, _proxyUrlCN};
   }
 
   factory _Asset.fromJson(Map data) {

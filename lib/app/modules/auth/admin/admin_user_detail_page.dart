@@ -4,17 +4,24 @@
 // (info-rows: backupsCount/teamsCount/sessions list/logins list — last two
 // read-only lists) + Admin Actions with exactly 2 ActionRows: Reset Password
 // (password input dialog → adminRecoverUser(password:)) and Send Recovery Email
-// (confirm → adminRecoverUser(email:)). No other action-rows per design D6.
+// (email input dialog, prefilled with the bound email → adminRecoverUser(email:)
+// — the emailed reset link also binds the target email to the account when the
+// user completes the reset; available even when an email is already bound, to
+// cover accounts whose bound email is no longer accessible). No other
+// action-rows per design D6.
 
 import 'package:flutter/material.dart';
 
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 
 import 'package:chaldea/app/api/chaldea_server.dart';
+import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/modules/auth/validators.dart';
+import 'package:chaldea/app/modules/battle/teams/teams_query_page.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/api/api.dart';
 import 'package:chaldea/models/models.dart';
+import 'package:chaldea/packages/language.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/custom_dialogs.dart';
 import 'package:chaldea/widgets/modern/modern.dart';
@@ -67,22 +74,56 @@ class _AdminUserDetailPageState extends State<AdminUserDetailPage> {
   }
 
   Future<void> _sendRecoveryEmail() async {
-    final email = _detail?.user.email;
-    if (email == null || email.isEmpty) {
-      EasyLoading.showError(S.current.auth_admin_no_email);
-      return;
-    }
-    final confirmed = await SimpleConfirmDialog(
-      title: Text(S.current.auth_admin_send_recovery_confirm),
-      content: Text('${S.current.auth_admin_send_recovery}: $email'),
-      confirmText: S.current.confirm,
-    ).showDialog(context);
-    if (confirmed != true) return;
+    // Works for both unbound-email accounts and accounts whose bound email is
+    // no longer accessible: the submitted email receives the reset link and is
+    // bound to the account when the user completes the reset.
+    final email = await showDialog<String>(
+      context: context,
+      builder: (context) => InputCancelOkDialog(
+        title: S.current.auth_admin_send_recovery,
+        initValue: _detail?.user.email,
+        keyboardType: TextInputType.emailAddress,
+        helperText: Language.isZH
+            ? '用户点击邮件中的链接并重置密码后，该邮箱将绑定此账号（替换原有邮箱）'
+            : 'After the user clicks the link in the email and resets the '
+                  'password, this email will be bound to the account (replacing '
+                  'the existing one).',
+        // validateEmail treats empty as acceptable (callers decide); here an
+        // empty value must not be submittable, so reject it explicitly.
+        validate: (s) => s.isNotEmpty && validateEmail(s) == null,
+      ),
+    );
+    if (email == null || email.isEmpty || !mounted) return;
+    // On failure the API layer already shows a bilingual error toast and
+    // returns null; no extra dialog here.
     final resp = await showEasyLoading(() => ChaldeaServerApi.adminRecoverUser(userId: widget.userId, email: email));
-    if (resp != null) {
-      EasyLoading.showSuccess(resp.messageZh.isNotEmpty ? resp.messageZh : resp.message);
-    }
-    db.notifySettings();
+    if (resp == null || !mounted) return;
+    _showRecoveryResult(resp);
+  }
+
+  // Shows the backend-provided bilingual details (link validity, binding
+  // behavior) and reminders so the admin can relay them to the user.
+  void _showRecoveryResult(AdminRecoverResponse resp) {
+    final details = Language.isZH ? resp.detailsZh : resp.details;
+    final reminders = Language.isZH ? resp.remindersZh : resp.reminders;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(Language.isZH ? '发送结果' : 'Result'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            spacing: 8,
+            children: [
+              Text(details),
+              if (reminders.isNotEmpty) ...[const Divider(), for (final r in reminders) Text('• $r')],
+            ],
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: Text(S.current.ok))],
+      ),
+    );
   }
 
   @override
@@ -163,39 +204,78 @@ class _AdminUserDetailPageState extends State<AdminUserDetailPage> {
     );
   }
 
-  Widget _buildStatistics(AdminUserDetail d) {
+  Widget _buildStatistics(AdminUserDetail detail) {
     return SectionCard(
       header: S.current.auth_admin_statistics,
       children: [
         InfoRow(
           leading: Icon(Icons.cloud_upload_outlined),
           title: S.current.auth_admin_backups_count,
-          value: d.backupsCount.toString(),
+          value: detail.backupsCount.toString(),
           valueMono: true,
         ),
         InfoRow(
           leading: Icon(Icons.groups_outlined),
           title: S.current.auth_admin_teams_count,
-          value: d.teamsCount.toString(),
+          value: detail.teamsCount.toString(),
           valueMono: true,
+          onTap: () {
+            router.pushPage(TeamsQueryPage(mode: .user, userId: detail.user.id));
+          },
         ),
         InfoRow(
           leading: Icon(Icons.devices_outlined),
           title: S.current.auth_admin_sessions,
-          value: '${d.sessions.length}',
+          value: '${detail.sessions.length}',
           valueMono: true,
+          onTap: () {
+            if (detail.sessions.isEmpty) return;
+            SimpleDialog(
+              title: Text(S.current.auth_admin_sessions),
+              children: [
+                for (final session in detail.sessions)
+                  SimpleDialogOption(child: Text(session.device, style: kMonoStyle)),
+              ],
+            ).showDialog(context);
+          },
         ),
         InfoRow(
           leading: Icon(Icons.history_outlined),
           title: S.current.auth_admin_recent_logins,
-          value: '${d.logins.length}',
+          value: '${detail.logins.length}',
           valueMono: true,
+          onTap: () {
+            if (detail.logins.isEmpty) return;
+            SimpleDialog(
+              title: Text(S.current.auth_admin_recent_logins),
+              children: [
+                for (final login in detail.logins)
+                  SimpleDialogOption(
+                    child: Text.rich(
+                      TextSpan(
+                        text: login.device,
+                        style: kMonoStyle,
+                        children: [
+                          TextSpan(
+                            text:
+                                '\n${{login.createdAt, login.updatedAt}.map((e) => e.sec2date().toDateString()).join(" / ")}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ).showDialog(context);
+          },
         ),
       ],
     );
   }
 
   Widget _buildAdminActions() {
+    final email = _detail?.user.email;
+    final hasEmail = email != null && email.isNotEmpty;
     return SectionCard(
       header: S.current.auth_admin_actions,
       children: [
@@ -207,6 +287,7 @@ class _AdminUserDetailPageState extends State<AdminUserDetailPage> {
         ActionRow(
           leading: Icon(Icons.email_outlined),
           title: S.current.auth_admin_send_recovery,
+          subtitle: hasEmail ? email : S.current.auth_admin_no_email,
           onTap: _sendRecoveryEmail,
         ),
       ],

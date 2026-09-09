@@ -73,7 +73,7 @@ class FakerRuntimeGacha extends FakerRuntimeBase {
     }
   }
 
-  Future<void> gachaDraw({bool hundredDraw = false, bool skipSubIdCheck = false}) async {
+  Future<SummonControlResultData?> gachaDraw({bool hundredDraw = false, bool skipSubIdCheck = false}) async {
     final counts = mstData.countSvtKeep();
     final userGame = mstData.user!;
     if (counts.svtCount >= userGame.svtKeep + 100) {
@@ -93,6 +93,14 @@ class FakerRuntimeGacha extends FakerRuntimeBase {
         await AtlasApi.gacha(option.gachaId, region: runtime.region);
     if (gacha == null) {
       throw SilentException('Gacha ${option.gachaId} not found');
+    }
+
+    final now = getNowTimestamp();
+    if (gacha.openedAt > now || gacha.closedAt <= now) {
+      throw SilentException('Gacha not open');
+    }
+    if (!gacha.releaseConditions.every(runtime.condCheck.isOpenForGacha)) {
+      throw SilentException('Gacha release cond not met');
     }
 
     final bool hasFreeDraw = checkHasFreeGachaDraw(gacha);
@@ -176,9 +184,11 @@ class FakerRuntimeGacha extends FakerRuntimeBase {
           }
         }
       }
+      return gachaResult;
     } catch (e, s) {
       logger.e('parse gacha_infos failed', e, s);
     }
+    return null;
   }
 
   Future<void> sellServant({int limitGetDay = 2}) async {

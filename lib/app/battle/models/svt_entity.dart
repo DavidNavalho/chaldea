@@ -526,7 +526,7 @@ class BattleServantData {
 
   Future<void> activateExtraPassive(final BattleData battleData) async {
     if (isPlayer) {
-      // TODO: skill num check
+      // need skill num check, some may active duplicated skills
       final extraPassives = NiceSkill.getSvtEventSkills(
         eventSkills: playerSvtData!.extraPassives,
         eventId: battleData.niceQuest?.war?.eventId ?? 0,
@@ -885,6 +885,9 @@ class BattleServantData {
     if (playerSvtData?.supportType.isSupport == true) {
       traits.add(ConstData.constants.individualityIsSupport);
     }
+    if (isPlayer) {
+      traits.add(ConstData.constants.individualityIsPlayer);
+    }
     if (isPlayer && isGrandSvt) {
       traits.addAll(db.gameData.grandGraphDetails[originalClassId]?.adjustIndividuality ?? []);
     }
@@ -993,6 +996,7 @@ class BattleServantData {
       case BuffAction.functionWavestart:
       case BuffAction.functionSelfturnstart:
       case BuffAction.functionSelfturnend:
+      case BuffAction.functionSelfturnprogress:
       case BuffAction.donotAct:
       case BuffAction.donotNoble:
       case BuffAction.donotSkill:
@@ -1126,6 +1130,7 @@ class BattleServantData {
       case BuffAction.functionWavestart:
       case BuffAction.functionSelfturnstart:
       case BuffAction.functionSelfturnend:
+      case BuffAction.functionSelfturnprogress:
       case BuffAction.avoidFunctionExecuteSelf:
       case BuffAction.donotAct:
       case BuffAction.donotActCommandtype:
@@ -1755,6 +1760,7 @@ class BattleServantData {
         tdLv,
         script: niceTD.script,
         activator: this,
+        skillOrTd: niceTD,
         targetedAlly: battleData.getTargetedAlly(this),
         targetedEnemy: battleData.getTargetedEnemy(this),
         card: card,
@@ -2375,6 +2381,7 @@ class BattleServantData {
           buff.additionalParam.clamp(1, skill.maxLv),
           script: skill.script,
           activator: this,
+          skillOrTd: skill,
           overchargeState: overchargeState,
           ignoreBattlePoints: skillInfo?.skillScript?.IgnoreBattlePointUp,
           targetedAlly: battleData.getTargetedAlly(this),
@@ -2415,6 +2422,7 @@ class BattleServantData {
           buff.additionalParam.clamp(1, skill.maxLv),
           script: skill.script,
           activator: this,
+          skillOrTd: skill,
           targetedAlly: battleData.getTargetedAlly(this),
           targetedEnemy: battleData.getTargetedEnemy(this),
           skillType: skill.type,
@@ -2586,6 +2594,23 @@ class BattleServantData {
   }
 
   Future<void> endOfMyTurn(final BattleData battleData) async {
+    battleBuff.turnProgress();
+    final allBuffs = getAllBuffs(battleData);
+    final lastSelfTurnProgressFunctions = collectBuffsPerType(allBuffs, BuffType.lastSelfturnprogressFunction);
+    await activateDelayFunction(battleData, lastSelfTurnProgressFunctions.where((buff) => buff.logicTurn == 0));
+
+    // check guts after lastSelfturnprogressFunction
+    if (hp <= 0) {
+      if (hasNextShift(battleData)) {
+        hp = 1;
+      } else {
+        final gutsActivated = await activateGuts(battleData);
+        if (!gutsActivated) {
+          resetLastHits();
+        }
+      }
+    }
+
     String turnEndLog = '';
 
     if (isEnemy) {
@@ -2678,9 +2703,7 @@ class BattleServantData {
       battleData.battleLogger.debug('$lBattleName - ${S.current.battle_turn_end}$turnEndLog');
     }
 
-    battleBuff.turnProgress();
-    final allBuffs = getAllBuffs(battleData);
-    final delayedFunctions = collectBuffsPerType(allBuffs, BuffType.delayFunction);
+    final delayedFunctions = collectBuffsPerType(getAllBuffs(battleData), BuffType.delayFunction);
     await activateBuff(battleData, BuffAction.functionSelfturnend);
 
     // check guts after selfturnendFunction

@@ -297,18 +297,18 @@ class _SettingsPageState extends State<SettingsPage> {
                       FrameRateLayer.showFps = v;
                     });
                     if (v) {
-                      FrameRateLayer.createOverlay(kAppKey.currentContext ?? context);
+                      FrameRateLayer.createOverlay(context);
                     } else {
                       FrameRateLayer.removeOverlay();
                     }
                   },
                 ),
                 SwitchListTile.adaptive(
-                  value: db.settings.showDebugFab,
+                  value: db.settings.display.showDebugFab,
                   title: Text(S.current.debug_fab),
                   onChanged: (v) {
                     setState(() {
-                      db.settings.showDebugFab = v;
+                      db.settings.display.showDebugFab = v;
                       db.saveSettings();
                     });
                     if (v) {

@@ -1063,6 +1063,9 @@ class FuncDescriptor extends StatelessWidget {
                 }
               }
               spans.add(_replaceTrait(indiv, guessTrait: guessTrait));
+              if ((guessTrait ?? 0) == 0 && func.funcPopupText.isNotEmpty) {
+                spans.add(TextSpan(text: ' (${func.lPopupText.l})'));
+              }
               return;
             }
             break;
@@ -1442,6 +1445,20 @@ class FuncDescriptor extends StatelessWidget {
           text: FuncTriggerActorTargetFlag.fromValue(
             vals!.FunctionTriggerActorTargetFlag!,
           ).map((e) => Transl.funcTargetType(e.toFuncTarget()).l).join(' / '),
+        ),
+      ]);
+    }
+
+    if (vals?.CommonReleaseId != null) {
+      final commonReleaseId = vals!.CommonReleaseId!;
+      _condSpans.add([
+        TextSpan(text: S.current.condition),
+        SharedBuilder.textButtonSpan(
+          context: context,
+          text: commonReleaseId.toString(),
+          onTap: () {
+            router.push(url: Routes.commonReleaseI(commonReleaseId));
+          },
         ),
       ]);
     }

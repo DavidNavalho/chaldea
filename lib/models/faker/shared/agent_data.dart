@@ -145,6 +145,9 @@ class FakerAgentData {
 
   // event
   final randomMissionStat = _RandomMissionLoopStat();
+
+  final treasureBoxStat = _TreasureBoxDrawStat();
+  final recipeStat = _RecipeCreateStat();
 }
 
 class EventRaidInfoRecord {
@@ -227,4 +230,14 @@ class _RandomMissionLoopStat {
     cqs0 = allQuests.where((e) => e.consume == 5 && e.flags.contains(QuestFlag.dropFirstTimeOnly)).toList();
     fqs0 = allQuests.where((e) => e.isAnyFree && e.consume > 0).toList();
   }
+}
+
+class _TreasureBoxDrawStat {
+  Map<int, int> treasureBoxDrawNums = {};
+  Map<int, int> giftCounts = {};
+}
+
+class _RecipeCreateStat {
+  Map<int, int> recipeCreateNums = {};
+  Map<int, int> giftCounts = {};
 }

@@ -557,7 +557,7 @@ enum BuffType {
   multiGutsBeforeFunction(245),
   limitMaxNp(246),
   limitMinNp(247),
-  lastSelfturnprogressFunction(248),
+  lastSelfturnprogressFunction(248), // not BuffAction yet
   addMaxBattlePoint(249),
   subMaxBattlePoint(250),
   selfturnprogressFunction(251),
@@ -731,7 +731,8 @@ enum BuffConditionTargetType {
     return null;
   }
 
-  FuncTargetType? toFuncTarget() {
+  // display only, don't use for battle
+  FuncTargetType? toFuncTargetForDisplay() {
     return switch (this) {
       none => FuncTargetType.self,
       ptAll => FuncTargetType.ptAll,
@@ -747,7 +748,7 @@ enum BuffConditionTargetType {
   }
 
   String get dispName {
-    final funcTargetType = toFuncTarget();
+    final funcTargetType = toFuncTargetForDisplay();
     if (funcTargetType != null) return Transl.funcTargetType(funcTargetType).l;
     return name;
   }
