@@ -48,10 +48,20 @@ Update it at the end of each working session.
   - prepared this sync branch using the existing `scripts/fork/` entrypoint
   - consolidated `FORK_NOTES.md` into the end-to-end checklist and refreshed stale
     TestFlight worktree, build-number, test-data, and recovery instructions
+  - merged all 28 incoming commits without conflicts as `01049e16c`; repository
+    version is now `2.6.1+991`, Flutter remains `3.44.8`
+  - verified unchanged custom modules, fork identity overlay/entitlements, Cloud
+    scripts, and thin route/registrant/App Group integration hooks
+  - `validate_upstream_sync.sh` with the macOS/data-aware `VALIDATION_CMD` passed:
+    no analysis errors/warnings (15 existing info lints), all 255 Flutter tests passed
+  - shell/Ruby syntax and fork documentation diff checks passed; full merge diff
+    has only upstream trailing whitespace at `web/flutter_bootstrap.js:23,29`
+  - GitHub Actions are disabled in the fork; Xcode Cloud is the active PR/delivery path
+  - the previous `main` merge `da4f11f07` has a successful Cloud delivery archive
+    check on GitHub (Apple processing for that historical run was not rechecked)
 - What is next:
-  - merge upstream, inspect integration changes, run data-aware validation, and
-    push/open the sync PR with the existing helpers
-  - require the hosted PR check, then merge and verify Cloud/TestFlight delivery
+  - push/open this sync PR using the existing helpers, require the hosted check,
+    then merge and verify the separate Cloud/TestFlight delivery
   - record exact PR/SHA/build outcomes; owner on-device smoke testing remains required
 - Local preservation: named stash `Preserve pre-update local handoff before
   2026-09-09 workflow trial`; do not blindly pop it over this newer handoff
@@ -235,6 +245,17 @@ Update it at the end of each working session.
 - `TESTFLIGHT_RUNBOOK.md`
 
 ## Validation Commands
+- September trial:
+  - `./scripts/fork/check_upstream_updates.sh` (exit 10; 28 incoming commits)
+  - `SYNC_BRANCH=automation/upstream-sync-2026-09-09 ./scripts/fork/prepare_upstream_sync_branch.sh`
+  - `git merge --no-edit upstream/main` (no conflicts)
+  - `fvm install` and `fvm flutter pub get`
+  - `VALIDATION_CMD='CHALDEA_FLUTTER_BIN="$PWD/.fvm/flutter_sdk/bin/flutter" ios/ci_scripts/ci_validate_pull_request.sh' ./scripts/fork/validate_upstream_sync.sh`
+  - validation log (local, temporary): `/tmp/chaldea-sync-2026-09-09-validation.log`
+  - `bash -n scripts/sync_fork_pr.sh scripts/sync_fork.sh scripts/fork/*.sh ios/ci_scripts/*.sh`
+  - `ruby -c scripts/fork/prepare_ios_testflight.rb`
+
+### Historical August Validation Commands
 - `scripts/fork/build_ios_testflight.sh --build-name 2.6.0 --build-number 990`
 - `scripts/fork/build_ios_testflight.sh --build-name 2.6.0 --build-number 991 --codesign`
 - `xcodebuild -workspace ios/Chaldea.xcworkspace -scheme Runner -configuration Release -xcconfig ios/Flutter/ForkIdentity.xcconfig -showBuildSettings`
