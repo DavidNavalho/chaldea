@@ -11,27 +11,54 @@ Update it at the end of each working session.
 - Design constraint: keep upstream-core changes minimal and keep custom logic in
   `lib/custom/...` whenever possible.
 
-## TestFlight Runbook
-- Complete iOS signing, App Store Connect, upload, and TestFlight instructions:
-  `TESTFLIGHT_RUNBOOK.md`
+## Maintenance and TestFlight Runbooks
+- End-to-end upstream sync / personal PR / validation / delivery checklist:
+  [FORK_NOTES.md](FORK_NOTES.md)
+- Detailed iOS signing, manual upload, and troubleshooting:
+  [TESTFLIGHT_RUNBOOK.md](TESTFLIGHT_RUNBOOK.md)
+- Hosted workflow configuration: [ios/ci_scripts/README.md](ios/ci_scripts/README.md)
 
 ## Quick Resume Checklist
-1. `git fetch --all --prune`
-2. `git checkout main`
-3. `git pull origin main`
-4. If needed, sync with upstream:
-   - `./scripts/sync_fork_pr.sh --open-pr`
-   - legacy (if needed): `./scripts/sync_fork.sh`
-5. Install deps if needed:
-   - `brew install fvm`
-   - `fvm install 3.44.8 && fvm use 3.44.8`
+1. Inspect `git status --short --branch`, `git worktree list`, and this snapshot.
+   Preserve local changes and nested worktrees before switching or pulling.
+2. `git fetch --all --prune`
+3. When safe: `git switch main` and `git pull --ff-only origin main`.
+   Do not reset divergence or overwrite a newer handoff with an old local copy.
+4. Follow `FORK_NOTES.md` for upstream sync or personal-change PRs.
+   Do not rerun branch preparation on an in-progress sync branch.
+5. Install the pinned toolchain/dependencies if needed:
+   - `fvm install` (read `.fvmrc`; verify it agrees with `pubspec.yaml`)
    - `fvm flutter pub get`
-   - `fvm flutter precache --ios`
-   - `(cd ios && pod install)`
-6. Launch app:
-   - `fvm flutter run -d macos`
+6. Local launch: `fvm flutter run -d macos`.
+   For iOS releases, use Cloud or the fork build wrapper, not a plain IPA build.
 
 ## Last Session Snapshot
+- Date: 2026-09-09
+- Branch: `automation/upstream-sync-2026-09-09`
+- Active work: maintenance documentation cleanup and end-to-end upstream sync trial
+- What is done:
+  - preserved the older local handoff in a named Git stash before fast-forwarding
+    this checkout by 123 commits to `origin/main` (`da4f11f07`)
+  - left `.dev/worktree/sharp-ocean` untouched; it has existing local changes to
+    `ios/Chaldea.xcodeproj/project.pbxproj` and `ios/Chaldea/Info-Debug.plist`
+  - verified GitHub authentication, no open fork PRs, and active required check
+    `Chaldea | PR Validation` with strict up-to-date checks and no bypass actors
+  - update detector reported 28 upstream-only commits through `9fa75655c`
+    (including 2.6.1, battle-engine updates, and local-settings migration)
+  - prepared this sync branch using the existing `scripts/fork/` entrypoint
+  - consolidated `FORK_NOTES.md` into the end-to-end checklist and refreshed stale
+    TestFlight worktree, build-number, test-data, and recovery instructions
+- What is next:
+  - merge upstream, inspect integration changes, run data-aware validation, and
+    push/open the sync PR with the existing helpers
+  - require the hosted PR check, then merge and verify Cloud/TestFlight delivery
+  - record exact PR/SHA/build outcomes; owner on-device smoke testing remains required
+- Local preservation: named stash `Preserve pre-update local handoff before
+  2026-09-09 workflow trial`; do not blindly pop it over this newer handoff
+- Release state: August evidence below is historical; no September delivery
+  verified yet
+
+## Historical Session Snapshot (2026-08-22)
 - Date: 2026-08-22
 - Branch: `automation/xcode-cloud-pr-validation`
 - Last commit: run `git log -1 --oneline` for the current hash
@@ -160,11 +187,9 @@ Update it at the end of each working session.
       to that drive's Trash; the existing archive was not changed
   - `fvm dart analyze lib/packages/home_widget.dart`, syntax/plist checks, and
     `git diff --check` pass
-- What is next:
-  - review and merge draft PR #27 after its final Xcode Cloud check passes
-  - confirm the merge starts `Main TestFlight Delivery` and not another PR
-    validation run
-  - install `2.6.0 (5)` from TestFlight and smoke-test the app on-device
+- Historical follow-up:
+  - PR #27 was subsequently merged as `da4f11f07` on 2026-08-23; no merge action remains
+  - install the latest verified TestFlight build and smoke-test the app on-device
   - verify shared App Group data and the widget on a device where the widget is available
 - Known blockers:
   - no remaining blocker for Xcode Cloud archive or internal TestFlight delivery
@@ -179,6 +204,13 @@ Update it at the end of each working session.
     this worktree; `PR Validation` clones it only into Xcode Cloud's temporary machine
 
 ## Files Touched In Current Workstream
+- `FORK_NOTES.md`
+- `HANDOFF.md`
+- `TESTFLIGHT_RUNBOOK.md`
+- `AGENTS.md`
+- `ios/ci_scripts/README.md`
+
+## Historical Files Touched (August iOS Workstream)
 - `ios/Chaldea.xcodeproj/project.pbxproj`
 - `ios/Chaldea/Chaldea-Bridging-Header.h`
 - `ios/Flutter/ForkIdentity.xcconfig`

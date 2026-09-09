@@ -1,6 +1,11 @@
 # Chaldea Personal Fork: iOS and TestFlight Runbook
 
-Last updated: 2026-08-21
+Last updated: 2026-09-09
+
+For routine upstream updates, personal-change PRs, validation, and automatic
+delivery, start with [FORK_NOTES.md](FORK_NOTES.md). This runbook is the detailed
+signing/manual fallback reference. Historical validation below is dated evidence,
+not a live App Store Connect status report; check `HANDOFF.md` for the latest run.
 
 This document is the complete handoff for building, signing, uploading, and
 installing this personal Chaldea fork through TestFlight. It is intended for
@@ -18,11 +23,13 @@ upstream-owned files.
 
 ## Repository and Worktree
 
-- Repository worktree:
-  `/Users/jinx/gits/personal/chaldea/.dev/worktree/sharp-ocean`
-- Branch: `sharp-ocean`
-- Canonical cross-computer handoff: `HANDOFF.md`
-- The iOS fork changes are intentionally isolated on this branch.
+- Repository: `DavidNavalho/chaldea`; normal integration branch: `main`.
+- Use the current checkout or an intentional clean worktree; determine its path
+  with `git rev-parse --show-toplevel` and inspect `git worktree list`.
+- Canonical cross-computer handoff: `HANDOFF.md`.
+- The iOS fork changes and Xcode Cloud PR validation are already merged into
+  `main` (including PR #27). The original `sharp-ocean` worktree is historical,
+  not a prerequisite or a branch to reset.
 - Do not reset, discard, or overwrite unrelated working-tree changes.
 - Do not commit credentials, provisioning profiles, certificates, private
   keys, App Store Connect API keys, or Apple account information.
@@ -30,9 +37,10 @@ upstream-owned files.
 Before continuing, run:
 
 ```sh
-cd /Users/jinx/gits/personal/chaldea/.dev/worktree/sharp-ocean
-git status --short
-sed -n '1,260p' HANDOFF.md
+cd "$(git rev-parse --show-toplevel)"
+git status --short --branch
+git worktree list
+# Read HANDOFF.md and FORK_NOTES.md before continuing.
 ```
 
 ## Personal Apple Identity
@@ -47,8 +55,8 @@ Apple Developer portal, App Store Connect, entitlements, and application code.
 | Widget bundle ID | `io.github.davidnavalho.chaldea.FakerStatusWidget` |
 | Shared App Group | `group.io.github.davidnavalho.chaldea.shared` |
 | Installed app display name | `Chaldea` |
-| Current repository version | `2.6.0+990` |
-| Latest uploaded TestFlight build | `2.5.27 (990)` |
+| Repository version | Read `version:` in the selected commit's `pubspec.yaml` |
+| Last documented Cloud delivery (2026-08-22) | `2.6.0 (5)`; verify newer runs in App Store Connect |
 | Main app minimum iOS | `15.0` |
 | Widget minimum iOS | `18.1` |
 
@@ -130,7 +138,7 @@ DerivedData.
 
 ## Toolchain State
 
-Installed and validated on this machine:
+Historical validated toolchain (2026-08-22; verify on the current machine):
 
 - Homebrew FVM: `4.1.2`
 - Flutter through FVM: `3.44.8`
@@ -239,7 +247,8 @@ The archive is a generated, ignored artifact and may not exist on another
 machine. The wrapper also checks the app and widget bundle IDs, versions, and
 build numbers before reporting success.
 
-For the next signed archive, use a new build number:
+Manual fallback example for the historical 2.6.0 version line (verify the
+selected source version and Apple's existing build numbers before using it):
 
 ```sh
 scripts/fork/build_ios_testflight.sh \
@@ -255,11 +264,11 @@ signing, uploaded the previous builds, and was accepted by Apple. Xcode
 reported a non-blocking missing dSYM warning for `objective_c.framework`; the
 upload still completed.
 
-Current App Store Connect/TestFlight state:
+Recorded App Store Connect/TestFlight state on 2026-08-22 (not live state):
 
 - App: `Chaldea Personal` (numeric app ID `6801619927`)
-- Latest uploaded build: `2.6.0 (5)`, delivered by Xcode Cloud on 2026-08-22
-- Latest build state: processed, `Testing`, and expires in 90 days
+- Recorded uploaded build: `2.6.0 (5)`, delivered by Xcode Cloud on 2026-08-22
+- Recorded build state: processed, `Testing`; TestFlight builds expire after 90 days
 - Internal group: `Chaldea Internal`
 - Automatic distribution: enabled
 - Builds in group: 3 (`989`, `990`, and `2.6.0 (5)`)
@@ -492,19 +501,21 @@ Official instructions:
 
 https://developer.apple.com/help/app-store-connect/create-an-app-record/add-a-new-app/
 
-## Agent Continuation Checklist
+## Manual Build / Recovery Checklist
 
-Once the user confirms all Apple setup steps are complete, the next agent
-should proceed as follows.
+Routine releases use the protected PR and automatic Cloud delivery path in
+`FORK_NOTES.md`. Use these steps only for a deliberate local signed archive or
+recovery, with the owner's Apple account configured. The setup was completed
+previously; verify it rather than recreating identifiers or app records.
 
 ### 1. Preserve and Inspect Current Work
 
 ```sh
-cd /Users/jinx/gits/personal/chaldea/.dev/worktree/sharp-ocean
-git status --short
+cd "$(git rev-parse --show-toplevel)"
+git status --short --branch
+git worktree list
 git diff --check
-sed -n '1,320p' HANDOFF.md
-sed -n '1,420p' TESTFLIGHT_RUNBOOK.md
+# Read HANDOFF.md, FORK_NOTES.md, and this runbook completely.
 ```
 
 Do not use `git reset --hard`, `git checkout --`, or another destructive command
@@ -560,12 +571,12 @@ Do not run broad dependency upgrades merely to produce the TestFlight build.
 
 ### 4. Trigger Automatic Signing
 
-First try:
+Choose the source version and a valid build number as described below, then:
 
 ```sh
 scripts/fork/build_ios_testflight.sh \
-  --build-name 2.6.0 \
-  --build-number 991 \
+  --build-name "$BUILD_NAME" \
+  --build-number "$BUILD_NUMBER" \
   --codesign \
   --allow-provisioning-updates
 ```
@@ -587,23 +598,22 @@ automatic signing genuinely cannot resolve the setup.
 ### 5. Build-Number Rules
 
 Every uploaded build for the same app version needs a unique, increasing build
-number. The current repository version is:
+number. Cloud uses `CI_BUILD_NUMBER`; do not bump `pubspec.yaml` merely to trigger
+a release or copy an old example's build number without checking Apple first.
 
-```text
-2.6.0+990
-```
-
-Builds `989` and `990` were accepted by App Store Connect on 2026-08-20 and
-must not be reused for another upload. For the next upload, either update the
-version in `pubspec.yaml` or build with an override:
+For a manual build, read the version from the selected source commit and choose
+a build number greater than the already uploaded builds for that version:
 
 ```sh
-scripts/fork/build_ios_testflight.sh \
-  --build-name 2.6.0 \
-  --build-number 991 \
-  --codesign \
-  --allow-provisioning-updates
+BUILD_NAME="$(awk '/^version:/{split($2, parts, "+"); print parts[1]; exit}' pubspec.yaml)"
+# Set BUILD_NUMBER after checking App Store Connect for this BUILD_NAME.
+: "${BUILD_NUMBER:?Set an unused, increasing build number for this version}"
 ```
+
+Coordinate manual uploads with Cloud: a high manual build number on the same
+version line may require advancing Cloud's sequence before its next upload.
+Historical `2.5.27 (989)` and `2.5.27 (990)` do not conflict with `2.6.0 (5)`;
+build-number sequencing is per marketing version, not globally across versions.
 
 Do not increase the build number merely because a local build failed before
 upload. Increase it after App Store Connect has accepted that build number.
@@ -755,24 +765,23 @@ adapter alone, run:
 fvm dart analyze lib/packages/home_widget.dart
 ```
 
-The test command must include the repository path:
+Full tests require `APP_PATH` to contain `game/` with the offline payload; merely
+pointing at an arbitrary checkout is insufficient. Use the data-aware Cloud
+validation helper locally after dependency setup:
 
 ```sh
-fvm flutter test \
-  --dart-define=APP_PATH=/Users/jinx/gits/personal/chaldea/.dev/worktree/sharp-ocean
+fvm flutter pub get
+CHALDEA_FLUTTER_BIN="$PWD/.fvm/flutter_sdk/bin/flutter" \
+  ios/ci_scripts/ci_validate_pull_request.sh
 ```
 
-Current result:
+It clones the public payload into a temporary directory and runs analysis and
+all tests without using personal account data. Xcode Cloud PR build 7 passed
+all 254 tests on 2026-08-22. An earlier local run without that payload passed
+14 tests but failed six data-dependent suites during initialization; that is
+historical environment evidence, not the current full-suite result.
 
-- 14 tests pass, including the custom box-coverage tests.
-- Six data-dependent suites fail during initialization because the worktree has
-  no offline game-data payload (`No data found`, data version `null`).
-- Those failures are not caused by the iOS identity, deployment, or signing
-  changes.
-
-Do not alter application logic merely to hide the missing test-data condition.
-If full test validation is required, obtain or generate the expected offline
-game-data payload through the repository's normal data workflow first.
+Do not alter application logic merely to hide a missing test-data condition.
 
 ## Troubleshooting Matrix
 
@@ -788,8 +797,10 @@ Resolution: Xcode -> Settings -> Accounts, sign in, and confirm team
 Cause: App IDs/capabilities are not registered, the account is not available to
 Xcode, or automatic signing has not generated profiles.
 
-Resolution: Verify both explicit App IDs, assign the App Group to both, select
-the team in Signing & Capabilities, and rebuild.
+Resolution: Verify both explicit App IDs and their App Group assignments, then
+inspect team resolution through the external fork overlay and rebuild with the
+wrapper. Do not select a team in the project editor: that would write personal
+identity into the upstream-owned Xcode project.
 
 ### App Group entitlement mismatch
 
@@ -853,7 +864,8 @@ The TestFlight objective is complete only when all of the following are true:
 - The App Group is registered.
 - Both explicit App IDs are registered and assigned to the App Group.
 - The main App Store Connect record exists.
-- A signed archive and IPA build successfully.
+- A signed archive and its App Store export succeed (Cloud/Organizer performs
+  the export; the local wrapper itself produces only an archive).
 - Main app and widget signatures contain the personal App Group.
 - App Store Connect accepts and processes the uploaded build.
 - The build is assigned to an internal TestFlight group.
