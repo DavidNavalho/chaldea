@@ -6,6 +6,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:chaldea/app/api/chaldea.dart';
+import 'package:chaldea/app/app.dart';
+import 'package:chaldea/app/modules/misc/xapk_install_page.dart';
+import 'package:chaldea/app/tools/apk_installer.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/packages/language.dart';
@@ -48,12 +51,17 @@ class _ApkListPageState extends State<ApkListPage> {
   static final Map<String, String> bfgoVersions = {};
 
   late final _hidden = db.settings.hideApple;
-  late bool proxy = db.settings.proxy.worker;
+  late bool proxy = db.settings.network.proxy.worker;
+  // silent manifest-declaration probe
+  bool canInstallApk = false;
   String get apkHost => proxy ? '${HostsX.worker.kCN}/proxy' : 'https://fgo.bigcereal.com';
 
   @override
   void initState() {
     super.initState();
+    ApkInstaller.isSupported().then((supported) {
+      if (mounted) setState(() => canInstallApk = supported);
+    });
     if (apks.any((e) => e.url == null)) {
       load();
     }
@@ -208,6 +216,7 @@ class _ApkListPageState extends State<ApkListPage> {
                       ),
                   ],
                 ),
+                if (canInstallApk) xapkInstallEntry,
                 xapkHint,
                 const SizedBox(height: 16),
                 const DividerWithTitle(title: 'Links', indent: 16, height: 16),
@@ -361,6 +370,16 @@ class _ApkListPageState extends State<ApkListPage> {
     );
   }
 
+  void _onInstallTap(BuildContext context, String url) {
+    if (url.toLowerCase().endsWith('.xapk')) {
+      // XAPK direct install: full download→parse→install flow on the
+      // dedicated page (ADR 0004)
+      router.pushPage(XapkInstallPage(url: url));
+    } else {
+      ApkInstaller.installFromUrl(context, url: url);
+    }
+  }
+
   Widget downloadTile(Region? region, String? ver, String url, bool is32) {
     List<String> titles = [
       region?.upper ?? 'Chaldea App',
@@ -377,13 +396,24 @@ class _ApkListPageState extends State<ApkListPage> {
       onTap: () {
         launch(url, external: true);
       },
-      trailing: IconButton(
-        onPressed: () {
-          copyToClipboard(url);
-          EasyLoading.showToast([S.current.copied, url].join('\n'));
-        },
-        icon: const Icon(Icons.copy, size: 18),
-        tooltip: S.current.copy,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (canInstallApk)
+            IconButton(
+              onPressed: () => _onInstallTap(context, url),
+              icon: const Icon(Icons.install_mobile, size: 20),
+              tooltip: S.current.install,
+            ),
+          IconButton(
+            onPressed: () {
+              copyToClipboard(url);
+              EasyLoading.showToast([S.current.copied, url].join('\n'));
+            },
+            icon: const Icon(Icons.copy, size: 18),
+            tooltip: S.current.copy,
+          ),
+        ],
       ),
     );
   }
@@ -398,14 +428,41 @@ class _ApkListPageState extends State<ApkListPage> {
       onTap: () {
         launch(url, external: true);
       },
-      trailing: IconButton(
-        onPressed: () {
-          copyToClipboard(url);
-          EasyLoading.showToast([S.current.copied, url].join('\n'));
-        },
-        icon: const Icon(Icons.copy, size: 18),
-        tooltip: S.current.copy,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (canInstallApk && platform == 'android')
+            IconButton(
+              onPressed: () => _onInstallTap(context, url),
+              icon: const Icon(Icons.install_mobile, size: 20),
+              tooltip: S.current.install,
+            ),
+          IconButton(
+            onPressed: () {
+              copyToClipboard(url);
+              EasyLoading.showToast([S.current.copied, url].join('\n'));
+            },
+            icon: const Icon(Icons.copy, size: 18),
+            tooltip: S.current.copy,
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget get xapkInstallEntry {
+    return TileGroup(
+      children: [
+        ListTile(
+          leading: const Icon(Icons.install_mobile),
+          title: Text(S.current.xapk_install_title),
+          subtitle: Text(S.current.xapk_select_file),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () {
+            router.pushPage(const XapkInstallPage());
+          },
+        ),
+      ],
     );
   }
 
@@ -419,16 +476,16 @@ class _ApkListPageState extends State<ApkListPage> {
           data: Language.isZH
               ? """**重要 2024.07.19**
 
-Google 不再提供APK格式安装包。XAPK格式需要通过安装器安装，如ApkPure App、APKCombo Installer、MT管理器、UU加速器等进行安装。等效于Google Play商店安装的官方版本。
+Google 不再提供APK格式安装包。XAPK格式可使用本应用的「XAPK 安装」功能直接安装（等效于Google Play商店安装的官方版本），也可通过 ApkPure App、APKCombo Installer、MT管理器等外部安装器安装。
 
-部分机型需关闭一些系统优化，如MIUI需关闭MIUI优化。
+部分机型需关闭一些系统优化，如MIUI需关闭MIUI优化，详见XAPK安装页的兼容性说明。
 
 <https://docs.chaldea.center/zh/guide/fgo_apk>"""
               : """**IMPORTANT 2024.07.19**
 
-Google Play Store won't provide APK format anymore. XAPK needs installer: ApkPure App/APKCombo Installer/MT Explorer/...
+Google Play Store won't provide APK format anymore. XAPK can be installed directly with the built-in "XAPK Install" feature (equivalent to the official Play Store version), or with an external installer such as ApkPure App / APKCombo Installer / MT Explorer.
 
-Some devices have to turn off optimization, such as MIUI.
+Some devices have to turn off optimization, such as MIUI — see the compatibility notes on the XAPK install page.
 
 <https://docs.chaldea.center/guide/fgo_apk>""",
         ),

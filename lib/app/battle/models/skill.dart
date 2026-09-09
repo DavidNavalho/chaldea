@@ -57,6 +57,8 @@ class BattleSkillInfoData {
     return _skillLv.clamp(1, maxLv);
   }
 
+  List<int> getIndividualiyArray() => skill?.individuality ?? [];
+
   void setRankUp(final int newRank) {
     rankUp = newRank;
     skillScript = skill?.script;
@@ -266,6 +268,7 @@ class BattleSkillInfoData {
       script: skillScript,
       skillType: curSkill.type,
       skillInfoType: type,
+      skillOrTd: curSkill,
       selectedActionIndex: selectedActionIndex,
       effectiveness: effectiveness,
       defaultToPlayer: defaultToPlayer,

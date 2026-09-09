@@ -384,7 +384,7 @@ class TdDmgSolver {
     data.grandSvt = options.grandSvt;
     if (data.grandSvt && !options.grandBoard.isNone) {
       if (options.equip2Type != BondEquipType.none) {
-        // TODO: Mash has two bond equips
+        // TODO_: Mash has two bond equips
         final equip2 = db.gameData.craftEssencesById[svt.bondEquips.firstOrNull];
         if (equip2 != null) {
           data.equip2 = SvtEquipData(ce: equip2, limitBreak: true, lv: equip2.lvMax);
@@ -468,6 +468,14 @@ class TdDmgSolver {
     final delegate = BattleDelegate();
     delegate.decideOC = (_actor, baseOC, upOC) => options.fixedOC ? options.oc : options.oc + upOC;
     delegate.whetherTd = (_actor) => true;
+    delegate.actWeight = (_actor) async {
+      // better to pass skill
+      // Summer Beni-Enma
+      if (_actor?.svtId == 705300) {
+        return 1;
+      }
+      return null;
+    };
     delegate.skillActSelect = (_actor) async {
       if (_actor?.svtId == 2501100) {
         return 1;

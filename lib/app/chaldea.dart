@@ -15,6 +15,7 @@ import 'package:chaldea/app/api/chaldea.dart';
 import 'package:chaldea/app/api/chaldea_server.dart';
 import 'package:chaldea/app/api/jwt_utils.dart';
 import 'package:chaldea/app/tools/app_update.dart';
+import 'package:chaldea/app/tools/desktop_updater.dart';
 import 'package:chaldea/generated/intl/messages_all.dart';
 import 'package:chaldea/models/faker/shared/network.dart';
 import 'package:chaldea/packages/app_info.dart';
@@ -49,6 +50,14 @@ class _ChaldeaState extends State<Chaldea> with AfterLayoutMixin, WindowListener
   // app session after the user dismisses it once. Resets on cold restart.
   bool _emailBindingSkipped = false;
 
+  // Stable key so the FlutterEasyLoading State survives tree restructuring.
+  // In debug mode the framework wraps the MaterialApp.builder output in a
+  // WidgetInspector when DevTools' inspector is toggled; without a key the
+  // element is recreated and its initState attaches a second host while the
+  // old one is disposed only at end-of-frame, triggering
+  // "EasyLoading supports one active Host".
+  final GlobalKey _easyLoadingKey = GlobalKey(debugLabel: 'FlutterEasyLoading');
+
   @override
   void reassemble() {
     super.reassemble();
@@ -71,20 +80,20 @@ class _ChaldeaState extends State<Chaldea> with AfterLayoutMixin, WindowListener
         theme: lightTheme,
         darkTheme: darkTheme,
         themeMode: db.settings.themeMode,
-        scrollBehavior: DraggableScrollBehavior(enableMouse: db.settings.enableMouseDrag),
+        scrollBehavior: DraggableScrollBehavior(enableMouse: db.settings.display.enableMouseDrag),
         locale: Language.getLanguage(db.settings.language)?.locale,
         localizationsDelegates: const [S.delegate, ...GlobalMaterialLocalizations.delegates],
         supportedLocales: Language.getSortedSupportedLanguage(db.settings.language).map((e) => e.locale),
         builder: (context, widget) {
           ErrorWidget.builder = _ErrorWidget.errorWidgetBuilder;
           isEasyLoadingAttached = true;
-          return FlutterEasyLoading(child: widget);
+          return FlutterEasyLoading(key: _easyLoadingKey, child: widget);
         },
       ),
     );
     if (PlatformU.isAndroid) {
       child = AnnotatedRegion<SystemUiOverlayStyle>(
-        value: db.settings.isResolvedDarkMode
+        value: db.settings.appearance.isResolvedDarkMode
             ? SystemUiOverlayStyle.dark.copyWith(
                 // statusBarColor: Colors.transparent,
                 systemNavigationBarColor: darkTheme.scaffoldBackgroundColor,
@@ -117,7 +126,7 @@ class _ChaldeaState extends State<Chaldea> with AfterLayoutMixin, WindowListener
     // debugPrint('initiate $runtimeType');
     super.initState();
     db.notifyAppUpdate = onAppUpdate;
-    db.settings.launchTimes += 1;
+    db.settings.misc.launchTimes += 1;
     if (db.settings.language != null) {
       Intl.defaultLocale = Language.current.code;
     }
@@ -164,22 +173,23 @@ class _ChaldeaState extends State<Chaldea> with AfterLayoutMixin, WindowListener
     // are silent — passive refresh on 401 covers the edge case.
     unawaited(_tryProactiveRefresh());
 
-    if (DateTime.now().timestamp - db.settings.lastBackup > 24 * 3600) {
+    if (DateTime.now().timestamp - db.settings.misc.lastBackup > 24 * 3600) {
       db.backupUserdata();
       db.backupSettings();
     }
     if (PlatformU.isMobile && !AppInfo.isIPad) {
-      if (!db.settings.autoRotate) {
+      if (!db.settings.platform.autoRotate) {
         SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
       }
     }
 
-    if (db.settings.showSystemTray) AppWindowUtil.setTray();
+    if (db.settings.platform.showSystemTray) AppWindowUtil.setTray();
 
     CachedApi.remoteConfig();
-    if (db.settings.autoUpdateApp &&
+    if (db.settings.network.autoUpdateApp &&
         !kIsWeb &&
-        (DateTime.now().timestamp - db.settings.lastLaunchTime > 7 * kSecsPerDay || db.settings.launchTimes % 5 == 0)) {
+        (DateTime.now().timestamp - db.settings.misc.lastLaunchTime > 7 * kSecsPerDay ||
+            db.settings.misc.launchTimes % 5 == 0)) {
       await Future.delayed(const Duration(seconds: 5));
       if (PlatformU.isIOS) {
         AppUpdater.checkAppStoreUpdate();
@@ -193,7 +203,11 @@ class _ChaldeaState extends State<Chaldea> with AfterLayoutMixin, WindowListener
         AppUpdater.backgroundUpdate();
       }
     }
-    db.settings.lastLaunchTime = DateTime.now().timestamp;
+    db.settings.misc.lastLaunchTime = DateTime.now().timestamp;
+
+    if (DesktopUpgrader.supported) {
+      unawaited(DesktopUpgrader.cleanupArtifacts());
+    }
 
     FilePickerU.clearTemporaryFiles();
     if (mounted) setState(() {});

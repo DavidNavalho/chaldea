@@ -7,6 +7,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/tools/app_update.dart';
+import 'package:chaldea/app/tools/desktop_updater.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/db.dart';
 import 'package:chaldea/packages/app_info.dart';
@@ -162,23 +163,21 @@ class _AboutPageState extends State<AboutPage> {
                     }
                     final update = await AppUpdater.showUpdateAlert(detail);
                     if (update != true) return;
-                    EasyLoading.showInfo('Background downloading...');
-                    final savePath = await AppUpdater.download(detail);
-                    if (savePath == null && !PlatformU.isAndroid) {
-                      EasyLoading.showError('Download app update failed');
+                    if (!context.mounted) return;
+                    if (DesktopUpgrader.supported) {
+                      await showDesktopUpgradeDialog(context, detail);
+                    } else {
+                      await AppUpdater.installUpdate(detail);
                     }
-                    final install = await AppUpdater.showInstallAlert(detail.release.version!);
-                    if (install != true) return;
-                    await AppUpdater.installUpdate(detail, savePath);
                   },
                 ),
               if (!kIsWeb && !PlatformU.isIOS && !AppInfo.isMacStoreApp && !AppInfo.isFDroid)
                 SwitchListTile.adaptive(
-                  value: db.settings.autoUpdateApp,
+                  value: db.settings.network.autoUpdateApp,
                   title: Text(S.current.auto_update),
                   onChanged: (v) {
                     setState(() {
-                      db.settings.autoUpdateApp = v;
+                      db.settings.network.autoUpdateApp = v;
                       db.saveSettings();
                     });
                   },

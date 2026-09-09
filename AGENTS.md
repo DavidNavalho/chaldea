@@ -20,6 +20,10 @@
 - If behavior can be implemented either in core or custom modules, choose custom modules.
 
 ### Upstream Sync Workflow
+- End-to-end maintenance checklist: `FORK_NOTES.md` (sync, personal PRs, validation, and TestFlight).
+- Delivery details: `TESTFLIGHT_RUNBOOK.md` and `ios/ci_scripts/README.md`.
+- Preserve dirty work and inspect nested worktrees before following the resume checklist.
+- Do not rerun a sync branch's preparation after adding conflict resolutions or local commits: it resets from `origin/main`.
 - Canonical sync command (protected main / automation): `./scripts/sync_fork_pr.sh --open-pr`
 - What it does by default:
   - stashes local dirty changes,

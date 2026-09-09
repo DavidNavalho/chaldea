@@ -169,7 +169,6 @@ class MessageLookup extends MessageLookupByLibrary {
     "auth_admin_reset_password_confirm": MessageLookupByLibrary.simpleMessage("Reset this user\'s password?"),
     "auth_admin_reset_password_prompt": MessageLookupByLibrary.simpleMessage("Enter new password"),
     "auth_admin_send_recovery": MessageLookupByLibrary.simpleMessage("Send Recovery Email"),
-    "auth_admin_send_recovery_confirm": MessageLookupByLibrary.simpleMessage("Send recovery email to this user?"),
     "auth_admin_sessions": MessageLookupByLibrary.simpleMessage("Active Sessions"),
     "auth_admin_statistics": MessageLookupByLibrary.simpleMessage("Statistics"),
     "auth_admin_teams_count": MessageLookupByLibrary.simpleMessage("Teams"),
@@ -516,6 +515,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "display_show_window_fab": MessageLookupByLibrary.simpleMessage("Show Multi-Window Button"),
     "done": MessageLookupByLibrary.simpleMessage("DONE"),
     "download": MessageLookupByLibrary.simpleMessage("Download"),
+    "download_cancelled": MessageLookupByLibrary.simpleMessage("Download cancelled."),
     "download_latest_gamedata_hint": MessageLookupByLibrary.simpleMessage(
       "To ensure compatibility, please upgrade to the latest APP version before updating",
     ),
@@ -787,6 +787,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "info_value": MessageLookupByLibrary.simpleMessage("Value"),
     "input_invalid_hint": MessageLookupByLibrary.simpleMessage("Invalid inputs"),
     "install": MessageLookupByLibrary.simpleMessage("Install"),
+    "install_failed_to_start": MessageLookupByLibrary.simpleMessage("Failed to start the system installer."),
+    "install_permission_hint": MessageLookupByLibrary.simpleMessage(
+      "Direct installs need a one-time system permission. Tap \"Open Settings\" and allow \"Allow from this source\" for Chaldea, then return and tap Install again.",
+    ),
     "instant_death": MessageLookupByLibrary.simpleMessage("Instant Death"),
     "instant_death_params": MessageLookupByLibrary.simpleMessage("Instant Death Params"),
     "interlude": MessageLookupByLibrary.simpleMessage("Interlude"),
@@ -967,6 +971,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "open_condition": MessageLookupByLibrary.simpleMessage("Condition"),
     "open_in_browser": MessageLookupByLibrary.simpleMessage("Open In Browser"),
     "open_in_file_manager": MessageLookupByLibrary.simpleMessage("Please open with file manager"),
+    "open_settings": MessageLookupByLibrary.simpleMessage("Open Settings"),
     "opening_time": MessageLookupByLibrary.simpleMessage("Opening Time"),
     "optional_event_passive": MessageLookupByLibrary.simpleMessage("Optional Event Passive"),
     "options": MessageLookupByLibrary.simpleMessage("Options"),
@@ -1060,6 +1065,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "recognizer_result_count": m34,
     "recorder_screenshot_current_view": MessageLookupByLibrary.simpleMessage("Current View"),
     "recorder_screenshot_full_view": MessageLookupByLibrary.simpleMessage("Full View"),
+    "redownload": MessageLookupByLibrary.simpleMessage("Redownload"),
     "refresh": MessageLookupByLibrary.simpleMessage("Refresh"),
     "region_cn": MessageLookupByLibrary.simpleMessage("CN"),
     "region_jp": MessageLookupByLibrary.simpleMessage("JP"),
@@ -1380,5 +1386,46 @@ class MessageLookup extends MessageLookupByLibrary {
       "CN endpoint for China mainland\nWeb app is only recommended for PC users, Mobile website is laggy and may refresh unexpectedly.",
     ),
     "words_separate": m12,
+    "xapk_cancel_and_pick": MessageLookupByLibrary.simpleMessage("Cancel download and pick"),
+    "xapk_cancel_download_to_pick": MessageLookupByLibrary.simpleMessage(
+      "A download is in progress. Cancel it and pick a local file instead?",
+    ),
+    "xapk_confirming": MessageLookupByLibrary.simpleMessage("Please confirm the install in the system dialog"),
+    "xapk_error_confirm_activity_missing": MessageLookupByLibrary.simpleMessage(
+      "The device installer refused the confirmation dialog. On MIUI, turn off \"MIUI optimization\" in Developer options and retry.",
+    ),
+    "xapk_error_crc_failed": MessageLookupByLibrary.simpleMessage(
+      "Archive failed the integrity check (CRC), please re-download",
+    ),
+    "xapk_error_file_not_found": MessageLookupByLibrary.simpleMessage("File not found"),
+    "xapk_error_missing_split": MessageLookupByLibrary.simpleMessage(
+      "A split APK listed in the manifest is missing from the archive",
+    ),
+    "xapk_error_no_base_split": MessageLookupByLibrary.simpleMessage("No base APK found in the manifest"),
+    "xapk_error_no_manifest": MessageLookupByLibrary.simpleMessage("manifest.json is missing or invalid"),
+    "xapk_error_not_zip": MessageLookupByLibrary.simpleMessage("Not a valid XAPK archive"),
+    "xapk_error_obb_unsupported": MessageLookupByLibrary.simpleMessage(
+      "This XAPK contains OBB expansion data, which is not supported yet. Please install it with an external installer app.",
+    ),
+    "xapk_error_size_mismatch": MessageLookupByLibrary.simpleMessage(
+      "Archive size differs from the manifest — the file is corrupt, please re-download",
+    ),
+    "xapk_error_timeout": MessageLookupByLibrary.simpleMessage("Timed out waiting for the system installer"),
+    "xapk_install_failed": MessageLookupByLibrary.simpleMessage("Install failed"),
+    "xapk_install_success": MessageLookupByLibrary.simpleMessage("Install finished"),
+    "xapk_install_title": MessageLookupByLibrary.simpleMessage("XAPK Install"),
+    "xapk_installing": MessageLookupByLibrary.simpleMessage("Installing..."),
+    "xapk_no_install_permission_hint": MessageLookupByLibrary.simpleMessage(
+      "This build (e.g. from Google Play) does not declare the install-permission, so it cannot install APK/XAPK directly. Please use a third-party installer.",
+    ),
+    "xapk_not_supported_hint": MessageLookupByLibrary.simpleMessage(
+      "Not every XAPK is supported (e.g. those containing OBB expansion data are not). If parsing or installation fails, please use a third-party installer — such as ApkPure App, APKCombo Installer, or MT Explorer — or the APK page\'s install helper.",
+    ),
+    "xapk_package": MessageLookupByLibrary.simpleMessage("Package"),
+    "xapk_parsed": MessageLookupByLibrary.simpleMessage("Ready to install"),
+    "xapk_parsing": MessageLookupByLibrary.simpleMessage("Parsing..."),
+    "xapk_select_file": MessageLookupByLibrary.simpleMessage("Select XAPK/APK file"),
+    "xapk_total_size": MessageLookupByLibrary.simpleMessage("Total size"),
+    "xapk_vendor_guidance_header": MessageLookupByLibrary.simpleMessage("Device compatibility"),
   };
 }

@@ -3,13 +3,15 @@ import 'dart:async';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../models/db.dart';
+import 'logger.dart';
 
 class _NetworkStat {
   List<ConnectivityResult>? _connectivity;
   List<ConnectivityResult>? get connectivity => _connectivity;
 
   bool get available =>
-      db.settings.forceOnline || (_connectivity != null && _connectivity!.any((e) => e != ConnectivityResult.none));
+      db.settings.network.forceOnline ||
+      (_connectivity != null && _connectivity!.any((e) => e != ConnectivityResult.none));
 
   bool get unavailable => !available;
 
@@ -28,7 +30,12 @@ class _NetworkStat {
   }
 
   Future<List<ConnectivityResult>> check() async {
-    return _connectivity = await Connectivity().checkConnectivity();
+    try {
+      return _connectivity = await Connectivity().checkConnectivity();
+    } catch (e, s) {
+      logger.e('check network connectivity failed', e, s);
+      return [];
+    }
   }
 }
 

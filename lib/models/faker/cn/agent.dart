@@ -506,6 +506,24 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
   }
 
   @override
+  Future<FResponse> eventTreasureBoxDraw({required int32_t treasureBoxId, required int32_t drawNum}) {
+    return _acPhp(
+      key: 'treasureboxdraw',
+      nid: 'treasure_box_draw',
+      params2: {'treasureBoxId': treasureBoxId, 'num': drawNum},
+    );
+  }
+
+  @override
+  Future<FResponse> eventCreateRecipe({required int32_t recipeId, required int32_t createNum}) {
+    return _acPhp(
+      key: 'eventcreaterecipe',
+      nid: 'event_create_recipe',
+      params2: {'recipeId': recipeId, 'num': createNum},
+    );
+  }
+
+  @override
   Future<FResponse> userPresentReceive({
     required List<int64_t> presentIds,
     required int32_t itemSelectIdx,
@@ -913,12 +931,12 @@ class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManage
         "followerType": followerType,
         "followerRandomLimitCount": followerRandomLimitCount,
         "followerSpoilerProtectionLimitCount": followerSpoilerProtectionLimitCount,
+        "followerSupportDeckId": followerSupportDeckId,
         // TODO_CN 20270417
         // "followerDispLimitCount": followerDispLimitCount,
         // "followerIconLimitCount": followerIconLimitCount,
         // "followerPortraitLimitCount": followerPortraitLimitCount,
         // "followerCommandCardLimitCount": followerCommandCardLimitCount,
-        // "followerSupportDeckId": followerSupportDeckId,
 
         // TODO_CN 20270401 Francesca
         // "choiceTransformRandomLimitCounts": choiceTransformRandomLimitCounts,

@@ -724,7 +724,7 @@ class BattleData {
       if (buff.buff.type == BuffType.toFieldChangeField) {
         traitsOnField.addAll(buff.vals.FieldIndividuality ?? []);
       } else if (buff.buff.type == BuffType.toFieldSubIndividualityField) {
-        // TODO: ???
+        // TODO_: toFieldSubIndividualityField, has one func but not used yet
       }
     }
     allTraits.addAll(traitsOnField);
@@ -1188,6 +1188,7 @@ class BattleData {
               buff.vals.CounterLv ?? 1,
               script: td.script,
               activator: svt,
+              skillOrTd: td,
               targetedAlly: targetedPlayer,
               targetedEnemy: targetedEnemy,
               card: action.cardData,
@@ -1625,7 +1626,11 @@ class BattleData {
     return -1;
   }
 
-  List<BattleServantData> getBuffConditionTargets(BuffConditionTargetType targetType, BattleServantData self) {
+  List<BattleServantData> getBuffConditionTargets(
+    BuffConditionTargetType targetType,
+    BattleServantData self,
+    int? relativePosition,
+  ) {
     final List<BattleServantData> targets = [];
 
     final isAlly = self.isPlayer;
@@ -1671,7 +1676,14 @@ class BattleData {
         targets.remove(self);
         break;
       case BuffConditionTargetType.relativePositionPt:
-        // TODO: BuffConditionTargetType.relativePositionPt
+        if (relativePosition != null) {
+          for (final ally in aliveAllies) {
+            if (self.fieldIndex + relativePosition == ally.fieldIndex) {
+              targets.add(ally);
+              break;
+            }
+          }
+        }
         break;
     }
 

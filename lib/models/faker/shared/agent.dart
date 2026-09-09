@@ -62,6 +62,10 @@ abstract class FakerAgent<
     required int32_t cancelTradeFlag,
   });
 
+  Future<FResponse> eventTreasureBoxDraw({required int32_t treasureBoxId, required int32_t drawNum});
+
+  Future<FResponse> eventCreateRecipe({required int32_t recipeId, required int32_t createNum});
+
   Future<FResponse> userPresentReceive({
     required List<int64_t> presentIds,
     required int32_t itemSelectIdx,
