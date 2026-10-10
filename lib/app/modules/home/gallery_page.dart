@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/tools/gamedata_loader.dart';
@@ -13,6 +13,7 @@ import 'package:chaldea/packages/platform/platform.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/simple_accordion.dart';
 import 'package:chaldea/widgets/tile_items.dart';
+
 import 'elements/grid_gallery.dart';
 import 'elements/news_carousel.dart';
 import 'elements/random_image.dart';
@@ -61,20 +62,24 @@ class _GalleryPageState extends State<GalleryPage> {
                     return SimpleDialog(
                       title: Text(S.current.update),
                       children: [
-                        SimpleDialogOption(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          child: Text(S.current.carousel),
-                          onPressed: () async {
+                        ListTile(
+                          dense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          title: Text(S.current.carousel),
+                          subtitle: Text(db.settings.carousel.updateTime?.toDateTimeString() ?? '-'),
+                          onTap: () async {
                             Navigator.pop(context);
                             EasyLoading.showToast('${S.current.tooltip_refresh_sliders} ...');
                             await AppNewsCarousel.resolveSliderImageUrls(true);
                             if (mounted) setState(() {});
                           },
                         ),
-                        SimpleDialogOption(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                          child: Text(S.current.gamedata),
-                          onPressed: () async {
+                        ListTile(
+                          dense: true,
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                          title: Text(S.current.gamedata),
+                          subtitle: Text(db.gameData.version.dateTime.toStringShort()),
+                          onTap: () async {
                             Navigator.pop(context);
                             EasyLoading.showToast('${S.current.update_dataset} ...');
                             final data = await GameDataLoader.instance.reload();

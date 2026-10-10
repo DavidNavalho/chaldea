@@ -6,7 +6,7 @@
 // Uses Scaffold(body:) because the page has a sticky search bar + a
 // scrollable list (Expanded) — not a simple flat ListView.
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/app/api/chaldea_server.dart';
 import 'package:chaldea/app/app.dart';
@@ -163,9 +163,8 @@ class _AdminUsersPageState extends State<AdminUsersPage> {
             child: Center(
               child: Text(
                 '${_users.length} / $_total',
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ),
           ),

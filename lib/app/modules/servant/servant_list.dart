@@ -13,6 +13,7 @@ import 'package:chaldea/models/models.dart';
 import 'package:chaldea/packages/language.dart';
 import 'package:chaldea/packages/split_route/split_route.dart';
 import 'package:chaldea/utils/utils.dart';
+
 import '../../../widgets/widgets.dart';
 import '../common/filter_group.dart';
 import '../common/filter_page_base.dart';
@@ -391,7 +392,11 @@ class ServantListPageState extends State<ServantListPage> with SearchableListSta
   @override
   List<Widget> handleSlivers(List<Widget> slivers, bool useGrid) {
     List<Servant> pingedSvts =
-        widget.pinged?.map((e) => db.gameData.servantsNoDup[e]).whereType<Servant>().toList() ?? [];
+        widget.pinged
+            ?.map((e) => db.gameData.servantsById[e] ?? db.gameData.servantsNoDup[e])
+            .whereType<Servant>()
+            .toList() ??
+        [];
     pingedSvts.sort2((e) => e.collectionNo);
     if (pingedSvts.isNotEmpty) {
       slivers = [

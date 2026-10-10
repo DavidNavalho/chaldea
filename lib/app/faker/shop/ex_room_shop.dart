@@ -1,14 +1,14 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart';
-
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/app/modules/common/filter_group.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/gamedata/mst_data.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
+
 import '../runtime.dart';
 import 'shop.dart';
 
@@ -46,7 +46,7 @@ class _ExRoomShopPageState extends State<ExRoomShopPage> with FakerRuntimeStateM
     return Scaffold(
       appBar: AppBar(
         title: Text(Transl.enums(ShopType.exRoomShop, (e) => e.shopType).l),
-        actions: [runtime.buildHistoryButton(context)],
+        actions: [runtime.buildMenuButton(context)],
       ),
       body: Column(
         children: [
@@ -126,7 +126,7 @@ class _ExRoomShopPageState extends State<ExRoomShopPage> with FakerRuntimeStateM
       itemId: itemId ?? 0,
       itemNum: itemNum,
       ownNum: itemId == null ? 0 : mstData.getItemOrSvtNum(itemId),
-      leftNum: mstData.isCurPlanUser && itemId != null ? db.itemCenter.itemLeft[itemId] ?? 0 : null,
+      leftNum: itemId == null ? null : mstData.getItemLeft(itemId),
     );
   }
 

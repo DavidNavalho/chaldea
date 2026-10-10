@@ -6,7 +6,6 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:intl/intl.dart';
-import 'package:screenshot/screenshot.dart';
 
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/modules/quest/quest_list.dart';
@@ -17,7 +16,9 @@ import 'package:chaldea/packages/app_info.dart';
 import 'package:chaldea/packages/language.dart';
 import 'package:chaldea/packages/logger.dart';
 import 'package:chaldea/utils/utils.dart';
+import 'package:chaldea/widgets/screenshot.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../bond_detail_page.dart';
 import '../quest_farming.dart';
 import 'details.dart';
@@ -105,15 +106,9 @@ class _FgoAnnualReportPageState extends State<FgoAnnualReportPage> {
 
   @override
   Widget build(BuildContext context) {
-    ThemeData themeData = ThemeData(
-      brightness: Brightness.dark,
-      useMaterial3: db.settings.appearance.useMaterial3,
-      colorSchemeSeed: db.settings.appearance.colorSeed,
-      tooltipTheme: const TooltipThemeData(waitDuration: Duration(milliseconds: 500)),
-    );
+    ThemeData themeData = AppTheme.dark();
     themeData = themeData.copyWith(
-      appBarTheme: themeData.appBarTheme.copyWith(titleSpacing: 0, toolbarHeight: 48),
-      listTileTheme: themeData.listTileTheme.copyWith(minLeadingWidth: 24),
+      tooltipTheme: themeData.tooltipTheme.copyWith(waitDuration: const Duration(milliseconds: 500)),
     );
     return Theme(
       data: themeData,
@@ -140,14 +135,15 @@ class _FgoAnnualReportPageState extends State<FgoAnnualReportPage> {
                 db.gameData.spoilerRegion?.isJP == false) {
               errors.add(
                 Text(
-                  "${S.current.restart_to_apply_changes}: ${S.current.reset} ${S.current.gamedata} -> ${S.current.delete_unreleased_card}",
+                  "${S.current.restart_to_apply_changes}: ${S.current.reset} "
+                  "${S.current.gamedata} -> ${S.current.delete_unreleased_card}=>${Region.jp.localName}",
                 ),
               );
             }
             if (db.settings.filters.removeOldDataRegion != null || db.gameData.removeOldDataRegion != null) {
               errors.add(
                 Text(
-                  '${S.current.restart_to_apply_changes}: ${S.current.reset} ${S.current.gamedata}-> Delete Old Data',
+                  '${S.current.restart_to_apply_changes}: ${S.current.reset} ${S.current.gamedata}-> Delete Old Data => NO',
                 ),
               );
             }
@@ -591,8 +587,7 @@ class _FgoAnnualReportRealPageState extends State<FgoAnnualReportRealPage> {
               if (isPush) ...[
                 CenterWidgetSpan(
                   child: CachedImage(
-                    imageUrl:
-                        'https://static.atlasacademy.io/file/aa-fgo-extract-jp/Terminal/Info/CommonUIAtlas/icon_push.png',
+                    imageUrl: 'https://static.atlasacademy.io/file/aa-fgo-extract-jp/Terminal/Info/CommonUIAtlas/icon_push.png',
                     width: 18,
                     height: 18,
                     placeholder: _blankPlaceholder,
@@ -603,8 +598,7 @@ class _FgoAnnualReportRealPageState extends State<FgoAnnualReportRealPage> {
               if (isFavorite) ...[
                 CenterWidgetSpan(
                   child: CachedImage(
-                    imageUrl:
-                        'https://static.atlasacademy.io/file/aa-fgo-extract-jp/Terminal/Info/CommonUIAtlas/icon_choice.png',
+                    imageUrl: 'https://static.atlasacademy.io/file/aa-fgo-extract-jp/Terminal/Info/CommonUIAtlas/icon_choice.png',
                     width: 18,
                     height: 18,
                     placeholder: _blankPlaceholder,
@@ -682,8 +676,7 @@ class _FgoAnnualReportRealPageState extends State<FgoAnnualReportRealPage> {
                         width: 16,
                         child: Center(
                           child: CachedImage(
-                            imageUrl:
-                                'https://static.atlasacademy.io/file/aa-fgo-extract-jp/Battle/Common/CommonUIAtlas/icon_np_on.png',
+                            imageUrl: 'https://static.atlasacademy.io/file/aa-fgo-extract-jp/Battle/Common/CommonUIAtlas/icon_np_on.png',
                             width: 16,
                             height: 16,
                           ),
@@ -706,8 +699,7 @@ class _FgoAnnualReportRealPageState extends State<FgoAnnualReportRealPage> {
                         width: 16,
                         child: Center(
                           child: CachedImage(
-                            imageUrl:
-                                'https://static.atlasacademy.io/file/aa-fgo-extract-jp/Terminal/Info/CommonUIAtlas/img_bond_category.png',
+                            imageUrl: 'https://static.atlasacademy.io/file/aa-fgo-extract-jp/Terminal/Info/CommonUIAtlas/img_bond_category.png',
                             width: 14,
                             height: 14,
                           ),
@@ -1610,8 +1602,7 @@ class _FgoAnnualReportRealPageState extends State<FgoAnnualReportRealPage> {
       child: Column(
         children: [
           CachedImage(
-            imageUrl:
-                'https://static.atlasacademy.io/file/aa-fgo-extract-jp/GrandServantList/DownloadGrandServantListAtlas1/Name_BG_Pattern_Line.png',
+            imageUrl: 'https://static.atlasacademy.io/file/aa-fgo-extract-jp/GrandServantList/DownloadGrandServantListAtlas1/Name_BG_Pattern_Line.png',
             height: 30,
             placeholder: _blankPlaceholder,
           ),

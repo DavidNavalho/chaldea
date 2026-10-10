@@ -3,6 +3,7 @@ import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/db.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../../app/app.dart';
 import '_helper.dart';
 import 'common.dart';
@@ -202,6 +203,9 @@ class Item {
   }
 
   static String? getIcon(int id, {bool bordered = true}) {
+    if (id == Items.npRankUpIconId || id == Items.skillUpgradeIconId) {
+      return AssetURL.i.items(id);
+    }
     if (bordered) {
       return db.gameData.items[id]?.borderedIcon ?? db.gameData.entities[id]?.borderedIcon;
     } else {
@@ -371,7 +375,11 @@ class Items {
   // not item, icon only
   static const int teapotId = 94065901;
   static const int costumeIconId = 23;
+  static const int dropBoxCopperIconId = 1;
+  static const int dropBoxSilverIconId = 2;
+  static const int dropBoxGoldIconId = 3;
   static const int npRankUpIconId = 8;
+  static const int skillUpgradeIconId = 9;
 
   static Item? get qp => _items[qpId];
 

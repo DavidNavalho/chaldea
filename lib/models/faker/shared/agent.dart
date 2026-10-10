@@ -4,6 +4,7 @@ import 'package:chaldea/models/gamedata/mst_data.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/packages/logger.dart';
 import 'package:chaldea/utils/extension.dart';
+
 import 'network.dart';
 
 export 'agent_data.dart';
@@ -42,6 +43,8 @@ abstract class FakerAgent<
   Future<FResponse> shopPurchase({required int32_t id, required int32_t num, int32_t anotherPayFlag = 0});
 
   Future<FResponse> shopPurchaseByStone({required int32_t id, required int32_t num});
+
+  Future<FResponse> coinRoomPut({required Map<int, int> items});
 
   Future<FResponse> eventMissionClearReward({required List<int32_t> missionIds});
 

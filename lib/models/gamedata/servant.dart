@@ -2,6 +2,7 @@ import 'package:chaldea/app/battle/utils/battle_utils.dart';
 import 'package:chaldea/generated/l10n.dart' show S;
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../../app/app.dart';
 import '../../app/tools/gamedata_loader.dart';
 import '../db.dart';
@@ -83,6 +84,8 @@ class BasicServant with GameCardMixin {
   bool get isUserSvt =>
       ((type == SvtType.normal || type == SvtType.heroine) && collectionNo > 0) ||
       (kPlayableTransformSvtIds.contains(id));
+
+  bool get isCollectionSvt => collectionNo > 0 && (type == .normal || type == .heroine || type == .enemyCollection);
 
   bool get isServantType => const [
     SvtType.normal,
@@ -499,7 +502,10 @@ class Servant extends BasicServant {
 
   String? get customIcon {
     if (originalCollectionNo <= 0) return borderedIcon;
-    String? _icon = db.userData.customSvtIcon[collectionNo];
+    String? _icon;
+    if (isCollectionSvt) {
+      _icon = db.userData.customSvtIcon[collectionNo];
+    }
     if (_icon != null) return _icon;
 
     if (db.userData.preferAprilFoolIcon) {
@@ -510,7 +516,7 @@ class Servant extends BasicServant {
     if (db.userData.svtAscensionIcon == -1 && isUserSvt) {
       ascension = status.cur.ascension;
     }
-    if (ascensionImage.isNotEmpty && collectionNo > 0) {
+    if (ascensionImage.isNotEmpty && isCollectionSvt) {
       final limits = ascensionImage.where((e) => e.limitCount == ascension).toList();
       if (limits.isNotEmpty &&
           limits.every((e) => e.condType == CondType.questClear && !db.gameData.quests.containsKey(e.condTargetId))) {
@@ -679,6 +685,7 @@ class Servant extends BasicServant {
       battleName,
       ...ascensionAdd.overWriteServantName.all.values,
       ...ascensionAdd.overWriteServantBattleName.all.values,
+      ...ascensionAdd.overwriteSvtDetailName.all.values,
       ...svtChange.map((e) => e.name),
       ...svtChange.map((e) => e.battleName),
     };
@@ -720,7 +727,7 @@ class Servant extends BasicServant {
   }
 
   ServantExtra get extra {
-    if (isServantType && collectionNo > 0) {
+    if (isCollectionSvt) {
       return db.gameData.wiki.servants[originalCollectionNo] ??= ServantExtra(collectionNo: originalCollectionNo);
     }
     return ServantExtra(collectionNo: originalCollectionNo);
@@ -1344,6 +1351,9 @@ class AscensionAddEntry<T> {
       return null as T;
     } else if (T == List<int>) {
       return (obj as List<dynamic>).map((e) => (e as num).toInt()).toList() as T;
+    } else if (T == List<OverwriteValue>) {
+      return (obj as List<dynamic>).map((e) => OverwriteValue.fromJson(Map<String, dynamic>.from(e as Map))).toList()
+          as T;
     } else if (T == List<NiceTrait>) {
       return (obj as List<dynamic>).map((e) => NiceTrait.fromJson(Map<String, dynamic>.from(e as Map))).toList() as T;
     } else if (T == List<CommonRelease>) {
@@ -1364,6 +1374,8 @@ class AscensionAddEntry<T> {
       return value;
     } else if (value is List<NiceTrait>) {
       return value.map((e) => e.toJson()).toList();
+    } else if (value is List<OverwriteValue>) {
+      return value.map((e) => e.toJson()).toList();
     } else if (value is List<CommonRelease>) {
       return value.map((e) => e.toJson()).toList();
     } else if (value is ServantSubAttribute) {
@@ -1373,6 +1385,18 @@ class AscensionAddEntry<T> {
   }
 
   Map<String, dynamic> toJson() => _$AscensionAddEntryToJson(this, _toJsonT);
+}
+
+@JsonSerializable()
+class OverwriteValue {
+  int id;
+  String value;
+
+  OverwriteValue({required this.id, required this.value});
+
+  factory OverwriteValue.fromJson(Map<String, dynamic> json) => _$OverwriteValueFromJson(json);
+
+  Map<String, dynamic> toJson() => _$OverwriteValueToJson(this);
 }
 
 @JsonSerializable()
@@ -1386,6 +1410,8 @@ class AscensionAdd {
   AscensionAddEntry<int> voicePrefix;
   AscensionAddEntry<String> overWriteServantName;
   AscensionAddEntry<String> overWriteServantBattleName;
+  AscensionAddEntry<String> overwriteSvtDetailName;
+  AscensionAddEntry<List<OverwriteValue>> overwriteSkillName;
   AscensionAddEntry<String> overWriteTDName;
   AscensionAddEntry<String> overWriteTDRuby;
   AscensionAddEntry<String> overWriteTDFileName;
@@ -1413,6 +1439,8 @@ class AscensionAdd {
     this.voicePrefix = const AscensionAddEntry(),
     this.overWriteServantName = const AscensionAddEntry(),
     this.overWriteServantBattleName = const AscensionAddEntry(),
+    this.overwriteSvtDetailName = const AscensionAddEntry(),
+    this.overwriteSkillName = const AscensionAddEntry(),
     this.overWriteTDName = const AscensionAddEntry(),
     this.overWriteTDRuby = const AscensionAddEntry(),
     this.overWriteTDFileName = const AscensionAddEntry(),
@@ -1919,18 +1947,21 @@ class SvtScript {
     this.limitCount,
   });
 
-  bool get isHeight1024 => (extendData?.faceSize ?? 256) != 256;
-  bool get isHeight768 => (extendData?.faceSize ?? 256) == 256;
+  // bool get isHeight1024 => (extendData?.faceSize ?? 256) != 256;
+  // bool get isHeight768 => (extendData?.faceSize ?? 256) == 256;
 
   factory SvtScript.fromJson(Map<String, dynamic> json) => _$SvtScriptFromJson(json);
 
   Map<String, dynamic> toJson() => _$SvtScriptToJson(this);
+
+  List<int> getFaceSize() => extendData?.getFaceSize() ?? SvtScriptExtendData.kDefaultFaceSize;
 }
 
-@JsonSerializable()
+@JsonSerializable(includeIfNull: false)
 class SvtScriptExtendData {
+  static const kDefaultFaceSize = [256, 256];
   Object? faceSize; // default 256, int or list[int] (multi chara)
-  // faceSizeRect
+  List<int>? faceSizeRect;
   int? myroomForm;
   int? combineResultMultipleForm;
   // conds?: { condType: number; value: number }[];
@@ -1941,8 +1972,25 @@ class SvtScriptExtendData {
   // offsets<x,y>
   // List<int>? TerminalOffset
   // List<int>? BattleBondOffset
+
+  List<int> getFaceSize() {
+    final faceSizeRect = this.faceSizeRect;
+    if (faceSizeRect != null && faceSizeRect.length >= 2 && faceSizeRect[0] > 0 && faceSizeRect[1] > 0) {
+      return [faceSizeRect[0], faceSizeRect[1]];
+    }
+    final faceSize = this.faceSize;
+    if (faceSize is int && faceSize > 0) return [faceSize, faceSize];
+    if (faceSize is List && faceSize.length >= 2) {
+      final width = faceSize[0];
+      final height = faceSize[1];
+      if (width is int && height is int && width > 0 && height > 0) return [width, height];
+    }
+    return kDefaultFaceSize;
+  }
+
   SvtScriptExtendData({
     this.faceSize,
+    this.faceSizeRect,
     this.myroomForm,
     this.combineResultMultipleForm,
     this.photoSvtPosition,
@@ -2001,6 +2049,7 @@ class SvtOverwrite {
 class BattlePoint {
   int id;
   String name;
+  @JsonKey(unknownEnumValue: BattlePointFlag.none)
   List<BattlePointFlag> flags;
   List<BattlePointPhase> phases;
   List<SvtBattlePoint> svts;
@@ -2262,6 +2311,7 @@ enum BattlePointFlag {
   hideUiGaugeWhenCantAddPoint,
   hideUiGaugeWhenCantAddPointAndFollowerSupport,
   battlePointCheckAsPercentage,
+  resetValueOnContinue,
 }
 
 enum SvtCardPositionDamageRatesSlideType { none, front, back }

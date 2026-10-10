@@ -1,13 +1,14 @@
 import 'dart:convert';
 
+import 'package:chaldea/utils/basic.dart';
 import 'package:chaldea/utils/extension.dart';
+
 import '../db.dart';
 import '_helper.dart';
 import 'common.dart';
-import 'quest.dart' show Gift, QuestAfterClearType;
+import 'quest.dart' show Gift, Quest;
 import 'servant.dart';
 import 'skill.dart';
-import 'war.dart' show WarId;
 
 part '../../generated/models/gamedata/const_data.g.dart';
 
@@ -57,8 +58,9 @@ class ConstGameData {
   final List<int> randomEnemyQuests;
   final Map<int, List<int>> svtFaceLimits;
   final Map<int, int> extraWarEventMapping;
+  @protected
   final Map<int, int> sameQuestRemap;
-  late final Map<int, int> sameQuestRemapReverse = {for (final (k, v) in sameQuestRemap.items) v: k};
+  late final Map<int, Set<int>> sameQuestRemapList = {};
   final Map<int, List<int>> subEvents;
   final Map<String, List<String>> routeSelects;
   final Map<int, int> shopDailyTargets;
@@ -71,6 +73,13 @@ class ConstGameData {
   static Set<int> finalChapterNo2RaidQuestIds = {
     ...range(4000807, 4000813), // tree No2
   };
+
+  static Set<int> grandDuelAssassinFreeQuestIds = {
+    ...range(94150501, 94150508), // 94150501~94150507
+    ...range(94150531, 94150538), // 94150531~94150537
+  };
+
+  static int grandDualAssassinFreeBaseSvtAiId = 94150530;
 
   final List<int> warIdsHasEpilogue = [108];
 
@@ -117,6 +126,19 @@ class ConstGameData {
     this.battlePoints = const {},
   }) : buffTypeActionMap = {} {
     _fixBuffActions();
+    // sameQuestRemap: multiple keys may map to same value
+    for (final (k, v) in sameQuestRemap.items) {
+      if (k == v) {
+        assert(false, 'remap same quest id $k->$v');
+        continue;
+      }
+      (sameQuestRemapList[v] ??= {}).addAll([k, v]);
+    }
+    for (final vv in sameQuestRemapList.values.toList()) {
+      for (final v in vv) {
+        (sameQuestRemapList[v] ??= {}).addAll(vv);
+      }
+    }
   }
 
   void _fixBuffActions() {
@@ -157,6 +179,10 @@ class ConstGameData {
     }
   }
 
+  int get maxUserLevel => Maths.max(userLevel.keys, 0);
+
+  int get maxUserCost => Maths.max(userLevel.values.map((e) => e.maxCost), 0);
+
   List<SvtLimitHide> getSvtLimitHides(int svtId, int? limitCount) {
     Set<SvtLimitHide> hides = {...?svtLimitHides[-1], ...?svtLimitHides[svtId]};
     if (limitCount != null) {
@@ -190,11 +216,11 @@ class ConstGameData {
     return info;
   }
 
-  int getClassIdRelation(final int attacker, final int defender) {
+  int getClassIdRelation(int attacker, int defender) {
     return classRelation[classInfo[attacker]?.relationId]?[classInfo[defender]?.relationId] ?? 1000;
   }
 
-  int getAttributeRelation(final ServantSubAttribute attacker, final ServantSubAttribute defender) {
+  int getAttributeRelation(ServantSubAttribute attacker, ServantSubAttribute defender) {
     return attributeRelation[attacker]?[defender] ?? 1000;
   }
 
@@ -207,24 +233,22 @@ class ConstGameData {
   }
 
   List<int> getSimilarQuestIds(int questId) {
-    final ids = [sameQuestRemap[questId], sameQuestRemapReverse[questId]].whereType<int>().toList();
-    if (ids.isNotEmpty) return ids;
-    final quest = db.gameData.quests[questId];
-    final war = quest?.war;
-    if (quest != null &&
-        war != null &&
-        war.parentWarId == WarId.grandBoardWar &&
-        quest.afterClear == QuestAfterClearType.repeatLast) {
-      final similarQuest = war.quests.firstWhereOrNull(
-        (e) =>
-            e.id != questId &&
-            e.afterClear == quest.afterClear &&
-            e.name == quest.name &&
-            e.recommendLv == quest.recommendLv,
-      );
-      if (similarQuest != null) ids.add(similarQuest.id);
-    }
+    // including questId self
+    final ids = sameQuestRemapList[questId]?.toList() ?? [];
+    assert(ids.length != 1, '$questId->$ids');
+    if (ids.length == 1) return [];
     return ids;
+  }
+
+  List<Quest> collapseQuests(Iterable<Quest> quests) {
+    final grouped = <int, Quest>{for (final quest in quests) quest.id: quest};
+    for (final quest in grouped.values.toList()) {
+      final remapId = sameQuestRemap[quest.id];
+      if (grouped.containsKey(remapId) && remapId != quest.id) {
+        grouped.remove(quest.id);
+      }
+    }
+    return grouped.values.toList();
   }
 
   bool checkPlusTypes(List<BuffAction> actions, BuffType type) {

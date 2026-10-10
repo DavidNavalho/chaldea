@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/tools/app_window.dart';
@@ -18,6 +18,7 @@ import 'package:chaldea/utils/extension.dart';
 import 'package:chaldea/utils/notification.dart';
 import 'package:chaldea/widgets/custom_dialogs.dart';
 import 'package:chaldea/widgets/tile_items.dart';
+
 import '../../root/global_fab.dart';
 import 'display_settings/ad_setting.dart';
 import 'display_settings/carousel_setting_page.dart';

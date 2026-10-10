@@ -1,4 +1,4 @@
-import 'package:flutter/cupertino.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
 
 import 'package:chaldea/app/api/atlas.dart';
 import 'package:chaldea/app/app.dart';
@@ -9,6 +9,7 @@ import 'package:chaldea/models/gamedata/mst_data.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../../summon/gacha/gacha_banner.dart';
 
 class SniffGachaHistory extends StatefulWidget {

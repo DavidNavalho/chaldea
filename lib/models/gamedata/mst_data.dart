@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:chaldea/packages/logger.dart';
 import 'package:chaldea/utils/utils.dart';
+
 import '../db.dart';
 import '../userdata/userdata.dart';
 import '_helper.dart';
@@ -201,6 +202,20 @@ class MasterDataManager extends MasterDataManagerBase {
   bool get isLoggedIn => user != null && userSvt.isNotEmpty;
 
   bool get isCurPlanUser => db.curUser.lastImportId != null && db.curUser.lastImportId == user?.friendCode;
+
+  /// The local user this game account is bound to (matched by import
+  /// identity), or null when unbound. Faker windows resolve their display
+  /// user through this instead of requiring the bound user to be current.
+  User? get boundUser {
+    final code = user?.friendCode;
+    if (code == null) return null;
+    for (final u in db.userData.users) {
+      if (u.lastImportId == code) return u;
+    }
+    return null;
+  }
+
+  int? getItemLeft(int itemId) => boundUser?.itemsLeft[itemId];
 
   Iterable<UserServantEntity> get userSvtAndStorage => userSvt.followedBy(userSvtStorage);
   UserServantEntity? getUserSvt(int userSvtId) => userSvt[userSvtId] ?? userSvtStorage[userSvtId];

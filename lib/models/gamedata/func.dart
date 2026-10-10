@@ -1,10 +1,11 @@
 // ignore_for_file: non_constant_identifier_names
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/modules/func/func_detail.dart';
 import 'package:chaldea/utils/utils.dart';
+
 import '../../app/tools/gamedata_loader.dart';
 import '../db.dart';
 import '../userdata/filter_data.dart';
@@ -654,8 +655,8 @@ enum FuncType {
   damageFuncType165(165),
   subBattlePoint(166),
   setBattleMissionValueAsMax(168),
-  addStateFuncType169(169),
-  addStateFuncType170(170);
+  addStateUserEquipSkillAvailable(169),
+  addStateShortUserEquipSkillAvailable(170);
 
   final int value;
   const FuncType(this.value);
@@ -666,8 +667,8 @@ enum FuncType {
     addFieldChangeToField,
     addStateToField,
     addStateShortToField,
-    addStateFuncType169,
-    addStateFuncType170,
+    addStateUserEquipSkillAvailable,
+    addStateShortUserEquipSkillAvailable,
   ];
   static const kValsNotBuffOrTraitFuncTypes = [
     FuncType.addBattleValue,

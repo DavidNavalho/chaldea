@@ -1,19 +1,20 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show ScrollCacheExtent;
 
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:image/image.dart' as img_lib;
-import 'package:screenshot/screenshot.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/app/routes/delegate.dart';
 import 'package:chaldea/models/db.dart';
 import 'package:chaldea/packages/language.dart';
 import 'package:chaldea/packages/logger.dart';
 import 'package:chaldea/utils/utils.dart';
+import 'package:chaldea/widgets/screenshot.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../../routes/root_delegate.dart';
 import 'window_manager.dart';
 
@@ -150,9 +151,8 @@ class _MultiScreenshotsState extends State<MultiScreenshots> {
       child: Screenshot(
         controller: getController(index),
         child: MediaQuery(
-          data: MediaQuery.of(
-            context,
-          ).copyWith(size: Size(curSpec.width / curSpec.deviceRatio, curSpec.height / curSpec.deviceRatio)),
+          data: MediaQuery.of(context)
+              .copyWith(size: Size(curSpec.width / curSpec.deviceRatio, curSpec.height / curSpec.deviceRatio)),
           child: WindowThumb(root: root, index: index, absorbPointer: false, gesture: false, showTitle: showTitle),
         ),
       ),

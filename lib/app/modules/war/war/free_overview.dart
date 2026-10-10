@@ -1,8 +1,7 @@
 import 'dart:math';
 
-import 'package:flutter/cupertino.dart';
-
 import 'package:auto_size_text/auto_size_text.dart';
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:data_table_2/data_table_2.dart';
 
 import 'package:chaldea/app/api/atlas.dart';
@@ -10,6 +9,7 @@ import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../../common/builders.dart';
 
 class FreeQuestOverview extends StatefulWidget {
@@ -173,9 +173,8 @@ class _FreeQuestOverviewState extends State<FreeQuestOverview> {
           Flexible(
             fit: FlexFit.tight,
             child: ScrollConfiguration(
-              behavior: ScrollConfiguration.of(
-                context,
-              ).copyWith(overscroll: false, physics: const ClampingScrollPhysics()),
+              behavior: ScrollConfiguration.of(context)
+                  .copyWith(overscroll: false, physics: const ClampingScrollPhysics()),
               child: SafeArea(
                 child: DataTable2(
                   columns: [

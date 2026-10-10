@@ -7,7 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:photo_view/photo_view.dart';
+import 'package:photo_zoom/photo_zoom.dart';
 
 import 'package:chaldea/app/tools/icon_cache_manager.dart';
 import 'package:chaldea/generated/l10n.dart';
@@ -15,6 +15,7 @@ import 'package:chaldea/models/db.dart';
 import 'package:chaldea/models/userdata/remote_config.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../../app.dart';
 import 'part_list.dart';
 import 'schema.dart';

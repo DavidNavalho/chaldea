@@ -3,7 +3,7 @@
 // the profile page has no avatar feature. Gradient and foreground colors
 // come from AppThemeData so they can be restyled via ThemeData.
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/widgets/theme.dart';
 
@@ -37,17 +37,15 @@ class ProfileCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w700, color: theme.profileForeground),
+                  style: Theme.of(context).textTheme.headlineSmall
+                      ?.copyWith(fontWeight: FontWeight.w700, color: theme.profileForeground),
                 ),
                 if (subtitle != null && subtitle!.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Text(
                     subtitle!,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: theme.profileForeground.withAlpha(200)),
+                    style: Theme.of(context).textTheme.bodySmall
+                        ?.copyWith(color: theme.profileForeground.withAlpha(200)),
                   ),
                 ],
               ],

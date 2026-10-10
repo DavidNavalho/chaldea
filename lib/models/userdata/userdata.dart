@@ -2,14 +2,14 @@ library;
 
 import 'dart:math';
 
-import 'package:flutter/material.dart';
-
+import 'package:material_ui/material_ui.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/gamedata/gamedata.dart';
 import 'package:chaldea/models/gamedata/mst_data.dart';
 import 'package:chaldea/packages/app_info.dart';
+
 import '../../utils/basic.dart';
 import '../../utils/extension.dart';
 import '../db.dart';
@@ -157,6 +157,11 @@ class User {
 
   Map<int, int> items;
 
+  /// Derived snapshot of itemLeft, synced by ItemCenter.updateLeftItems()
+  /// while this user is the current user. Material categories only
+  /// (normal/ascension/skill/special/coin). Stale by design until the user becomes current again.
+  Map<int, int> itemsLeft;
+
   Map<int, CraftStatus> craftEssences;
   Map<int, CmdCodeStatus> cmdCodes;
   Map<int, int> mysticCodes;
@@ -169,6 +174,8 @@ class User {
   SaintQuartzPlan saintQuartzPlan;
 
   BattleSimUserData battleSim;
+
+  FormationBondOption formationBondOption;
 
   String? lastImportId;
 
@@ -183,6 +190,7 @@ class User {
     this.sameEventPlan = true,
     int curSvtPlanNo = 0,
     Map<int, int>? items,
+    Map<int, int>? itemsLeft,
     Map<int, CraftStatus>? craftEssences,
     Map<int, CmdCodeStatus>? cmdCodes,
     Map<int, int>? mysticCodes,
@@ -193,6 +201,7 @@ class User {
     Map<String, Map<int, int>>? luckyBagSvtScores,
     SaintQuartzPlan? saintQuartzPlan,
     BattleSimUserData? battleSim,
+    FormationBondOption? formationBondOption,
     this.lastImportId,
   }) : id = id ?? const Uuid().v4(),
        servants = servants ?? {},
@@ -200,6 +209,7 @@ class User {
        plans = List.generate(kSvtPlanMaxNum, (index) => plans?.getOrNull(index) ?? UserPlan()),
        _curSvtPlanNo = curSvtPlanNo.clamp(0, kSvtPlanMaxNum - 1),
        items = items ?? {},
+       itemsLeft = itemsLeft ?? {},
        craftEssences = craftEssences ?? {},
        cmdCodes = cmdCodes ?? {},
        mysticCodes = mysticCodes ?? {},
@@ -209,7 +219,8 @@ class User {
        freeLPParams = freeLPParams ?? FreeLPParams(),
        luckyBagSvtScores = luckyBagSvtScores ?? {},
        saintQuartzPlan = saintQuartzPlan ?? SaintQuartzPlan(),
-       battleSim = battleSim ?? BattleSimUserData();
+       battleSim = battleSim ?? BattleSimUserData(),
+       formationBondOption = formationBondOption ?? FormationBondOption();
 
   factory User.fromJson(Map<String, dynamic> json) => _$UserFromJson(json);
 

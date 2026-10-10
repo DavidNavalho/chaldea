@@ -1,5 +1,6 @@
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/userdata/filter_data.dart';
+
 import '../../../widgets/widgets.dart';
 
 // for filter items
@@ -54,8 +55,8 @@ class FilterGroup<T> extends StatelessWidget {
         TextSpan(
           children: [
             CenterWidgetSpan(child: Icon(v ? Icons.grid_view_sharp : Icons.list, size: 16)),
-            const TextSpan(text: ' '),
-            TextSpan(text: v ? S.current.display_grid : S.current.display_list),
+            // const TextSpan(text: ' '),
+            // TextSpan(text: v ? S.current.display_grid : S.current.display_list),
           ],
         ),
       ),
@@ -220,8 +221,7 @@ class FilterOption<T> extends StatelessWidget {
     final themeData = Theme.of(context);
     bool darkMode = themeData.brightness == Brightness.dark;
     final selectedColor =
-        this.selectedColor ??
-        (themeData.useMaterial3 && darkMode ? themeData.colorScheme.primaryContainer : themeData.colorScheme.primary);
+        this.selectedColor ?? (darkMode ? themeData.colorScheme.primaryContainer : themeData.colorScheme.primary);
     return ConstrainedBox(
       constraints: constraints ?? const BoxConstraints(maxHeight: 30),
       child: OutlinedButton(

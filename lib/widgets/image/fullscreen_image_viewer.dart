@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
-
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:photo_view/photo_view_gallery.dart';
+import 'package:material_ui/material_ui.dart';
+import 'package:photo_zoom/photo_zoom.dart';
 
 import 'package:chaldea/utils/extension.dart';
+
 import 'image_viewer.dart';
 
 double get _kBackGestureWidth => 40.0;

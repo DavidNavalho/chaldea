@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/app/descriptors/multi_entry.dart';
 import 'package:chaldea/models/models.dart';
@@ -84,8 +84,8 @@ mixin DescriptorBase {
 
   List<InlineSpan> quests(BuildContext context) =>
       emptyHint(MultiDescriptor.quests(context, targetIds, useAnd: useAnd));
-  List<InlineSpan> traits(BuildContext context) =>
-      emptyHint(MultiDescriptor.traits(context, targetIds, useAnd: useAnd));
+  List<InlineSpan> traits(BuildContext context, {List<int>? overrideIds}) =>
+      emptyHint(MultiDescriptor.traits(context, overrideIds ?? targetIds, useAnd: useAnd));
   List<InlineSpan> svtClasses(BuildContext context, {List<int>? targetIds, bool? useAnd}) =>
       emptyHint(MultiDescriptor.svtClass(context, targetIds ?? this.targetIds, useAnd: useAnd ?? false));
   List<InlineSpan> servants(BuildContext context) =>

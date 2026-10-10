@@ -653,6 +653,14 @@ Map<String, dynamic> _$AscensionAddEntryToJson<T>(AscensionAddEntry<T> instance,
       'costume': instance.costume.map((k, e) => MapEntry(k.toString(), toJsonT(e))),
     };
 
+OverwriteValue _$OverwriteValueFromJson(Map json) =>
+    OverwriteValue(id: (json['id'] as num).toInt(), value: json['value'] as String);
+
+Map<String, dynamic> _$OverwriteValueToJson(OverwriteValue instance) => <String, dynamic>{
+  'id': instance.id,
+  'value': instance.value,
+};
+
 AscensionAdd _$AscensionAddFromJson(Map json) => AscensionAdd(
   attribute: json['attribute'] == null
       ? const AscensionAddEntry()
@@ -669,6 +677,12 @@ AscensionAdd _$AscensionAddFromJson(Map json) => AscensionAdd(
   overWriteServantBattleName: json['overWriteServantBattleName'] == null
       ? const AscensionAddEntry()
       : AscensionAddEntry<String>.fromJson(Map<String, dynamic>.from(json['overWriteServantBattleName'] as Map)),
+  overwriteSvtDetailName: json['overwriteSvtDetailName'] == null
+      ? const AscensionAddEntry()
+      : AscensionAddEntry<String>.fromJson(Map<String, dynamic>.from(json['overwriteSvtDetailName'] as Map)),
+  overwriteSkillName: json['overwriteSkillName'] == null
+      ? const AscensionAddEntry()
+      : AscensionAddEntry<List<OverwriteValue>>.fromJson(Map<String, dynamic>.from(json['overwriteSkillName'] as Map)),
   overWriteTDName: json['overWriteTDName'] == null
       ? const AscensionAddEntry()
       : AscensionAddEntry<String>.fromJson(Map<String, dynamic>.from(json['overWriteTDName'] as Map)),
@@ -735,6 +749,8 @@ Map<String, dynamic> _$AscensionAddToJson(AscensionAdd instance) => <String, dyn
   'voicePrefix': instance.voicePrefix.toJson(),
   'overWriteServantName': instance.overWriteServantName.toJson(),
   'overWriteServantBattleName': instance.overWriteServantBattleName.toJson(),
+  'overwriteSvtDetailName': instance.overwriteSvtDetailName.toJson(),
+  'overwriteSkillName': instance.overwriteSkillName.toJson(),
   'overWriteTDName': instance.overWriteTDName.toJson(),
   'overWriteTDRuby': instance.overWriteTDRuby.toJson(),
   'overWriteTDFileName': instance.overWriteTDFileName.toJson(),
@@ -1227,6 +1243,7 @@ Map<String, dynamic> _$SvtScriptToJson(SvtScript instance) => <String, dynamic>{
 
 SvtScriptExtendData _$SvtScriptExtendDataFromJson(Map json) => SvtScriptExtendData(
   faceSize: json['faceSize'],
+  faceSizeRect: (json['faceSizeRect'] as List<dynamic>?)?.map((e) => (e as num).toInt()).toList(),
   myroomForm: (json['myroomForm'] as num?)?.toInt(),
   combineResultMultipleForm: (json['combineResultMultipleForm'] as num?)?.toInt(),
   photoSvtPosition: (json['photoSvtPosition'] as List<dynamic>?)?.map((e) => (e as num).toInt()).toList(),
@@ -1234,11 +1251,12 @@ SvtScriptExtendData _$SvtScriptExtendDataFromJson(Map json) => SvtScriptExtendDa
 );
 
 Map<String, dynamic> _$SvtScriptExtendDataToJson(SvtScriptExtendData instance) => <String, dynamic>{
-  'faceSize': instance.faceSize,
-  'myroomForm': instance.myroomForm,
-  'combineResultMultipleForm': instance.combineResultMultipleForm,
-  'photoSvtPosition': instance.photoSvtPosition,
-  'photoSvtScale': instance.photoSvtScale,
+  'faceSize': ?instance.faceSize,
+  'faceSizeRect': ?instance.faceSizeRect,
+  'myroomForm': ?instance.myroomForm,
+  'combineResultMultipleForm': ?instance.combineResultMultipleForm,
+  'photoSvtPosition': ?instance.photoSvtPosition,
+  'photoSvtScale': ?instance.photoSvtScale,
 };
 
 SvtOverwriteValue _$SvtOverwriteValueFromJson(Map json) => SvtOverwriteValue(
@@ -1279,7 +1297,11 @@ const _$ServantOverwriteTypeEnumMap = {
 BattlePoint _$BattlePointFromJson(Map json) => BattlePoint(
   id: (json['id'] as num).toInt(),
   name: json['name'] as String? ?? '',
-  flags: (json['flags'] as List<dynamic>?)?.map((e) => $enumDecode(_$BattlePointFlagEnumMap, e)).toList() ?? const [],
+  flags:
+      (json['flags'] as List<dynamic>?)
+          ?.map((e) => $enumDecode(_$BattlePointFlagEnumMap, e, unknownValue: BattlePointFlag.none))
+          .toList() ??
+      const [],
   phases:
       (json['phases'] as List<dynamic>?)
           ?.map((e) => BattlePointPhase.fromJson(Map<String, dynamic>.from(e as Map)))
@@ -1309,6 +1331,7 @@ const _$BattlePointFlagEnumMap = {
   BattlePointFlag.hideUiGaugeWhenCantAddPoint: 'hideUiGaugeWhenCantAddPoint',
   BattlePointFlag.hideUiGaugeWhenCantAddPointAndFollowerSupport: 'hideUiGaugeWhenCantAddPointAndFollowerSupport',
   BattlePointFlag.battlePointCheckAsPercentage: 'battlePointCheckAsPercentage',
+  BattlePointFlag.resetValueOnContinue: 'resetValueOnContinue',
 };
 
 BattlePointPhase _$BattlePointPhaseFromJson(Map json) => BattlePointPhase(

@@ -5,10 +5,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:intl/intl.dart';
-import 'package:screenshot/screenshot.dart';
-import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:chaldea/app/api/chaldea.dart';
@@ -22,7 +19,9 @@ import 'package:chaldea/packages/app_info.dart';
 import 'package:chaldea/packages/home_widget.dart';
 import 'package:chaldea/packages/logger.dart';
 import 'package:chaldea/utils/utils.dart';
+import 'package:chaldea/widgets/screenshot.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../generated/l10n.dart';
 import '../models/db.dart';
 import '../packages/ads/ads.dart';
@@ -42,7 +41,7 @@ class Chaldea extends StatefulWidget {
   _ChaldeaState createState() => _ChaldeaState();
 }
 
-class _ChaldeaState extends State<Chaldea> with AfterLayoutMixin, WindowListener, TrayListener {
+class _ChaldeaState extends State<Chaldea> with AfterLayoutMixin, WindowListener {
   final routeInformationParser = AppRouteInformationParser();
   final backButtonDispatcher = RootBackButtonDispatcher();
 
@@ -87,7 +86,9 @@ class _ChaldeaState extends State<Chaldea> with AfterLayoutMixin, WindowListener
         builder: (context, widget) {
           ErrorWidget.builder = _ErrorWidget.errorWidgetBuilder;
           isEasyLoadingAttached = true;
-          return FlutterEasyLoading(key: _easyLoadingKey, child: widget);
+          widget = FlutterEasyLoading(key: _easyLoadingKey, child: widget);
+          // ignore: deprecated_member_use
+          return MaterialUiCompatibilityBridge(child: widget);
         },
       ),
     );
@@ -153,7 +154,6 @@ class _ChaldeaState extends State<Chaldea> with AfterLayoutMixin, WindowListener
     });
 
     windowManager.addListener(this);
-    trayManager.addListener(this);
   }
 
   @override
@@ -309,23 +309,12 @@ class _ChaldeaState extends State<Chaldea> with AfterLayoutMixin, WindowListener
   @override
   void dispose() {
     windowManager.removeListener(this);
-    trayManager.removeListener(this);
     super.dispose();
   }
 
   @override
   void onWindowClose() {
     AppWindowUtil.onWindowClose();
-  }
-
-  @override
-  void onTrayIconMouseDown() {
-    AppWindowUtil.onTrayClick();
-  }
-
-  @override
-  void onTrayIconRightMouseDown() {
-    AppWindowUtil.onTrayRightClick();
   }
 }
 

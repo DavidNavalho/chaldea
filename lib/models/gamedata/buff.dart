@@ -1,9 +1,10 @@
 // ignore_for_file: non_constant_identifier_names
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/app/modules/buff/buff_detail.dart';
 import 'package:chaldea/utils/utils.dart';
+
 import '../../app/app.dart';
 import '../../app/tools/gamedata_loader.dart';
 import '../db.dart';

@@ -1,8 +1,9 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart' as material;
-import 'package:flutter/material.dart';
+
+import 'package:material_ui/material_ui.dart' as material;
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/models/db.dart';
 import 'package:chaldea/models/gamedata/common.dart';
@@ -10,6 +11,7 @@ import 'package:chaldea/packages/analysis/analysis.dart';
 import 'package:chaldea/packages/method_channel/method_channel_chaldea.dart';
 import 'package:chaldea/packages/platform/platform.dart';
 import 'package:chaldea/utils/extension.dart';
+
 import '../../packages/split_route/split_route.dart';
 import 'root_delegate.dart';
 import 'routes.dart';

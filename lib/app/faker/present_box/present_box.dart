@@ -11,6 +11,7 @@ import 'package:chaldea/models/gamedata/mst_data.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../combine/svt_combine.dart';
 import '../runtime.dart';
 import 'filter.dart';
@@ -498,7 +499,7 @@ class _ItemSelectListDialog extends StatelessWidget {
         return _ItemSelectTile(
           itemSelect: select,
           count: mstData.getItemOrSvtNum(itemId),
-          leftCount: mstData.isCurPlanUser ? (db.itemCenter.itemLeft[itemId] ?? 0) : null,
+          leftCount: mstData.getItemLeft(itemId),
           onTap: () {
             Navigator.pop(context, select);
           },

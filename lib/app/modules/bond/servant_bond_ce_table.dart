@@ -377,7 +377,7 @@ class _ServantSelectorNoOption extends StatelessWidget {
   SvtFilterData get svtFilterData => db.runtimeData.svtFilters.current;
 
   @override
-  Widget build(final BuildContext context) {
+  Widget build(BuildContext context) {
     List<Widget> children = [];
 
     // svt icon
@@ -428,7 +428,7 @@ class _ServantSelectorNoOption extends StatelessWidget {
           onChanged();
         },
         filterData: svtFilterData,
-        pinged: db.curUser.battleSim.pingedSvts.toList(),
+        pinged: db.settings.gameplay.pinnedSvtIds.toList(),
         showSecondaryFilter: true,
       ),
     );
@@ -467,10 +467,7 @@ class _ServantSelectorNoOption extends StatelessWidget {
           right: 0,
           top: -iconSize / 2,
           child: Container(
-            decoration: ShapeDecoration(
-              color: Theme.of(context).colorScheme.errorContainer,
-              shape: const CircleBorder(),
-            ),
+            decoration: ShapeDecoration(color: Theme.of(context).colorScheme.error, shape: const CircleBorder()),
             child: IconButton(
               onPressed: onTapClear,
               icon: const Icon(Icons.remove_circle_outline),

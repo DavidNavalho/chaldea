@@ -4,25 +4,28 @@ import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cached_network_image_platform_interface/cached_network_image_platform_interface.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
-import 'package:modal_bottom_sheet/modal_bottom_sheet.dart';
+import 'package:image/image.dart' as img_util;
+import 'package:material_ui/material_ui.dart';
 import 'package:pasteboard/pasteboard.dart';
 import 'package:path/path.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:saver_gallery/saver_gallery.dart';
 import 'package:uuid/uuid.dart';
 
-import 'package:chaldea/app/modules/tools/custom_chara_figure.dart';
+import 'package:chaldea/app/modules/tools/chara_figure/custom_chara_figure.dart';
+import 'package:chaldea/app/modules/tools/chara_figure/source.dart';
 import 'package:chaldea/app/tools/icon_cache_manager.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/db.dart';
 import 'package:chaldea/packages/platform/platform.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/image/image_viewer.dart';
+
 import '../../app/app.dart';
 import '../../packages/packages.dart';
 import '../custom_dialogs.dart';
@@ -44,12 +47,42 @@ class ImageActions {
     assert(srcFp != null || data != null);
     if (context == null) return Future.value();
     if (srcFp == null && data == null) return Future.value();
-    return showMaterialModalBottomSheet(
+    img_util.Image? image;
+    try {
+      if (data != null) {
+        image = img_util.decodeImage(data);
+      }
+    } catch (e) {
+      //
+    }
+    // Built-in sheet + DraggableScrollableSheet.
+    //
+    // The sheet-level drag gesture always loses the gesture arena to any
+    // scrollable inside it, so a plain ListView can only ever scroll and the
+    // sheet can never be dragged away. DraggableScrollableSheet is the widget
+    // BottomSheet is built to coordinate with: BottomSheet listens to
+    // DraggableScrollableNotification and closes itself once the extent reaches
+    // minChildSize (see BottomSheet.extentChanged). That is what replaced
+    // modal_bottom_sheet's ModalScrollController.
+    return showModalBottomSheet(
       context: context,
-      duration: const Duration(milliseconds: 250),
+      isScrollControlled: true,
+      showDragHandle: true,
       builder: (context) {
         List<Widget> children = [
           ...extraHeaders,
+          if (data != null && 1 > 2)
+            ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: 200),
+              child: FittedBox(
+                fit: .fitHeight,
+                child: DecoratedBox(
+                  decoration: BoxDecoration(border: .all(color: Colors.blue)),
+                  child: Image.memory(data, fit: .fitHeight),
+                ),
+              ),
+            ),
+          if (image != null) ListTile(dense: true, title: Text('Size ${image.width}×${image.height}')),
           if (url != null)
             ListTile(
               dense: true,
@@ -103,12 +136,12 @@ class ImageActions {
                 }
               },
             ),
-          if (url != null && RegExp(r'/CharaFigure/\d+/').hasMatch(url))
+          if (url != null && CharaFigureSource.tryParse(url) != null)
             ListTile(
               leading: const Icon(Icons.face_retouching_natural_outlined),
               title: Text(S.current.custom_chara_figure),
               onTap: () {
-                router.pushPage(CustomCharaFigurePage(figure: url));
+                router.pushPage(CustomCharaFigurePage(source: CharaFigureSource.tryParse(url)!));
               },
             ),
         ];
@@ -132,23 +165,36 @@ class ImageActions {
               title: Text(S.current.save_to_photos),
               onTap: () async {
                 Navigator.pop(context);
-                if (PlatformU.isAndroid && await Permission.storage.isDenied) {
-                  await EasyThrottle.throttleAsync('permission.storage.request', Permission.storage.request);
-                }
-                dynamic result;
-                if (srcFp != null) {
-                  result = await ImageGallerySaver.saveFile(srcFp);
-                } else if (data != null) {
-                  result = await ImageGallerySaver.saveImage(data, quality: 100);
-                }
-                if (result is Map && result['isSuccess'] == true) {
-                  EasyLoading.showSuccess(S.current.saved);
-                } else {
-                  String? msg;
-                  if (result is Map) {
-                    msg = result['errorMessage'];
+                try {
+                  // skipIfExists is false, so saving does not need photo read access.
+                  Permission? permission;
+                  if (PlatformU.isIOS) {
+                    permission = Permission.photosAddOnly;
+                  } else if (PlatformU.isAndroid && (await DeviceInfoPlugin().androidInfo).version.sdkInt < 29) {
+                    permission = Permission.storage;
                   }
-                  EasyLoading.showError((msg ?? result).toString());
+                  if (permission != null && !(await permission.request()).isGranted) {
+                    EasyLoading.showError(S.current.failed);
+                    return;
+                  }
+
+                  final fileName = basename(destFp ?? srcFp ?? const Uuid().v4());
+                  final SaveResult result;
+                  if (srcFp != null) {
+                    result = await SaverGallery.saveFile(filePath: srcFp, fileName: fileName, skipIfExists: false);
+                  } else if (data != null) {
+                    result = await SaverGallery.saveImage(data, quality: 100, fileName: fileName, skipIfExists: false);
+                  } else {
+                    return;
+                  }
+                  if (result.isSuccess) {
+                    EasyLoading.showSuccess(S.current.saved);
+                  } else {
+                    EasyLoading.showError(result.errorMessage ?? S.current.failed);
+                  }
+                } catch (e, s) {
+                  EasyLoading.showError(e.toString());
+                  logger.e('save image to gallery failed', e, s);
                 }
               },
             ),
@@ -291,12 +337,23 @@ class ImageActions {
             },
           ),
         ]);
-        return ListView.separated(
-          shrinkWrap: true,
-          controller: ModalScrollController.of(context),
-          itemBuilder: (context, index) => children[index],
-          separatorBuilder: (_, _) => const Divider(height: 0.5, thickness: 0.5),
-          itemCount: children.length,
+        // No shrinkWrap: the scrollable must fill the sheet so that
+        // DraggableScrollableSheet can hand the drag over once the list hits
+        // its edge. maxChildSize < 1 keeps the barrier reachable, so the sheet
+        // can always be dismissed even on a very short window.
+        return DraggableScrollableSheet(
+          initialChildSize: 0.5,
+          minChildSize: 0.25,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            return ListView.separated(
+              controller: scrollController,
+              itemBuilder: (context, index) => children[index],
+              separatorBuilder: (_, _) => const Divider(height: 0.5, thickness: 0.5),
+              itemCount: children.length,
+            );
+          },
         );
       },
     );
@@ -320,6 +377,21 @@ class ImageActions {
       return resolveImage(provider, context: context);
     }
     return resolveImage(provider);
+  }
+
+  static Future<void> evictImageUrl(String url) async {
+    if (AtlasIconLoader.i.shouldCacheImage(url)) {
+      final fp = AtlasIconLoader.i.atlasUrlToFp(url, allowWeb: true);
+      if (fp != null) {
+        await FileImage(File(fp)).evict();
+      }
+      await AtlasIconLoader.i.deleteFromDisk(url);
+      return;
+    }
+    await CachedNetworkImageProvider(
+      CachedImage.corsProxyImage(url),
+      imageRenderMethodForWeb: ImageRenderMethodForWeb.HttpGet,
+    ).evict();
   }
 
   // resolve one frame

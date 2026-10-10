@@ -7,15 +7,16 @@ import 'package:chaldea/packages/app_info.dart';
 import 'package:chaldea/packages/platform/platform.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../exp/master_exp_page.dart';
 import '_hidden.dart';
 import 'aa_explorer_preview.dart';
 import 'admin_tools.dart';
 import 'bond_table.dart';
-import 'chara_figure_marker.dart';
+import 'chara_figure/chara_figure_marker.dart';
+import 'chara_figure/custom_chara_figure.dart';
 import 'cipher_test.dart';
 import 'combine_image_page.dart';
-import 'custom_chara_figure.dart';
 import 'event_fatigue.dart';
 import 'realtime_svt_filter.dart';
 import 'script_cmd.dart';

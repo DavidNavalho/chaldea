@@ -3,13 +3,14 @@ import 'dart:ui' as ui;
 import 'package:flutter/foundation.dart';
 
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:photo_view/photo_view.dart';
+import 'package:photo_zoom/photo_zoom.dart';
 
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/packages/audio.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import 'map_filter.dart';
 
 extension _SpotCenter on NiceSpot {
@@ -203,7 +204,7 @@ class _WarMapPageState extends State<WarMapPage> {
         Widget mapWidget = CustomPaint(size: size, painter: getPainter(size));
         mapWidget = PhotoView.customChild(
           childSize: size,
-          minScale: 1.0,
+          minScale: const PhotoViewScale.value(1.0),
           backgroundDecoration: BoxDecoration(color: Theme.of(context).scaffoldBackgroundColor),
           child: mapWidget,
         );

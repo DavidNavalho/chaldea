@@ -4,9 +4,8 @@
 // Method 3 — contact developer: navigates to the existing FeedbackPage.
 // An InfoBanner at the top prompts the user to pick a method.
 
-import 'package:flutter/material.dart';
-
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/app/api/chaldea_server.dart';
 import 'package:chaldea/app/app.dart';
@@ -539,9 +538,8 @@ class _MethodCard extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600, color: cs.onSurface),
+                      style: Theme.of(context).textTheme.bodyMedium
+                          ?.copyWith(fontWeight: FontWeight.w600, color: cs.onSurface),
                     ),
                     const SizedBox(height: 2),
                     Text(
