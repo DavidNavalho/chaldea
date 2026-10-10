@@ -61,8 +61,13 @@ in the fork-only build overlay rather than the upstream Xcode project.
   update the external overlay, generated-dependency preparer, and local/Cloud
   validation assertions together. Do not force old deployment requirements or
   put fork identity into upstream project files.
-- No known maintenance-pipeline blocker. Recheck live validation and delivery
-  results for each update; past success is not proof of a new release.
+- Current blocker: hosted PR validation fails before an iOS action/check is
+  reported, while local data-aware validation and Cloud preparation/preflight
+  succeed. GitHub exposes only a failed status, not the underlying diagnostic.
+  Inspect the failing run in App Store Connect via the open sync PR's check
+  link; resolve the hosted failure before merging. Do not bypass the gate.
+  Remove this blocker once resolved, in the same intentional fix—not in a
+  follow-up release-bookkeeping commit.
 - On-device verification remains the owner's step: back up app data, confirm
   TestFlight availability, then check Team Search/replay, My Box/coverage,
   settings migrations, account login, and supported widget shared data.
