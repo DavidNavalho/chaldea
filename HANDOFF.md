@@ -55,6 +55,12 @@ in the fork-only build overlay rather than the upstream Xcode project.
   validation, protected PRs, and automatic internal TestFlight delivery.
 - Full local tests need offline game data. Use the data-aware validation helper
   documented in `FORK_NOTES.md`, not an arbitrary checkout as `APP_PATH`.
+- When upstream upgrades Flutter/Dart, align `.fvmrc` with `pubspec.yaml` and
+  migrate custom code to the same language/UI APIs (currently `material_ui`).
+- Keep the fork's iOS app/dependency deployment floor aligned with upstream:
+  update the external overlay, generated-dependency preparer, and local/Cloud
+  validation assertions together. Do not force old deployment requirements or
+  put fork identity into upstream project files.
 - No known maintenance-pipeline blocker. Recheck live validation and delivery
   results for each update; past success is not proof of a new release.
 - On-device verification remains the owner's step: back up app data, confirm

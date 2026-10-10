@@ -25,13 +25,7 @@ class ClassifiedFunction {
   final int? turn;
   final int? count;
   final bool isAddState;
-  ClassifiedFunction({
-    required this.func,
-    required this.tags,
-    required this.isAddState,
-    this.turn,
-    this.count,
-  });
+  ClassifiedFunction({required this.func, required this.tags, required this.isAddState, this.turn, this.count});
 }
 
 class ClassifiedSkill {
@@ -58,7 +52,7 @@ class ClassifiedSkill {
 }
 
 class SkillClassifier {
-  static bool _isBatteryFunc(final NiceFunction f) {
+  static bool _isBatteryFunc(NiceFunction f) {
     switch (f.funcType) {
       case FuncType.gainNp:
       case FuncType.lossNp:
@@ -76,12 +70,12 @@ class SkillClassifier {
     }
   }
 
-  static List<BuffAction> _actionsForBuffType(final Buff? buff) {
+  static List<BuffAction> _actionsForBuffType(Buff? buff) {
     if (buff == null) return const [];
     return db.gameData.constData.buffTypeActionMap[buff.type] ?? const [];
   }
 
-  static bool _hasAnyAction(final Buff? buff, final List<BuffAction> targets) {
+  static bool _hasAnyAction(Buff? buff, List<BuffAction> targets) {
     if (buff == null) return false;
     final actions = _actionsForBuffType(buff);
     for (final t in targets) {
@@ -90,7 +84,7 @@ class SkillClassifier {
     return false;
   }
 
-  static bool _isDamageBuff(final Buff? buff) {
+  static bool _isDamageBuff(Buff? buff) {
     return _hasAnyAction(buff, const [
       BuffAction.atk,
       BuffAction.commandAtk,
@@ -103,7 +97,7 @@ class SkillClassifier {
     ]);
   }
 
-  static bool _isEnemyDebuff(final Buff? buff) {
+  static bool _isEnemyDebuff(Buff? buff) {
     return _hasAnyAction(buff, const [
       BuffAction.commandDef,
       BuffAction.defence,
@@ -115,15 +109,15 @@ class SkillClassifier {
     ]);
   }
 
-  static bool _isNpRefundBuff(final Buff? buff) {
+  static bool _isNpRefundBuff(Buff? buff) {
     return _hasAnyAction(buff, const [BuffAction.commandNpAtk, BuffAction.dropNp]);
   }
 
-  static bool _isNpRegenBuff(final Buff? buff) {
+  static bool _isNpRegenBuff(Buff? buff) {
     return _hasAnyAction(buff, const [BuffAction.turnendNp]);
   }
 
-  static bool _isBypassAvoidance(final Buff? buff) {
+  static bool _isBypassAvoidance(Buff? buff) {
     return _hasAnyAction(buff, const [
       BuffAction.pierceInvincible,
       BuffAction.pierceSpecialInvincible,
@@ -131,7 +125,7 @@ class SkillClassifier {
     ]);
   }
 
-  static bool _isRelationOverwrite(final Buff? buff) {
+  static bool _isRelationOverwrite(Buff? buff) {
     return _hasAnyAction(buff, const [
       BuffAction.overwriteBattleclass,
       BuffAction.overwriteClassrelatioAtk,
@@ -139,19 +133,16 @@ class SkillClassifier {
     ]);
   }
 
-  static bool _isTraitProducer(final Buff? buff) {
-    return _hasAnyAction(buff, const [
-      BuffAction.individualityAdd,
-      BuffAction.individualitySub,
-    ]);
+  static bool _isTraitProducer(Buff? buff) {
+    return _hasAnyAction(buff, const [BuffAction.individualityAdd, BuffAction.individualitySub]);
   }
 
-  static bool _isFieldProducer(final NiceFunction f) {
+  static bool _isFieldProducer(NiceFunction f) {
     return f.funcType == FuncType.addFieldChangeToField ||
         _hasAnyAction(f.buff, const [BuffAction.toFieldChangeField, BuffAction.toFieldSubIndividualityField]);
   }
 
-  static bool _isCritStarOnly(final Buff? buff) {
+  static bool _isCritStarOnly(Buff? buff) {
     return _hasAnyAction(buff, const [
       BuffAction.criticalDamage,
       BuffAction.criticalPoint,
@@ -161,7 +152,7 @@ class SkillClassifier {
     ]);
   }
 
-  static bool _isSurvival(final Buff? buff) {
+  static bool _isSurvival(Buff? buff) {
     return _hasAnyAction(buff, const [
       BuffAction.guts,
       BuffAction.invincible,
@@ -175,7 +166,7 @@ class SkillClassifier {
     ]);
   }
 
-  static ClassifiedFunction classifyFunction(final NiceFunction func, {required int skillLevel}) {
+  static ClassifiedFunction classifyFunction(NiceFunction func, {required int skillLevel}) {
     final tags = <SkillTag>{};
     if (_isBatteryFunc(func)) tags.add(SkillTag.npBattery);
     if (func.funcType.isAddState) {
@@ -202,16 +193,10 @@ class SkillClassifier {
       count = vals.Count;
     }
 
-    return ClassifiedFunction(
-      func: func,
-      tags: tags,
-      isAddState: func.funcType.isAddState,
-      turn: turn,
-      count: count,
-    );
+    return ClassifiedFunction(func: func, tags: tags, isAddState: func.funcType.isAddState, turn: turn, count: count);
   }
 
-  static ClassifiedSkill classifySkill(final BattleSkillInfoData info) {
+  static ClassifiedSkill classifySkill(BattleSkillInfoData info) {
     final skill = info.skill;
     final parts = <ClassifiedFunction>[];
     final tags = <SkillTag>{};
@@ -232,4 +217,3 @@ class SkillClassifier {
     return ClassifiedSkill(info: info, parts: parts, tags: tags, maxTurn: maxTurn, hasDirectBattery: hasBattery);
   }
 }
-

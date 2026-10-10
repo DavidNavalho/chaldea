@@ -58,7 +58,7 @@ Apple Developer portal, App Store Connect, entitlements, and application code.
 | Installed app display name | `Chaldea` |
 | Repository version | Read `version:` in the selected commit's `pubspec.yaml` |
 | Last documented Cloud delivery (2026-08-22) | `2.6.0 (5)`; verify newer runs in App Store Connect |
-| Main app minimum iOS | `15.0` |
+| Main app minimum iOS | `15.6` (aligned with upstream's app target) |
 | Widget minimum iOS | `18.1` |
 
 The widget is embedded in the main app. It needs its own App ID and
@@ -150,10 +150,9 @@ Historical validated toolchain (2026-08-22; verify on the current machine):
   `/Applications/Xcode-27.0.0-Beta.5.app/Contents/Developer`
 - Active iOS SDK: iOS `27.0` beta
 
-The repository `.fvmrc` is aligned with `pubspec.yaml` and selects Flutter
-3.44.8. Its FVM cache is on the external SSD at
-`/Volumes/mini-ssd/DevData/FVM`; the older internal 3.41.7 installation was not
-removed.
+Use the current `.fvmrc` and `pubspec.yaml` for the required Flutter/Dart
+versions, not this historical toolchain snapshot. Keep those pins aligned when
+syncing upstream. FVM cache placement is machine-specific.
 
 Verify the environment with:
 
@@ -193,11 +192,12 @@ pod install
 cd ..
 ```
 
-CocoaPods currently resolves 5 dependencies and 6 total Pods. Flutter 3.44.8
-integrates the remaining supported plugins through its generated Swift package.
+Use the committed upstream lockfile for CocoaPods dependencies; Flutter
+integrates supported plugins through its generated Swift package. Do not infer
+current dependency counts from historical build evidence.
 
 If dependencies are regenerated, run the preparer and confirm every generated
-Pod deployment target is iOS 15:
+Pod deployment target matches the fork's iOS 15.6 floor:
 
 ```sh
 ruby scripts/fork/prepare_ios_testflight.rb
@@ -208,7 +208,7 @@ rg -o 'IPHONEOS_DEPLOYMENT_TARGET = [^;]+' \
 Expected output:
 
 ```text
-IPHONEOS_DEPLOYMENT_TARGET = 15.0
+IPHONEOS_DEPLOYMENT_TARGET = 15.6
 ```
 
 ## Completed Build and TestFlight Validation
@@ -814,14 +814,16 @@ Resolution: Both identifiers and both signed bundles must use exactly:
 ### Deployment-target error under Xcode 27
 
 Cause: The app, a generated Pod, or a Flutter Swift-package target/product
-resolved to the Xcode 27 SDK default instead of iOS 15.
+resolved to the SDK default instead of the fork's deployment floor.
 
-Resolution: Confirm the `Chaldea` deployment mapping is `15.0` in
+Resolution: Confirm the `Chaldea` deployment mapping is `15.6` in
 `ForkIdentity.xcconfig`, rerun `pod install`, then run
 `ruby scripts/fork/prepare_ios_testflight.rb`. Verify that the generated Pods
-project contains only iOS 15 deployment values and that the ignored dependency
-map contains the Swift-package targets. Do not put this workaround in the
-upstream Podfile or Xcode project.
+project uses iOS 15.6 and that the ignored dependency map contains the
+Swift-package targets. When upstream raises its app/dependency requirements,
+align the fork overlay, preparer, and local/Cloud validation assertions rather
+than forcing the older floor. Do not put this workaround in the upstream
+Podfile or Xcode project.
 
 ### `GeneratedPluginRegistrant.h` not found
 
@@ -853,8 +855,8 @@ ID, then sign out/in or wait briefly before creating the app record.
 Cause: App Store Connect may have stopped accepting the installed early beta.
 
 Resolution: Update to a currently supported Xcode 27 beta or install the
-current stable Xcode. Keep the app minimum at iOS 15 unless device support
-requirements change.
+current stable Xcode. Do not lower the app's deployment floor below upstream's
+app/dependency requirements to work around an upload-tool rejection.
 
 ## Completion Criteria
 

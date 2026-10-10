@@ -8,7 +8,7 @@ CHALDEA_IOS_BUNDLE_ID_Chaldea = io.github.davidnavalho.chaldea
 CHALDEA_IOS_BUNDLE_ID_FakerStatusWidgetExtension = io.github.davidnavalho.chaldea.FakerStatusWidget
 CHALDEA_IOS_ENTITLEMENTS_Chaldea = Chaldea/Fork.entitlements
 CHALDEA_IOS_ENTITLEMENTS_FakerStatusWidgetExtension = FakerStatusWidgetExtension.fork.entitlements
-CHALDEA_IOS_DEPLOYMENT_TARGET_Chaldea = 15.0
+CHALDEA_IOS_DEPLOYMENT_TARGET_Chaldea = 15.6
 CHALDEA_IOS_DEPLOYMENT_TARGET_FakerStatusWidgetExtension = 18.1
 
 // Resolve the correct values for each app, widget, or generated dependency target.
