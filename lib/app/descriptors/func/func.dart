@@ -14,6 +14,7 @@ import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../../modules/ai/ai_table.dart';
 import 'vals.dart';
 
@@ -640,11 +641,7 @@ class FuncDescriptor extends StatelessWidget {
     this.region,
   });
 
-  static StringBuffer buildBasicFuncText(
-    final NiceFunction func, {
-    final bool showBuffDetail = false,
-    final Region? region = Region.jp,
-  }) {
+  static StringBuffer buildBasicFuncText(NiceFunction func, {bool showBuffDetail = false, Region? region = Region.jp}) {
     StringBuffer funcText = StringBuffer();
     Buff? buff = func.buff;
     final vals = func.svals.firstOrNull;
@@ -1379,38 +1376,37 @@ class FuncDescriptor extends StatelessWidget {
         _addTraits(Transl.special.buffCheckSelf, func.traitVals);
       }
     }
-    if (func.funcType != FuncType.subState) {
-      final overwriteTvals = func.getOverwriteTvalsList();
-      List<InlineSpan> _traitSpans;
-      if (overwriteTvals.isNotEmpty) {
-        _traitSpans = SharedBuilder.traitsListSpans(context: context, traitsList: overwriteTvals);
-      } else if (func.traitVals.join(',') != func.functvals.join(',')) {
-        _traitSpans = SharedBuilder.traitSpans(context: context, traits: func.functvals);
-      } else {
-        _traitSpans = [];
-      }
-      String prefixWithTarget = Transl.special.funcTargetVals;
-      final targetTypeInt = vals?.FuncCheckTargetIndividualityTargetType;
-      if (targetTypeInt != null) {
-        final targetType = FuncTargetType.fromId(targetTypeInt);
-        prefixWithTarget =
-            "(${targetType == null ? 'Target$targetTypeInt' : Transl.funcTargetType(targetType).l})$prefixWithTarget";
-      }
 
-      List<InlineSpan> countConds = [];
-      for (final (v, op) in [
-        (vals?.FuncCheckTargetIndividualityCountEqual, '='),
-        (vals?.FuncCheckTargetIndividualityCountHigher, '≥'),
-        (vals?.FuncCheckTargetIndividualityCountLower, '≤'),
-      ]) {
-        if (v != null) {
-          countConds.add(TextSpan(text: '$op$v'));
-        }
-      }
+    final overwriteTvals = func.getOverwriteTvalsList();
+    List<InlineSpan> _traitSpans;
+    if (overwriteTvals.isNotEmpty) {
+      _traitSpans = SharedBuilder.traitsListSpans(context: context, traitsList: overwriteTvals);
+    } else if (func.traitVals.join(',') != func.functvals.join(',')) {
+      _traitSpans = SharedBuilder.traitSpans(context: context, traits: func.functvals);
+    } else {
+      _traitSpans = [];
+    }
+    String prefixWithTarget = Transl.special.funcTargetVals;
+    final targetTypeInt = vals?.FuncCheckTargetIndividualityTargetType;
+    if (targetTypeInt != null) {
+      final targetType = FuncTargetType.fromId(targetTypeInt);
+      prefixWithTarget =
+          "(${targetType == null ? 'Target$targetTypeInt' : Transl.funcTargetType(targetType).l})$prefixWithTarget";
+    }
 
-      if (_traitSpans.isNotEmpty) {
-        _condSpans.add([TextSpan(text: prefixWithTarget), ..._traitSpans, ...countConds, const TextSpan(text: ' ')]);
+    List<InlineSpan> countConds = [];
+    for (final (v, op) in [
+      (vals?.FuncCheckTargetIndividualityCountEqual, '='),
+      (vals?.FuncCheckTargetIndividualityCountHigher, '≥'),
+      (vals?.FuncCheckTargetIndividualityCountLower, '≤'),
+    ]) {
+      if (v != null) {
+        countConds.add(TextSpan(text: '$op$v'));
       }
+    }
+
+    if (_traitSpans.isNotEmpty) {
+      _condSpans.add([TextSpan(text: prefixWithTarget), ..._traitSpans, ...countConds, const TextSpan(text: ' ')]);
     }
     // if (func.funcType != FuncType.subState ||
     //     func.vals.map((e) => e.id).join(',') != func.functvals.map((e) => e.id).join(',')) {
@@ -1442,9 +1438,9 @@ class FuncDescriptor extends StatelessWidget {
       _condSpans.add([
         TextSpan(text: 'TriggerActorTarget: '),
         TextSpan(
-          text: FuncTriggerActorTargetFlag.fromValue(
-            vals!.FunctionTriggerActorTargetFlag!,
-          ).map((e) => Transl.funcTargetType(e.toFuncTarget()).l).join(' / '),
+          text: FuncTriggerActorTargetFlag.fromValue(vals!.FunctionTriggerActorTargetFlag!)
+              .map((e) => Transl.funcTargetType(e.toFuncTarget()).l)
+              .join(' / '),
         ),
       ]);
     }
@@ -1616,9 +1612,9 @@ class FuncDescriptor extends StatelessWidget {
       ]);
     }
     if (vals?.CheckOverChargeStageRange != null) {
-      final ocRanges = DataVals.beautifyRangeTexts(
-        vals!.CheckOverChargeStageRange!,
-      ).map((e) => e.replaceAllMapped(RegExp(r'\d+'), (m) => (int.parse(m.group(0)!) + 1).toString())).toList();
+      final ocRanges = DataVals.beautifyRangeTexts(vals!.CheckOverChargeStageRange!)
+          .map((e) => e.replaceAllMapped(RegExp(r'\d+'), (m) => (int.parse(m.group(0)!) + 1).toString()))
+          .toList();
       _condSpans.add([TextSpan(text: '${Transl.miscFunction('CheckOverChargeStageRange')}: ${ocRanges.join(" & ")}')]);
     }
     if (vals?.CheckBattlePointPhaseRange?.isNotEmpty == true) {
@@ -1889,9 +1885,8 @@ class FuncDescriptor extends StatelessWidget {
         if (script != null) ...{
           "----script----": "↓",
           "checkIndvType": ?script.checkIndvType,
-          "CheckOpponentBuffTypes": ?script.CheckOpponentBuffTypes?.map(
-            (e) => '${e.name}(${Transl.buffType(e).l})',
-          ).toList(),
+          "CheckOpponentBuffTypes": ?script.CheckOpponentBuffTypes?.map((e) => '${e.name}(${Transl.buffType(e).l})')
+              .toList(),
           if (script.relationId != null) "relationId": "!BuffRelationOverwrite!",
           "ReleaseText": ?script.ReleaseText,
           "DamageRelease": ?script.DamageRelease,

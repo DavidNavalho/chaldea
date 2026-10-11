@@ -15,7 +15,7 @@ import 'package:chaldea/app/battle/models/battle.dart';
 import 'package:chaldea/app/modules/battle/battle_simulation.dart';
 import 'package:chaldea/custom/team_search/auto_three_turn_team_search.dart';
 import 'package:chaldea/app/modules/battle/teams/teams_query_page.dart';
-import 'package:chaldea/app/modules/bond/bond_bonus.dart';
+import 'package:chaldea/app/modules/bond/formation_bond.dart';
 import 'package:chaldea/app/modules/common/builders.dart';
 import 'package:chaldea/app/modules/mystic_code/mystic_code_list.dart';
 import 'package:chaldea/app/modules/quest/quest_card.dart';
@@ -25,7 +25,7 @@ import 'package:chaldea/packages/app_info.dart';
 import 'package:chaldea/packages/logger.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
-import '../bond/formation_bond.dart';
+
 import '../quest/breakdown/quest_phase.dart';
 import '../quest/quest.dart';
 import 'formation/default_lvs.dart';
@@ -109,7 +109,7 @@ class _SimulationPreviewState extends State<SimulationPreview> {
   }
 
   @override
-  Widget build(final BuildContext context) {
+  Widget build(BuildContext context) {
     checkPreviewReady();
     final List<Widget> children = [];
 
@@ -152,11 +152,7 @@ class _SimulationPreviewState extends State<SimulationPreview> {
           ),
           TextButton(
             onPressed: () {
-              router.pushPage(
-                BondBonusHomePage(
-                  option: FormationBondOption(formation: options.formation.copy(), quest: questPhase),
-                ),
-              );
+              router.pushPage(FormationBondPage(option: _tempFormationBondOption()));
             },
             child: Text(S.current.bond),
           ),
@@ -464,11 +460,12 @@ class _SimulationPreviewState extends State<SimulationPreview> {
           text: '${S.current.quest_content_same_warning}: ',
           children: [
             for (final questId in sameQuestIds)
-              SharedBuilder.textButtonSpan(
-                context: context,
-                text: '$questId ',
-                onTap: () => router.push(url: Routes.questI(questId)),
-              ),
+              if (questId != questPhase?.id)
+                SharedBuilder.textButtonSpan(
+                  context: context,
+                  text: '$questId ',
+                  onTap: () => router.push(url: Routes.questI(questId)),
+                ),
           ],
         ),
     ];
@@ -1178,7 +1175,7 @@ class _SimulationPreviewState extends State<SimulationPreview> {
     if (mounted) setState(() {});
   }
 
-  void _questSelectCallback(final QuestPhase selected) {
+  void _questSelectCallback(QuestPhase selected) {
     questPhase = selected;
     if (!mounted) return;
     final curRoute = ModalRoute.of(context);
@@ -1355,6 +1352,17 @@ class _SimulationPreviewState extends State<SimulationPreview> {
     team.options = options.toShareData();
 
     return team;
+  }
+
+  /// Temporary bond option for the Formation Bond page: initialized from persisted
+  /// settings but with the current battle formation/quest, never written back.
+  /// Mutable maps/lists are deep-copied so the temp page never mutates persisted state.
+  FormationBondOption _tempFormationBondOption() {
+    final saved = db.userData.curUser.formationBondOption;
+    return FormationBondOption.fromJson(saved.toJson())
+      ..teamFormation = options.formation.copy().toFormationData()
+      ..quest = questPhase == null ? null : BattleQuestInfo.quest(questPhase!)
+      ..svtBonus = List.generate(6, (_) => FormationBondSvtBonus());
   }
 
   void onTapSharedTeams(QuestPhase quest) async {

@@ -12,6 +12,7 @@ import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../runtime.dart';
 
 enum _UserShopStatus { normal, unreleased, soldOut }
@@ -198,8 +199,8 @@ class _UserShopsPageState extends State<UserShopsPage>
                     TextSpan(
                       text: [
                         '\n${S.current.item_own} ${mstData.getItemOrSvtNum(shop.targetIds.single).format()}',
-                        if (mstData.isCurPlanUser)
-                          '${S.current.item_left} ${(db.itemCenter.itemLeft[shop.targetIds.single] ?? 0).format()}',
+                        if (mstData.getItemLeft(shop.targetIds.single) case final left?)
+                          '${S.current.item_left} ${left.format()}',
                       ].join('\n'),
                       style: canBuy ? Theme.of(context).textTheme.bodySmall : null,
                     ),

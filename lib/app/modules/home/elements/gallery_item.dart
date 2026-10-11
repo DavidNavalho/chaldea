@@ -1,9 +1,10 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/app/modules/bond/bond_bonus.dart';
+import 'package:chaldea/app/modules/bond/formation_bond.dart';
 import 'package:chaldea/app/modules/creator/chara_list.dart';
 import 'package:chaldea/app/modules/creator/cv_list.dart';
 import 'package:chaldea/app/modules/creator/illustrator_list.dart';
@@ -22,6 +23,7 @@ import 'package:chaldea/models/db.dart';
 import 'package:chaldea/packages/app_info.dart';
 import 'package:chaldea/packages/platform/platform.dart';
 import 'package:chaldea/utils/extension.dart';
+
 import '../../../faker/account/accounts.dart';
 import '../../april_fool/april_fool_home.dart';
 import '../../bgm/bgm_list.dart';
@@ -137,6 +139,7 @@ class GalleryItem {
     expCard,
     npCharge,
     bondBonus,
+    formationBond,
     statistics,
     if (!kIsWeb && AppInfo.isDebugOn) fakeGrandOrder,
     importData,
@@ -327,6 +330,13 @@ class GalleryItem {
     titleBuilder: () => S.current.bond_bonus,
     icon: FontAwesomeIcons.diamond.data,
     page: const BondBonusHomePage(),
+    isDetail: false,
+  );
+  static GalleryItem formationBond = GalleryItem(
+    name: 'formation_bond',
+    titleBuilder: () => S.current.team_bond,
+    icon: FontAwesomeIcons.pix.data,
+    page: const FormationBondPage(),
     isDetail: false,
   );
   static GalleryItem statistics = GalleryItem(

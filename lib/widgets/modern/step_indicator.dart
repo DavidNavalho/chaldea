@@ -2,7 +2,7 @@
 // Active step (<=current) fills the circle with colorScheme.primary; future
 // steps use outline.
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 class StepIndicator extends StatelessWidget {
   final int current;
@@ -39,10 +39,8 @@ class StepIndicator extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         '$step',
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-          color: done ? cs.onPrimary : cs.onSurfaceVariant,
-          fontWeight: FontWeight.w600,
-        ),
+        style: Theme.of(context).textTheme.labelMedium
+            ?.copyWith(color: done ? cs.onPrimary : cs.onSurfaceVariant, fontWeight: FontWeight.w600),
       ),
     );
   }

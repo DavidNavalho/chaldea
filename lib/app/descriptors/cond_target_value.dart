@@ -5,6 +5,7 @@ import 'package:chaldea/app/modules/common/builders.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import 'descriptor_base.dart';
 import 'multi_entry.dart';
 
@@ -116,6 +117,14 @@ class CondTargetValueDescriptor extends StatelessWidget with DescriptorBase {
           cn: () => rich('关卡可用中', quests(context)),
           tw: () => rich('關卡可用中', quests(context)),
           na: () => rich('Quest', quests(context), "available"),
+          kr: null,
+        );
+      case CondType.notQuestAvailable:
+        return localized(
+          jp: null,
+          cn: () => rich('关卡不可用', quests(context)),
+          tw: () => rich('關卡不可用', quests(context)),
+          na: () => rich('Quest', quests(context), "not available"),
           kr: null,
         );
       case CondType.svtLevel:

@@ -46,7 +46,7 @@ widget_minimum_ios="$($plist_buddy -c 'Print :MinimumOSVersion' "$widget_path/In
 [[ -z "${CI_BUILD_NUMBER:-}" || "$app_build" == "$CI_BUILD_NUMBER" ]] || {
   fail "Archived build $app_build does not match Xcode Cloud build $CI_BUILD_NUMBER."
 }
-[[ "$app_minimum_ios" == '15.0' ]] || fail "Unexpected app minimum iOS: $app_minimum_ios"
+[[ "$app_minimum_ios" == '15.6' ]] || fail "Unexpected app minimum iOS: $app_minimum_ios"
 [[ "$widget_minimum_ios" == '18.1' ]] || fail "Unexpected widget minimum iOS: $widget_minimum_ios"
 
 codesign --verify --deep --strict --verbose=2 "$app_path"

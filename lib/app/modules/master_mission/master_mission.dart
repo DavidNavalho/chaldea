@@ -12,6 +12,7 @@ import 'package:chaldea/packages/audio.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/region_based.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../../descriptors/cond_target_num.dart';
 import '../../descriptors/mission_conds.dart';
 import 'solver/custom_mission.dart';
@@ -189,6 +190,7 @@ class _MasterMissionPageState extends State<MasterMissionPage> with RegionBasedS
                 targetNum: clearCond.targetNum,
                 targetIds: clearCond.targetIds,
                 details: clearCond.details,
+                showMissionCondDetailExtraConds: false,
                 missions: masterMission.missions,
                 textScaleFactor: 0.8,
                 unknownMsg: mission.name,

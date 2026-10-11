@@ -1,9 +1,10 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/app/modules/effect_search/util.dart';
 import 'package:chaldea/models/gamedata/effect.dart';
 import 'package:chaldea/models/gamedata/gamedata.dart';
 import 'package:chaldea/utils/utils.dart';
+
 import '../../app/modules/ffo/schema.dart';
 import '../../generated/l10n.dart';
 import '../db.dart';
@@ -329,18 +330,20 @@ class SvtFilterData with FilterDataMixin {
     List<bool?>? reversed,
     User? user,
   }) {
-    final aa = db.gameData.servantsById[a], bb = db.gameData.servantsById[b];
+    final aa = db.gameData.servantsById[a] ?? db.gameData.entities[a],
+        bb = db.gameData.servantsById[b] ?? db.gameData.entities[b];
     if (aa == null && bb == null) return a.compareTo(b);
     return compare(aa, bb, keys: keys, reversed: reversed, user: user);
   }
 
   static int compare(
-    Servant? a,
-    Servant? b, {
+    BasicServant? a,
+    BasicServant? b, {
     List<SvtCompare>? keys = SvtCompare.kRarityFirstKeys,
     List<bool?>? reversed,
     User? user,
   }) {
+    final aa = a is Servant ? a : null, bb = b is Servant ? b : null;
     if (a == null && b == null) return 0;
     if (a == null) return -1;
     if (b == null) return 1;
@@ -362,7 +365,7 @@ class SvtFilterData with FilterDataMixin {
       int r;
       switch (keys[i]) {
         case SvtCompare.collectionNo:
-          r = a.originalCollectionNo - b.originalCollectionNo;
+          r = (aa?.originalCollectionNo ?? 0) - (bb?.originalCollectionNo ?? 0);
           if (r == 0) r = a.collectionNo - b.collectionNo;
           if (r == 0) r = a.id - b.id;
           break;
@@ -975,6 +978,10 @@ enum SvtCompare {
       SvtCompare.tdLv => '${S.current.np_short} Lv',
       SvtCompare.bondLv => '${S.current.bond} Lv',
     };
+  }
+
+  static int compare(BasicServant a, BasicServant b, {required List<SvtCompare> keys, required List<bool> revered}) {
+    return 0;
   }
 }
 

@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:chaldea/app/api/atlas.dart';
+import 'package:chaldea/app/modules/bond/solver/bond_effect.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/faker/faker.dart';
 import 'package:chaldea/models/gamedata/mst_data.dart';
@@ -8,6 +9,7 @@ import 'package:chaldea/models/models.dart';
 import 'package:chaldea/packages/logger.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '_base.dart';
 
 class FakerRuntimeBattle extends FakerRuntimeBase {
@@ -82,6 +84,33 @@ class FakerRuntimeBattle extends FakerRuntimeBase {
         throw SilentException('Mismatch event support setting.\nSupposed: $shouldUseEventDeck');
       }
     }
+    if (battleOption.battleMissionValueDict.isNotEmpty) {
+      if (!runtime.mounted) {
+        throw SilentException('Need battleMissionValueDict confirmation but not mounted');
+      }
+      // one line per key: show the mission text with the largest targetNum
+      String dictLine(MapEntry<int, int> e) {
+        final entries = runtime.gameData.timerData.battleMissionValues[e.key];
+        if (entries == null || entries.isEmpty) return '${e.key}: ${e.value}';
+        final mission = entries.reduce((a, b) => a.targetNum > b.targetNum ? a : b).mission;
+        return '${mission.name} (${e.key}: ${e.value})';
+      }
+
+      final confirm = await runtime.showLocalDialog(
+        SimpleConfirmDialog(
+          scrollable: true,
+          title: const Text('Battle Mission Values'),
+          content: Text(
+            'Submit with each battle result (win):\n'
+            '${battleOption.battleMissionValueDict.entries.map(dictLine).join('\n')}',
+          ),
+        ),
+      );
+      if (confirm != true) {
+        throw SilentException('cancel battleMissionValueDict submission');
+      }
+    }
+    await _checkSupportEquipBondBonus(battleOption, questPhaseEntity);
     int finishedCount = 0, totalCount = battleOption.loopCount;
     List<int> elapseSeconds = [];
     runtime.agentData.curLoopDropStat.reset();
@@ -676,7 +705,6 @@ class FakerRuntimeBattle extends FakerRuntimeBase {
           'but received ${options.skillShiftEnemyUniqueIds}',
         );
       }
-
       final resp = await agent.battleResult(
         battleId: battleEntity.id,
         resultType: BattleResultType.win,
@@ -693,6 +721,7 @@ class FakerRuntimeBattle extends FakerRuntimeBase {
         skillShiftUniqueIdArray: itemDroppedSkillShiftEnemies.map((e) => e.uniqueId).toList(),
         skillShiftNpcSvtIdArray: itemDroppedSkillShiftEnemies.map((e) => e.npcId).toList(),
         sendDelay: sendDelay,
+        battleMissionValueDict: options.battleMissionValueDict,
       );
 
       if (options.sendFriendRequest) {
@@ -802,7 +831,7 @@ class FakerRuntimeBattle extends FakerRuntimeBase {
     return true;
   }
 
-  Future<void> seedWait(final int maxBuyCount) async {
+  Future<void> seedWait(int maxBuyCount) async {
     int boughtCount = 0;
     while (boughtCount < maxBuyCount) {
       const int apUnit = 40, seedUnit = 1;
@@ -931,6 +960,67 @@ class FakerRuntimeBattle extends FakerRuntimeBase {
           );
         }
       }
+    }
+  }
+
+  /// Warns when the fixed support CE grants less team bond bonus than Chaldea Tea Time.
+  ///
+  /// Only [AutoBattleOptions.supportEquipIds] is checked, in both grand and normal battles.
+  /// When it holds exactly one bond-bonus CE it can be evaluated; with several candidates the
+  /// friend's actual CE is unknown. `grandSupportEquipIds` is never validated.
+  Future<void> _checkSupportEquipBondBonus(AutoBattleOptions option, QuestPhase questPhase) async {
+    if (option.supportEquipIds.length != 1) return;
+    final ce = db.gameData.craftEssencesById[option.supportEquipIds.first];
+    if (ce == null) return;
+    final effects = CeBondEffect.extractAll(ce, option.supportEquipMaxLimitBreak, questPhase, support: true);
+    if (effects.isEmpty) return; // not a bond-bonus CE
+
+    // Only own servants receive the team effect; the support slot (isFollowerSvt) does not.
+    final deck = questPhase.isUseUserEventDeck()
+        ? mstData.userEventDeck[UserEventDeckEntity.createPK(
+            questPhase.logicEventId ?? 0,
+            questPhase.extraDetail?.useEventDeckNo ?? 1,
+          )]
+        : mstData.userDeck[option.deckId];
+    final teamTraits = <List<int>>[];
+    for (final slot in deck?.deckInfo?.svts ?? const <DeckServantData>[]) {
+      if (slot.isFollowerSvt || slot.userSvtId <= 0) continue;
+      final dbSvt = db.gameData.servantsById[mstData.userSvt[slot.userSvtId]?.svtId];
+      if (dbSvt != null) teamTraits.add(dbSvt.traitsAll.toList());
+    }
+    if (teamTraits.isEmpty) return;
+
+    // The support servant is a virtual wearer without traits.
+    final teamEffects = effects
+        .where((effect) => effect.scope == BondEffectScope.team && effect.wearerMatches(const []))
+        .toList();
+    var teamBonus = 0;
+    for (final effect in teamEffects) {
+      teamBonus += effect.rate * teamTraits.where(effect.targetMatches).length;
+    }
+
+    // CE 9403520 "Chaldea Tea Time" grants +15% bond to every servant (rate unit: 150).
+    const int teaTimeRate = 150;
+    final benchmark = teaTimeRate * teamTraits.length;
+    if (teamBonus >= benchmark) return;
+    if (!runtime.mounted) return;
+
+    String pct(int rate) => '${(rate / 10).toStringAsFixed(1)}%';
+    final confirm = await runtime.showLocalDialog(
+      SimpleConfirmDialog(
+        title: const Text('Support CE Bond Bonus'),
+        content: Text(
+          'Support CE: ${ce.lName.l}\n'
+          'Team bond bonus: ${pct(teamBonus)} vs ${pct(teaTimeRate)} × ${teamTraits.length} '
+          '= ${pct(benchmark)} (Chaldea Tea Time, 9403520)\n'
+          'You can switch to a higher-bonus support CE, or keep looping without changing it.',
+        ),
+        confirmText: 'Continue',
+        cancelText: 'Cancel',
+      ),
+    );
+    if (confirm != true) {
+      throw SilentException('Change the support CE (${ce.lName.l}) then restart the loop');
     }
   }
 }

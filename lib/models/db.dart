@@ -3,19 +3,21 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:crypto/crypto.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:flutter_web_plugins/url_strategy.dart';
 import 'package:hive/hive.dart';
 import 'package:intl/intl.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/app/tools/item_center.dart';
 import 'package:chaldea/models/runtime_data.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/image/image_viewer.dart';
+
 import '../packages/app_info.dart';
 import '../packages/language.dart';
 import '../packages/method_channel/method_channel_chaldea.dart';
@@ -25,8 +27,6 @@ import 'gamedata/gamedata.dart';
 import 'paths.dart';
 import 'userdata/local_settings.dart';
 import 'userdata/userdata.dart';
-
-import 'package:flutter_web_plugins/url_strategy.dart'; // ignore: depend_on_referenced_packages
 
 void _emptyCallback() {}
 
@@ -50,11 +50,13 @@ class _Database {
 
   set gameData(GameData gameData) {
     _gameData = gameData;
+    if (settings.gameplay.normalizePinnedIds(gameData)) unawaited(saveSettings());
     _userData.validate();
     itemCenter.init();
   }
 
   RuntimeData runtimeData = RuntimeData();
+
   ItemCenter itemCenter = ItemCenter();
 
   // shortcut
@@ -127,12 +129,14 @@ class _Database {
       Hive.init(paths.hiveDir);
     }
 
-    await loadSettings();
-    await loadUserData().then((value) {
-      if (value != null) {
-        userData = value;
-      }
-    });
+    final loadedUserData = await loadUserData();
+    await loadSettings(null, loadedUserData?.users.firstOrNull?.battleSim);
+    if (loadedUserData != null) {
+      userData = loadedUserData;
+      // Persist collection numbers before removing their legacy persistence source.
+      await saveSettings();
+      await saveUserData();
+    }
 
     SplitRoute.enableSplitView = settings.display.enableSplitView;
     if (settings.display.splitMasterRatio != null) {
@@ -155,11 +159,11 @@ class _Database {
     );
   }
 
-  Future<LocalSettings> loadSettings([String? fp]) async {
+  Future<LocalSettings> loadSettings([String? fp, BattleSimUserData? legacyPins]) async {
     return settings = await _loadWithBak<LocalSettings>(
       fp: fp ?? paths.settingsPath,
-      fromJson: (data) => LocalSettings.fromJson(data),
-      onError: () => LocalSettings(),
+      fromJson: (data) => LocalSettings.fromJson(data, legacyPins: legacyPins),
+      onError: () => legacyPins == null ? LocalSettings() : LocalSettings.fromJson({}, legacyPins: legacyPins),
     );
   }
 

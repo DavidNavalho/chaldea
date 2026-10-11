@@ -3,20 +3,20 @@ import 'dart:math';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:crypto/crypto.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:http/http.dart' as http;
-import 'package:octo_image/octo_image.dart';
+import 'package:material_ui/material_ui.dart';
 import 'package:path/path.dart' as pathlib;
 import 'package:uuid/uuid.dart';
 
 import 'package:chaldea/models/db.dart';
 import 'package:chaldea/packages/packages.dart';
 import 'package:chaldea/utils/utils.dart';
+
 import '../../app/tools/icon_cache_manager.dart';
 import '../../models/userdata/remote_config.dart';
 import '../../packages/network.dart';
@@ -165,6 +165,9 @@ class CachedImage extends StatefulWidget {
 class _CachedImageState extends State<CachedImage> {
   static final _loader = AtlasIconLoader.i;
 
+  /// Reused so [TweenAnimationBuilder] does not restart the fade on rebuild.
+  static final Tween<double> _fadeInTween = Tween<double>(begin: 0, end: 1);
+
   CachedImageOption get cachedOption => widget.cachedOption ?? const CachedImageOption();
 
   Future<void> _resolve(String? url) async {
@@ -269,7 +272,7 @@ class _CachedImageState extends State<CachedImage> {
   }
 
   Widget _withProvider(ImageProvider provider, {Future<void> Function()? onClearCache}) {
-    Widget child = _withOcto(context, provider);
+    Widget child = _withImageProvider(provider);
     if (widget.showSaveOnLongPress) {
       child = GestureDetector(
         child: child,
@@ -334,7 +337,41 @@ class _CachedImageState extends State<CachedImage> {
       maxHeight: cachedOption.maxHeightDiskCache,
     );
 
-    Widget child = _withOcto(context, provider);
+    Widget child = CachedNetworkImage(
+      imageUrl: url,
+      httpHeaders: cachedOption.httpHeaders,
+      cacheManager: _cacheManager,
+      cacheKey: cachedOption.cacheKey ?? url,
+      maxWidthDiskCache: cachedOption.maxWidthDiskCache,
+      maxHeightDiskCache: cachedOption.maxHeightDiskCache,
+      imageRenderMethodForWeb: cachedOption.imageRenderMethodForWeb,
+      imageBuilder: cachedOption.imageBuilder == null
+          ? null
+          : (context, imageProvider) => cachedOption.imageBuilder!(context, imageProvider),
+      placeholder: (context, _) => _withPlaceholder(context, widget.imageUrl ?? ''),
+      progressIndicatorBuilder: cachedOption.progressIndicatorBuilder == null
+          ? null
+          : (context, url, progress) =>
+                cachedOption.progressIndicatorBuilder!(context, widget.imageUrl ?? "", progress),
+      errorWidget: (context, url, error) => _withError(context, widget.imageUrl ?? "", error),
+      fadeOutDuration: cachedOption.fadeOutDuration,
+      fadeOutCurve: cachedOption.fadeOutCurve,
+      fadeInDuration: cachedOption.fadeInDuration,
+      fadeInCurve: cachedOption.fadeInCurve,
+      placeholderFadeInDuration: cachedOption.placeholderFadeInDuration,
+      width: widget.width ?? cachedOption.width,
+      height: widget.height ?? cachedOption.height,
+      fit: cachedOption.fit,
+      alignment: cachedOption.alignment,
+      repeat: cachedOption.repeat,
+      matchTextDirection: cachedOption.matchTextDirection,
+      useOldImageOnUrlChange: cachedOption.useOldImageOnUrlChange,
+      color: cachedOption.color,
+      filterQuality: cachedOption.filterQuality,
+      colorBlendMode: cachedOption.colorBlendMode,
+      memCacheWidth: cachedOption.memCacheWidth,
+      memCacheHeight: cachedOption.memCacheHeight,
+    );
     if (widget.showSaveOnLongPress) {
       Future<void> onClearCache() async {
         await _cacheManager.removeFile(cachedOption.cacheKey ?? url);
@@ -387,42 +424,43 @@ class _CachedImageState extends State<CachedImage> {
     );
   }
 
-  Widget _withOcto(BuildContext context, ImageProvider image) {
-    return OctoImage(
-      image: image,
-      imageBuilder: cachedOption.imageBuilder == null
-          ? null
-          : (context, _) => cachedOption.imageBuilder!(context, image),
-      placeholderBuilder: (context) => _withPlaceholder(context, widget.imageUrl ?? ''),
-      progressIndicatorBuilder: cachedOption.progressIndicatorBuilder == null
-          ? null
-          : (context, progress) => cachedOption.progressIndicatorBuilder!(
-              context,
-              widget.imageUrl ?? "",
-              DownloadProgress(
-                widget.imageUrl ?? "",
-                progress?.expectedTotalBytes,
-                progress?.cumulativeBytesLoaded ?? 0,
-              ),
-            ),
-      errorBuilder: (context, e, s) => _withError(context, widget.imageUrl ?? ""),
-      fadeOutDuration: cachedOption.fadeOutDuration,
-      fadeOutCurve: cachedOption.fadeOutCurve,
-      fadeInDuration: cachedOption.fadeInDuration,
-      fadeInCurve: cachedOption.fadeInCurve,
+  /// Renders an arbitrary [ImageProvider] (local file, memory, atlas icon...).
+  ///
+  /// Unlike the network path this does not go through [CachedNetworkImage],
+  /// which requires a URL. Placeholder and fade-in are reproduced with
+  /// [Image.frameBuilder]; there is no download progress to report here, and
+  /// the placeholder is swapped out instead of being cross-faded.
+  Widget _withImageProvider(ImageProvider provider) {
+    // The generic Image() constructor has no cacheWidth/cacheHeight, so the
+    // decode size has to be baked into the provider instead.
+    final sizedProvider = ResizeImage.resizeIfNeeded(cachedOption.memCacheWidth, cachedOption.memCacheHeight, provider);
+    return Image(
+      image: sizedProvider,
+      frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+        final image = cachedOption.imageBuilder?.call(context, sizedProvider) ?? child;
+        if (wasSynchronouslyLoaded) return image;
+        if (frame == null) return _withPlaceholder(context, widget.imageUrl ?? '');
+        return TweenAnimationBuilder<double>(
+          // Not const-able; keep the instance stable so the tween does not
+          // restart on every rebuild.
+          tween: _fadeInTween,
+          duration: cachedOption.fadeInDuration,
+          curve: cachedOption.fadeInCurve,
+          builder: (context, value, child) => Opacity(opacity: value, child: child),
+          child: image,
+        );
+      },
+      errorBuilder: (context, error, stack) => _withError(context, widget.imageUrl ?? "", error),
       width: widget.width ?? cachedOption.width,
       height: widget.height ?? cachedOption.height,
       fit: cachedOption.fit,
       alignment: cachedOption.alignment,
       repeat: cachedOption.repeat,
       matchTextDirection: cachedOption.matchTextDirection,
+      gaplessPlayback: cachedOption.useOldImageOnUrlChange,
       color: cachedOption.color,
       filterQuality: cachedOption.filterQuality,
       colorBlendMode: cachedOption.colorBlendMode,
-      placeholderFadeInDuration: cachedOption.placeholderFadeInDuration,
-      gaplessPlayback: cachedOption.useOldImageOnUrlChange,
-      memCacheWidth: cachedOption.memCacheWidth,
-      memCacheHeight: cachedOption.memCacheHeight,
     );
   }
 }

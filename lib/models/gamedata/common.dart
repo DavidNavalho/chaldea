@@ -1,6 +1,7 @@
 import 'package:chaldea/packages/svg.dart';
 import 'package:chaldea/utils/atlas.dart';
 import 'package:chaldea/utils/extension.dart';
+
 import '../../app/app.dart';
 import '../../app/tools/gamedata_loader.dart';
 import '../../generated/l10n.dart';
@@ -1414,7 +1415,9 @@ enum CondType {
   jobMaxLevelNumEqual(288),
   svtHpReachNum(289),
   svtAtkReachNum(290),
-  favoriteSvtIdEqual(291);
+  favoriteSvtIdEqual(291),
+  eventBallotSubmitted(292),
+  eventBallotNotSubmitted(293);
 
   const CondType(this.value);
   final int value;

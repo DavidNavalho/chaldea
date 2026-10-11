@@ -11,6 +11,7 @@ import 'package:chaldea/models/gamedata/mst_data.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../option_list.dart';
 import '../runtime.dart';
 import '../runtimes/event.dart';
@@ -794,9 +795,9 @@ QP/友情点/魔力棱镜: 0
         context: context,
         item: null,
         itemId: itemId,
-        text: [
+        text: <String>[
           widget.mstData.getItemOrSvtNum(itemId).format(),
-          (db.itemCenter.itemLeft[itemId] ?? 0).format(),
+          ?widget.mstData.getItemLeft(itemId)?.format(),
         ].join('\n'),
       ),
       title: Text(Item.getName(itemId)),

@@ -9,6 +9,7 @@ import 'package:chaldea/models/gamedata/mst_data.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../runtime.dart';
 
 class UserEventTradePage extends StatefulWidget {
@@ -304,7 +305,7 @@ class _UserEventTradePageState extends State<UserEventTradePage>
             width: 32,
             text: [
               mstData.getItemOrSvtNum(gift.objectId).format(),
-              (db.itemCenter.itemLeft[gift.objectId] ?? 0).format(),
+              ?mstData.getItemLeft(gift.objectId)?.format(),
             ].join('\n'),
           ),
       ],

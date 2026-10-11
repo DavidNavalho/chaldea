@@ -6,9 +6,9 @@ import 'package:archive/archive.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 
 import 'package:chaldea/generated/l10n.dart';
-import 'package:chaldea/utils/extension.dart';
 import 'package:chaldea/utils/url.dart';
 import 'package:chaldea/widgets/custom_dialogs.dart';
+
 import '../../packages/logger.dart';
 import '../userdata/_helper.dart';
 import '../userdata/battle.dart';

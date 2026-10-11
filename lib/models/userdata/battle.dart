@@ -8,6 +8,7 @@ import 'package:chaldea/models/gamedata/gamedata.dart';
 import 'package:chaldea/packages/app_info.dart';
 import 'package:chaldea/utils/basic.dart';
 import 'package:chaldea/utils/url.dart';
+
 import '../../utils/atlas.dart';
 import '../../utils/extension.dart';
 import '../db.dart';
@@ -55,7 +56,9 @@ void _removeEmptyListOrDefault(
 
 @JsonSerializable(converters: [RegionConverter()])
 class BattleSimUserData {
+  @protected
   Set<int> pingedCEs; // collectionNo
+  @protected
   Set<int> pingedSvts; // collectionNo
   // questId, teamIds
   Map<int, Set<int>> favoriteTeams;
@@ -66,8 +69,8 @@ class BattleSimUserData {
     Set<int>? pingedSvts,
     Map<int, Set<int>>? favoriteTeams,
     List<BattleShareData>? teams,
-  }) : pingedCEs = pingedCEs ?? {18, 28, 34, 48, 1080},
-       pingedSvts = pingedSvts ?? {215, 284, 314, 316, 357},
+  }) : pingedCEs = pingedCEs ?? {},
+       pingedSvts = pingedSvts ?? {},
        favoriteTeams = favoriteTeams ?? {},
        teams = teams ?? [] {
     validate();
@@ -87,29 +90,13 @@ class BattleSimUserData {
     }
   }
 
-  Set<int> pingedCEsWithEventAndBond(final Quest? quest, final Servant? svt) {
-    final event = quest?.war?.event;
-    Set<int> pinged = pingedCEs.toSet();
-    if (event != null) {
-      for (final ce in db.gameData.craftEssences.values) {
-        if (pinged.contains(ce.collectionNo)) continue;
-        if (ce.eventSkills(event.id).isNotEmpty) {
-          pinged.add(ce.collectionNo);
-        }
-      }
-    }
-    if (svt != null) {
-      for (final ceId in svt.bondEquips) {
-        final bondCE = db.gameData.craftEssencesById[ceId];
-        if (bondCE != null && bondCE.collectionNo > 0) {
-          pinged.add(bondCE.collectionNo);
-        }
-      }
-    }
-    return pinged;
-  }
-
-  factory BattleSimUserData.fromJson(Map<String, dynamic> json) => _$BattleSimUserDataFromJson(json);
+  factory BattleSimUserData.fromJson(Map<String, dynamic> json) => _$BattleSimUserDataFromJson({
+    ...json,
+    // Missing legacy fields used to receive these defaults. Explicit empty
+    // collections must remain empty after migration.
+    'pingedCEs': json['pingedCEs'] ?? [18, 28, 34, 48, 1080],
+    'pingedSvts': json['pingedSvts'] ?? [215, 284, 314, 316, 357],
+  });
 
   Map<String, dynamic> toJson() => _$BattleSimUserDataToJson(this);
 }
@@ -280,11 +267,11 @@ class BattleShareData {
     return false;
   }
 
-  bool usedMysticCodeSkill(final int checkIndex) {
+  bool usedMysticCodeSkill(int checkIndex) {
     return actions.any((action) => action.usedMysticCode(checkIndex));
   }
 
-  bool containsTdCardType(final int cardType) {
+  bool containsTdCardType(int cardType) {
     return actions.any((action) => action.containsTdCardType(cardType));
   }
 
@@ -377,7 +364,10 @@ class BattleTeamFormation {
     @protected List<SvtSaveData?>? backupSvts,
   }) : mysticCode = mysticCode ?? MysticCodeSaveData(),
        svts = svts != null && svts.isNotEmpty
-           ? List.generate(max(6, svts.length), (index) => svts.getOrNull(index))
+           ? List.generate(
+               max(6, svts.length),
+               (index) => svts.getOrNull(index) ?? (index == 2 ? SvtSaveData(supportType: .friend) : null),
+             )
            : [
                ...List.generate(3, (index) => onFieldSvts?.getOrNull(index)),
                ...List.generate(3, (index) => backupSvts?.getOrNull(index)),
@@ -511,7 +501,7 @@ class SvtSaveData {
   factory SvtSaveData.fromJson(Map<String, dynamic> json) => _$SvtSaveDataFromJson(json);
 
   Map<String, dynamic> toJson() {
-    if (svtId == null || svtId == 0) return {};
+    if ((svtId == null || svtId == 0) && !supportType.isSupport && equip1.id == null) return {};
     this
       ..ceId = equip1.id
       ..ceLimitBreak = equip1.limitBreak
@@ -1321,11 +1311,11 @@ class BattleRecordData {
 
   Map<String, dynamic> toJson() => _$BattleRecordDataToJson(this);
 
-  bool usedMysticCode(final int checkIndex) {
+  bool usedMysticCode(int checkIndex) {
     return type == BattleRecordDataType.skill && svt == null && skill == checkIndex;
   }
 
-  bool containsTdCardType(final int cardType) {
+  bool containsTdCardType(int cardType) {
     return attacks?.any((cardAction) => cardAction.isTD && CardType.matches(cardAction.cardType, cardType)) ?? false;
   }
 
@@ -1356,4 +1346,82 @@ class BattleAttackRecordData {
   factory BattleAttackRecordData.fromJson(Map<String, dynamic> json) => _$BattleAttackRecordDataFromJson(json);
 
   Map<String, dynamic> toJson() => _$BattleAttackRecordDataToJson(this);
+}
+
+enum BondReleaseReference {
+  jp,
+  cn,
+  tw,
+  na,
+  questClosedAt;
+
+  Region get region => switch (this) {
+    cn => Region.cn,
+    tw => Region.tw,
+    na => Region.na,
+    jp || questClosedAt => Region.jp,
+  };
+}
+
+@JsonSerializable()
+class FormationBondOption {
+  BattleTeamFormation teamFormation;
+  // quest reference stored as id/phase; restore falls back to null if unresolvable
+  BattleQuestInfo? quest;
+  bool enableEvent;
+  // <eventId, <campaign idx, enabled>>
+  Map<int, Map<int, bool>> campaigns;
+  int? fixedDate;
+  List<FormationBondSvtBonus> svtBonus;
+  bool frontlineBonus;
+  int teapotTimes;
+  int? maxCost;
+  bool favoriteOnly;
+  BondReleaseReference releaseReference;
+  int maxBond;
+  Set<int> excludedSvts;
+  Set<int> excludedCes;
+  int maxCandidateTeams;
+  bool searchFixedAscensions;
+
+  FormationBondOption({
+    BattleTeamFormation? teamFormation,
+    this.quest,
+    this.enableEvent = true,
+    Map<int, Map<int, bool>>? campaigns,
+    this.fixedDate,
+    List<FormationBondSvtBonus>? svtBonus,
+    this.frontlineBonus = true,
+    this.teapotTimes = 1,
+    this.maxCost,
+    this.favoriteOnly = true,
+    this.releaseReference = BondReleaseReference.jp,
+    this.maxBond = 15,
+    Set<int>? excludedSvts,
+    Set<int>? excludedCes,
+    this.maxCandidateTeams = 100,
+    this.searchFixedAscensions = true,
+  }) : teamFormation = teamFormation ?? BattleTeamFormation(),
+       campaigns = campaigns ?? {},
+       svtBonus = svtBonus ?? List.generate(6, (_) => FormationBondSvtBonus()),
+       excludedSvts = excludedSvts ?? {},
+       excludedCes = excludedCes ?? {};
+
+  factory FormationBondOption.fromJson(Map<String, dynamic> json) => _$FormationBondOptionFromJson(json);
+
+  Map<String, dynamic> toJson() => _$FormationBondOptionToJson(this);
+}
+
+@JsonSerializable()
+class FormationBondSvtBonus {
+  int addValue;
+  int addRate;
+  bool isBond15;
+  bool isBondReachLimit;
+
+  FormationBondSvtBonus({this.addValue = 0, this.addRate = 0, this.isBond15 = false, this.isBondReachLimit = false});
+
+  factory FormationBondSvtBonus.fromJson(Map<String, dynamic> json) => _$FormationBondSvtBonusFromJson(json);
+
+  Map<String, dynamic> toJson() => _$FormationBondSvtBonusToJson(this);
 }

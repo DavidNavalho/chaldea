@@ -32,7 +32,7 @@ if deployment_setting_count.zero?
   exit 1
 end
 
-updated_project_contents = project_contents.gsub(deployment_pattern, 'IPHONEOS_DEPLOYMENT_TARGET = 15.0;')
+updated_project_contents = project_contents.gsub(deployment_pattern, 'IPHONEOS_DEPLOYMENT_TARGET = 15.6;')
 if updated_project_contents != project_contents
   temporary_project_file = Pathname.new("#{pods_project_file}.tmp-#{Process.pid}")
   temporary_project_file.write(updated_project_contents)
@@ -121,7 +121,7 @@ target_map_lines = [
 target_keys.sort.each do |target_key|
   target_map_lines << "CHALDEA_IOS_BUNDLE_ID_#{target_key} = org.cocoapods.$(PRODUCT_NAME:rfc1034identifier)"
   target_map_lines << "CHALDEA_IOS_ENTITLEMENTS_#{target_key} ="
-  target_map_lines << "CHALDEA_IOS_DEPLOYMENT_TARGET_#{target_key} = 15.0"
+  target_map_lines << "CHALDEA_IOS_DEPLOYMENT_TARGET_#{target_key} = 15.6"
 end
 
 FileUtils.mkdir_p(target_map.dirname)

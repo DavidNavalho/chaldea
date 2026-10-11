@@ -4,6 +4,7 @@ import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../../quest/quest_card.dart';
 
 enum _SortType { openTime, apRate, dropRate }
@@ -33,8 +34,8 @@ class _ItemObtainEventFreeTabState extends State<ItemObtainEventFreeTab> {
     Map<int, Quest> quests = {};
     for (final questId in questsIds) {
       final quest = db.gameData.quests[questId];
-      if (quest == null || !quest.isAnyFree || quest.phases.isEmpty) continue;
-      if (quest.warId == WarId.chaldeaGate || quest.warId >= 8000) {
+      if (quest == null || !(quest.isAnyFree || quest.isRepeatRaid) || quest.phases.isEmpty) continue;
+      if (quest.warId == WarId.chaldeaGate || quest.warId >= 8000 || true) {
         // Hunting quests or event quests
         quests[questId] = quest;
       }

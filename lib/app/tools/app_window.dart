@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 import 'package:flutter_easyloading/flutter_easyloading.dart';
-import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'package:chaldea/generated/l10n.dart';
@@ -12,13 +11,19 @@ import 'package:chaldea/packages/app_info.dart';
 import 'package:chaldea/packages/logger.dart';
 import 'package:chaldea/packages/platform/platform.dart';
 import 'package:chaldea/utils/constants.dart';
-import 'package:chaldea/utils/extension.dart';
 import 'package:chaldea/widgets/widgets.dart';
-import 'backup_backend/chaldea_backend.dart';
 
+import 'backup_backend/chaldea_backend.dart';
+import 'tray_controller_stub.dart' if (dart.library.ffi) 'tray_controller_native.dart';
+
+/// Window and system-tray helpers.
+///
+/// The tray controller is imported conditionally: tray_manager 0.7 is backed by
+/// nativeapi, whose dart:ffi bindings cannot be compiled for the web, so the web
+/// build resolves the tray controller to a no-op stub.
 class AppWindowUtil {
   const AppWindowUtil._();
-  static bool _trayInstalled = false;
+  static TrayController? _tray;
 
   static Future<void> init() async {
     if (PlatformU.isDesktop) {
@@ -50,9 +55,8 @@ class AppWindowUtil {
 
   static Future<void> destroyWindow() async {
     if (kDebugMode) {
-      final confirm = await SimpleConfirmDialog(
-        title: Text(S.current.general_close),
-      ).showDialog(kAppKey.currentContext!);
+      final confirm = await SimpleConfirmDialog(title: Text(S.current.general_close))
+          .showDialog(kAppKey.currentContext!);
       if (confirm != true) return;
     }
     await windowManager.setPreventClose(false);
@@ -73,73 +77,41 @@ class AppWindowUtil {
     if (value != null) {
       return value ? setTray() : destroyTray();
     } else {
-      return _trayInstalled ? destroyTray() : setTray();
+      return (_tray?.installed ?? false) ? destroyTray() : setTray();
     }
   }
 
   @protected
   static Future<void> destroyTray() async {
-    if (_trayInstalled) {
-      _trayInstalled = false;
-      return trayManager.destroy();
-    }
+    final tray = _tray;
+    _tray = null;
+    await tray?.uninstall();
   }
 
   static Future<void> setTray() async {
     if (!PlatformU.isDesktop) return;
     try {
-      final icon = 'res/img/launcher_icon/${PlatformU.isWindows ? 'app_icon.ico' : 'app_icon_rounded.png'}';
-      trayManager.setIcon(icon);
-      final _menuMain = Menu(
-        items: [
-          MenuItem(label: '$kAppName v${AppInfo.versionString}', disabled: true),
-          MenuItem.separator(),
-          MenuItem(label: S.current.show, onClick: (menuItem) => showWindow()),
-          MenuItem.separator(),
-          MenuItem(label: S.current.hide, onClick: (menuItem) => minimizeWindow()),
-          MenuItem.separator(),
-          MenuItem(
-            label: S.current.quit,
-            onClick: (menuItem) async {
-              await db.saveAll();
-              if (await _shouldCloseCheckUpload()) {
-                await destroyWindow();
-              }
-            },
-          ),
-        ],
+      await destroyTray();
+      final tray = TrayController(onShow: showWindow, onHide: minimizeWindow, onQuit: _quitFromTray);
+      await tray.install(
+        iconPath: 'res/img/launcher_icon/${PlatformU.isWindows ? 'app_icon.ico' : 'app_icon_rounded.png'}',
+        versionLabel: '$kAppName v${AppInfo.versionString}',
+        showLabel: S.current.show,
+        hideLabel: S.current.hide,
+        quitLabel: S.current.quit,
       );
-
-      await trayManager.setContextMenu(_menuMain);
+      _tray = tray;
       print('set tray menu');
-      _trayInstalled = true;
     } catch (e, s) {
       logger.e('init system tray failed', e, s);
       EasyLoading.showError('${S.current.failed}: ${S.current.show_system_tray}');
     }
   }
 
-  /// events
-
-  static Future<void> onTrayClick() async {
-    if (PlatformU.isWindows) {
-      return windowManager.show();
-    } else if (PlatformU.isMacOS) {
-      return trayManager.popUpContextMenu();
-    } else if (PlatformU.isLinux) {
-      return windowManager.show();
-      // not supported
-      // trayManager.popUpContextMenu();
-    }
-  }
-
-  static Future<void> onTrayRightClick() async {
-    if (PlatformU.isWindows) {
-      return trayManager.popUpContextMenu();
-    } else if (PlatformU.isMacOS) {
-      return windowManager.show();
-    } else if (PlatformU.isLinux) {
-      return windowManager.show();
+  static Future<void> _quitFromTray() async {
+    await db.saveAll();
+    if (await _shouldCloseCheckUpload()) {
+      await destroyWindow();
     }
   }
 

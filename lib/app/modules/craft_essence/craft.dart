@@ -13,6 +13,7 @@ import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/charts/growth_curve_page.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../common/not_found.dart';
 import '../servant/tabs/profile_tab.dart';
 
@@ -177,15 +178,15 @@ class _CraftDetailPageState extends State<CraftDetailPage> {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               child: CheckboxWithLabel(
                 ink: false,
-                value: db.curUser.battleSim.pingedCEs.contains(ce.collectionNo),
+                value: db.settings.gameplay.pinnedSvtEquipIds.contains(ce.id),
                 label: Text('Laplace: ${S.current.pin_to_top}'),
                 onChanged: (v) {
-                  db.curUser.battleSim.pingedCEs.toggle(ce.collectionNo);
+                  db.settings.gameplay.pinnedSvtEquipIds.toggle(ce.id);
                   Navigator.pop(context);
                 },
               ),
               onTap: () {
-                db.curUser.battleSim.pingedCEs.toggle(ce.collectionNo);
+                db.settings.gameplay.pinnedSvtEquipIds.toggle(ce.id);
               },
             ),
           ...SharedBuilder.websitesPopupMenuItems(

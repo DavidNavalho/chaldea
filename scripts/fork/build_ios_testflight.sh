@@ -171,7 +171,7 @@ widget_minimum_ios="$($plist_buddy -c 'Print :MinimumOSVersion' "${widget_path}/
 [[ "$widget_bundle_id" == 'io.github.davidnavalho.chaldea.FakerStatusWidget' ]] || { log "Unexpected widget bundle ID: $widget_bundle_id"; exit 1; }
 [[ "$app_version" == "$build_name" && "$widget_version" == "$build_name" ]] || { log 'Archived versions do not match.'; exit 1; }
 [[ "$app_build" == "$build_number" && "$widget_build" == "$build_number" ]] || { log 'Archived build numbers do not match.'; exit 1; }
-[[ "$app_minimum_ios" == '15.0' ]] || { log "Unexpected app minimum iOS: $app_minimum_ios"; exit 1; }
+[[ "$app_minimum_ios" == '15.6' ]] || { log "Unexpected app minimum iOS: $app_minimum_ios"; exit 1; }
 [[ "$widget_minimum_ios" == '18.1' ]] || { log "Unexpected widget minimum iOS: $widget_minimum_ios"; exit 1; }
 
 emit status archive-created

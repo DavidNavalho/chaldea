@@ -9,6 +9,7 @@ import 'package:chaldea/models/models.dart';
 import 'package:chaldea/packages/language.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../battle/teams/teams_query_page.dart';
 import '../common/filter_group.dart';
 import '../mc/mc_quest.dart';
@@ -241,11 +242,12 @@ class _QuestDetailPageState extends State<QuestDetailPage> {
                         text: '${S.current.quest_content_same_warning}: ',
                         children: [
                           for (final questId in sameQuestIds)
-                            SharedBuilder.textButtonSpan(
-                              context: context,
-                              text: '$questId ',
-                              onTap: () => router.push(url: Routes.questI(questId)),
-                            ),
+                            if (questId != quest.id)
+                              SharedBuilder.textButtonSpan(
+                                context: context,
+                                text: '$questId ',
+                                onTap: () => router.push(url: Routes.questI(questId)),
+                              ),
                         ],
                       ),
                       style: TextStyle(color: Colors.amber),

@@ -1,10 +1,11 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/packages/packages.dart';
 import 'package:chaldea/packages/query.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widget_builders.dart';
+
 import 'animation_on_scroll.dart';
 import 'custom_tile.dart';
 import 'search_bar.dart';

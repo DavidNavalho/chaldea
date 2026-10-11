@@ -7,6 +7,7 @@ import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import 'enemy_edit.dart';
 import 'trait_edit.dart';
 
@@ -111,7 +112,7 @@ class _QuestEditPageState extends State<QuestEditPage> {
           },
           icon: const Icon(Icons.replay),
           label: Text(S.current.clear),
-          style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.errorContainer),
+          style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.error),
         ),
         FilledButton.icon(onPressed: onConfirm, icon: const Icon(Icons.check), label: Text(S.current.confirm)),
       ],

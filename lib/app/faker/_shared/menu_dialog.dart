@@ -10,6 +10,7 @@ import 'package:chaldea/utils/basic.dart';
 import 'package:chaldea/utils/constants.dart';
 import 'package:chaldea/utils/extension.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../../modules/import_data/import_https_page.dart';
 import '../combine/svt_combine.dart';
 import '../combine/svt_equip_combine.dart';
@@ -24,6 +25,7 @@ import '../mission/mission_receive.dart';
 import '../runtime.dart';
 import '../shop/ex_room_shop.dart';
 import '../shop/shop_event_list.dart';
+import '../storage/svt_storage.dart';
 import 'history.dart';
 
 class _ButtonData {
@@ -76,11 +78,12 @@ class _FakerMenuDialogState extends State<FakerMenuDialog> with FakerRuntimeStat
                 [
                   '[${runtime.agent.user.serverName}] ${runtime.agent.user.userGame?.friendCode}',
                   if ((gameTop.hash, gameTop.timestamp) == (timerData.hash, timerData.timestamp))
-                    fmtVer('data: ', gameTop.hash, gameTop.timestamp)
+                    fmtVer('hash:  ', gameTop.hash, gameTop.timestamp)
                   else ...[
                     fmtVer('top = ', gameTop.hash, gameTop.timestamp),
                     fmtVer('timer=', timerData.hash ?? "", timerData.timestamp),
                   ],
+                  'data=${gameTop.dataVer} date=${gameTop.dateVer > 100000 ? gameTop.dateVer.sec2date().toCustomString(year: false, second: false) : gameTop.dateVer}',
                 ].join('\n'),
                 style: Theme.of(context).textTheme.bodySmall?.merge(kMonoStyle),
               ),
@@ -163,6 +166,14 @@ class _FakerMenuDialogState extends State<FakerMenuDialog> with FakerRuntimeStat
           buildGroup(
             title: S.current.event,
             buttons: [
+              _ButtonData(
+                icon: Icons.storage,
+                name: S.current.svt_second_archive,
+                enabled: isLoggedIn,
+                onTap: () {
+                  router.pushPage(SvtStoragePage(runtime: runtime));
+                },
+              ),
               _ButtonData(
                 icon: Icons.diversity_3,
                 name: 'Friends',

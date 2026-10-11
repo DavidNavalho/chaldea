@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/gamedata/effect.dart';
+
 import '../../../models/models.dart';
 import '../common/filter_group.dart';
 import '../common/filter_page_base.dart';

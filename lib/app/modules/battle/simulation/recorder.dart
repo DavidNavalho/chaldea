@@ -7,7 +7,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:image/image.dart' as img_lib;
-import 'package:screenshot/screenshot.dart';
 import 'package:tuple/tuple.dart';
 
 import 'package:chaldea/app/app.dart';
@@ -21,7 +20,9 @@ import 'package:chaldea/models/models.dart';
 import 'package:chaldea/packages/app_info.dart';
 import 'package:chaldea/packages/platform/platform.dart';
 import 'package:chaldea/utils/utils.dart';
+import 'package:chaldea/widgets/screenshot.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../../quest/quest_card.dart';
 import '../formation/formation_card.dart';
 import 'svt_detail.dart';
@@ -132,7 +133,7 @@ class _BattleRecorderPanelState extends State<BattleRecorderPanel> {
             });
           },
           icon: const FaIcon(FontAwesomeIcons.tableColumns, size: 16),
-          color: showTwoColumn ? Theme.of(context).colorScheme.primaryContainer : Theme.of(context).disabledColor,
+          color: showTwoColumn ? Theme.of(context).colorScheme.primary : Theme.of(context).disabledColor,
           tooltip: 'Two Columns',
           visualDensity: VisualDensity.standard,
         ),
@@ -144,7 +145,7 @@ class _BattleRecorderPanelState extends State<BattleRecorderPanel> {
               });
             },
             icon: const FaIcon(FontAwesomeIcons.dragon, size: 16),
-            color: showQuest ? Theme.of(context).colorScheme.primaryContainer : Theme.of(context).disabledColor,
+            color: showQuest ? Theme.of(context).colorScheme.primary : Theme.of(context).disabledColor,
             tooltip: 'Show Quest',
             visualDensity: VisualDensity.standard,
           ),
@@ -156,7 +157,7 @@ class _BattleRecorderPanelState extends State<BattleRecorderPanel> {
               });
             },
             icon: const Icon(Icons.groups_3),
-            color: showTeam ? Theme.of(context).colorScheme.primaryContainer : Theme.of(context).disabledColor,
+            color: showTeam ? Theme.of(context).colorScheme.primary : Theme.of(context).disabledColor,
             tooltip: 'Show Team',
             visualDensity: VisualDensity.standard,
           ),
@@ -167,7 +168,7 @@ class _BattleRecorderPanelState extends State<BattleRecorderPanel> {
             });
           },
           icon: const Icon(Icons.text_fields),
-          color: showDetail ? Theme.of(context).colorScheme.primaryContainer : Theme.of(context).disabledColor,
+          color: showDetail ? Theme.of(context).colorScheme.primary : Theme.of(context).disabledColor,
           tooltip: 'Show svt/skill name',
           visualDensity: VisualDensity.standard,
         ),
@@ -175,7 +176,7 @@ class _BattleRecorderPanelState extends State<BattleRecorderPanel> {
           onPressed: onTapScreenshot,
           icon: const Icon(Icons.camera_alt),
           tooltip: S.current.screenshots,
-          color: Theme.of(context).colorScheme.primaryContainer,
+          color: Theme.of(context).colorScheme.primary,
           visualDensity: VisualDensity.standard,
         ),
       ],
@@ -1374,7 +1375,7 @@ mixin _ParamDialogMixin {
     );
   }
 
-  String cardBuffIcon(final int cardType) {
+  String cardBuffIcon(int cardType) {
     if (CardType.isArts(cardType)) {
       return buffIcon(313);
     } else if (CardType.isBuster(cardType)) {

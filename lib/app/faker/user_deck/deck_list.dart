@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/battle/models/user.dart';
@@ -8,6 +9,7 @@ import 'package:chaldea/models/gamedata/mst_data.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/material.dart';
+
 import '../../modules/battle/formation/formation_card.dart';
 import '../runtime.dart';
 import 'deck_setup.dart';
@@ -158,8 +160,7 @@ class UserDeckListPageState extends State<UserDeckListPage> {
                             deckNo: eventParam.deckNo,
                             deckInfo: DeckServantEntity.empty(
                               userEquipId: mstData.user?.userEquipId ?? mstData.userEquip.last.id,
-                              eventDeckNoSupport:
-                                  eventParam.questPhase?.flags.contains(QuestFlag.eventDeckNoSupport) == true,
+                              supportInitDeckIndex: eventParam.questPhase?.getSupportInitDeckIndex(),
                             ),
                           ),
                         ),
@@ -201,9 +202,9 @@ class UserDeckListPageState extends State<UserDeckListPage> {
       children: [
         DividerWithTitle(
           titleWidget: Text(
-            '[${deck.id}] No.${deck.deckNo} ${deck.name}',
+            '[${deck.id}${deck.id == mstData.user?.activeDeckId ? "*" : ""}] No.${deck.deckNo} ${deck.name}',
             style: isActiveDeck(deck)
-                ? TextStyle(color: Theme.of(context).colorScheme.errorContainer)
+                ? TextStyle(color: Theme.of(context).colorScheme.error)
                 : TextStyle(fontSize: Theme.of(context).textTheme.bodySmall?.fontSize),
           ),
         ),
@@ -265,7 +266,7 @@ class UserDeckListPageState extends State<UserDeckListPage> {
             titleWidget: Text(
               '${param?.eventId == deck.eventId ? "※ " : ""}[${deck.eventId}] No.${deck.deckNo}',
               style: isActiveDeck(deck)
-                  ? TextStyle(color: Theme.of(context).colorScheme.errorContainer)
+                  ? TextStyle(color: Theme.of(context).colorScheme.error)
                   : TextStyle(fontSize: Theme.of(context).textTheme.bodySmall?.fontSize),
             ),
           ),

@@ -1,10 +1,10 @@
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 
 import 'package:dio/dio.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/modules/auth/login_page.dart';
@@ -14,6 +14,7 @@ import 'package:chaldea/packages/app_info.dart';
 import 'package:chaldea/packages/language.dart';
 import 'package:chaldea/packages/platform/platform.dart';
 import 'package:chaldea/utils/utils.dart';
+
 import '../../models/api/api.dart';
 import 'api_error_codes.dart';
 import 'cache.dart';
@@ -431,6 +432,7 @@ class ChaldeaServerApi {
 
   static Future<TeamQueryResult?> teams({
     int? questId,
+    List<int>? questIds,
     int? phase,
     String? enemyHash,
     int? userId,
@@ -442,17 +444,20 @@ class ChaldeaServerApi {
     int offset = 0,
     Duration? expireAfter = const Duration(hours: 2),
   }) {
-    if (questId == null && userId == null && ver == null && username == null && teamIds.isEmpty) {
+    if (questId != null && questIds != null) {
+      throw ArgumentError('don\'t pass questId and questIds together');
+    }
+    if (questId == null && questIds == null && userId == null && ver == null && username == null && teamIds.isEmpty) {
       return Future.value();
     }
     final query = _encodeQuery({
-      'questId': questId,
-      'phase': phase,
-      'enemyHash': enemyHash,
-      'userId': userId,
-      'username': username,
-      'ids': teamIds.toList()..sort(),
-      'ver': ver,
+      'questId': <int>[?questId, ...?questIds]..sort(),
+      'phase': ?phase,
+      'enemyHash': ?enemyHash,
+      'userId': ?userId,
+      'username': ?username,
+      if (teamIds.isNotEmpty) 'ids': teamIds.toList()..sort(),
+      'ver': ?ver,
       'sort': ?sort?.value,
       'limit': limit,
       if (offset > 0) 'offset': offset,
@@ -485,8 +490,10 @@ class ChaldeaServerApi {
     int offset = 0,
     Duration? expireAfter,
   }) {
+    final similarQuestIds = ConstData.getSimilarQuestIds(questId);
     return teams(
-      questId: questId,
+      questId: similarQuestIds.isEmpty ? questId : null,
+      questIds: similarQuestIds.isEmpty ? null : similarQuestIds,
       phase: phase,
       enemyHash: enemyHash,
       limit: limit,

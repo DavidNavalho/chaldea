@@ -13,11 +13,16 @@ import 'package:chaldea/packages/logger.dart';
 import 'package:chaldea/packages/rate_limiter.dart';
 import 'package:chaldea/utils/hive_extention.dart';
 import 'package:chaldea/utils/utils.dart';
+
 import '../../models/models.dart';
 
 const kExpireCacheOnly = Duration(days: -999);
-typedef DispatchErrorCallback =
-    void Function(RequestOptions options, Response? response, dynamic error, dynamic stackTrace);
+typedef DispatchErrorCallback = void Function(
+  RequestOptions options,
+  Response? response,
+  dynamic error,
+  dynamic stackTrace,
+);
 
 extension _RequestOptionsX on RequestOptions {
   static String getHashKey(String method, String url, dynamic data) {
@@ -308,7 +313,7 @@ class ApiCacheManager {
             }
           }
           if (bytes != null && getCrc32(bytes).toString() == entry.crc) {
-            return SynchronousFuture(bytes);
+            return bytes;
           }
         }
 
@@ -321,7 +326,7 @@ class ApiCacheManager {
       var prevTask = _downloading[key];
       if (prevTask != null) {
         if (DateTime.now().difference(prevTask.startedAt) < const Duration(seconds: 30)) {
-          return prevTask.completer.future;
+          return await prevTask.completer.future;
         }
         print('api cancel timeout: $key');
         _downloading.remove(key);

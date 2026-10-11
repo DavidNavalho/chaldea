@@ -1,12 +1,13 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart';
+import 'package:material_ui/material_ui.dart';
 
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/modules/event/event_detail_page.dart';
 import 'package:chaldea/app/tools/gamedata_loader.dart';
 import 'package:chaldea/models/db.dart';
 import 'package:chaldea/utils/utils.dart';
+
 import '../../app/modules/master_mission/master_mission.dart';
 import '../../app/modules/shop/shop.dart';
 import '_helper.dart';
@@ -578,7 +579,7 @@ class EventDetail {
 class MstMasterMission with RouteInfo {
   int id;
   int startedAt;
-  int endedAt;
+  int endedAt; // EventMission may have different startedAt and endedAt
   int closedAt;
   // int priority;
   // int imageId;

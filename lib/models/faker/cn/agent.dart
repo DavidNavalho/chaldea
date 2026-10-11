@@ -13,12 +13,26 @@ import 'package:chaldea/models/models.dart';
 import 'package:chaldea/models/userdata/version.dart';
 import 'package:chaldea/packages/logger.dart';
 import 'package:chaldea/utils/extension.dart';
+
 import '../quiz/cat_mouse.dart' show CatMouseGame;
 import '../quiz/crypt_data.dart';
 import '../shared/agent.dart';
 import 'network.dart';
 
 class FakerAgentCN extends FakerAgent<FRequestCN, AutoLoginDataCN, NetworkManagerCN> {
+  @override
+  Future<FResponse> coinRoomPut({required Map<int, int> items}) {
+    return _acPhp(
+      key: 'coinroomput',
+      nid: 'coin_room_put',
+      params2: {
+        'itemData': jsonEncode([
+          for (final entry in items.entries) {'id': entry.key, 'num': entry.value},
+        ]),
+      },
+    );
+  }
+
   FakerAgentCN({required super.network});
   FakerAgentCN.s({required GameTop gameTop, required AutoLoginDataCN user})
     : super(

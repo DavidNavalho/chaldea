@@ -12,6 +12,7 @@ import 'package:chaldea/utils/basic.dart';
 import 'package:chaldea/utils/constants.dart';
 import 'package:chaldea/utils/extension.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../common/filter_page_base.dart';
 import '../servant/filter.dart';
 
@@ -88,6 +89,7 @@ enum _FilterType {
 class _ExtraFilterData {
   final ceStates = <int, _FilterType>{};
   bool useCostumeTraitForRegion = false;
+  final maxRateCountPerSvt = FilterRadioData<int>();
 }
 
 /// functvals: traits
@@ -96,6 +98,8 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
   late final _targetSvts = {for (final svt in widget.targetSvts) svt.id: svt};
   Map<int, ({CraftEssence ce, List<List<int>> traits, int rateCount})> allCeData = {};
   Map<int, Map<int, List<int>>> allCeMatchSvtData = {}; //<ceId, <svtId, [limitCount]>>
+  Map<int, Map<int, List<int>>> allSvtMatchCeData = {}; //<svtId, <limitId, [ceIds]>>
+  int maxTotalRateCount = 1000;
 
   final svtFilterData = SvtFilterData(sortKeys: SvtCompare.kRarityFirstKeys);
   final extraFilterData = _ExtraFilterData();
@@ -119,6 +123,7 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
   void initData({bool initFilters = false}) {
     allCeData.clear();
     allCeMatchSvtData.clear();
+    allSvtMatchCeData.clear();
     // ce data
     for (final ce in db.gameData.craftEssencesById.values) {
       if (ce.collectionNo <= 0 || ce.isRegionSpecific) continue;
@@ -164,6 +169,14 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
         final limitCounts = getMatchedLimitCounts(svt, traits);
         if (limitCounts.isEmpty) continue;
         svtLimitsData[svt.id] = limitCounts;
+      }
+    }
+    // svt mapping ce
+    for (final (ceId, svtLimits) in allCeMatchSvtData.items) {
+      for (final (svtId, limits) in svtLimits.items) {
+        for (final limit in limits) {
+          ((allSvtMatchCeData[svtId] ??= {})[limit] ??= []).add(ceId);
+        }
       }
     }
 
@@ -254,6 +267,16 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
     final List<int> freeCeIds = allCeIds.where((e) => !mustHaveCeIds.contains(e) && !excludeCeIds.contains(e)).toList();
     final int n = freeCeIds.length;
     List<_GroupItem> resultData = [];
+
+    Set<T> intersectionSetList<T>(List<Set<T>> array) {
+      if (array.isEmpty) return {};
+      Set<T> result = array.first.toSet();
+      for (final s in array.skip(1)) {
+        result = result.intersection(s);
+      }
+      return result;
+    }
+
     for (int mask = 0; mask < (1 << n); mask++) {
       final List<int> usedCeIds = List.of(mustHaveCeIds);
       usedCeIds.sort(); // for key sort
@@ -265,7 +288,7 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
       if (usedCeIds.isEmpty) continue;
 
       final List<Set<int>> svtIdList = usedCeIds.map((ceId) => allCeMatchSvtData[ceId]!.keys.toSet()).toList();
-      final sameSvtIds = _intersectionSetList(svtIdList);
+      final sameSvtIds = intersectionSetList(svtIdList);
       if (sameSvtIds.isEmpty) continue;
 
       List<({Servant svt, List<int> limitCounts})> svts = [];
@@ -273,7 +296,7 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
         if (!shownSvtIds.contains(svtId)) continue;
         final svt = _targetSvts[svtId] ?? db.gameData.servantsById[svtId];
         if (svt == null) continue;
-        final sameLimitCounts = _intersectionSetList(
+        final sameLimitCounts = intersectionSetList(
           usedCeIds.map((ceId) => allCeMatchSvtData[ceId]![svtId]?.toSet() ?? <int>{}).toList(),
         );
         for (final ceId in excludeCeIds) {
@@ -336,23 +359,40 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
     }
     resultData.sortByList((e) => [-e.rateCount, e.ceIds.length, -e.svts.length, ...e.ceIds]);
 
+    final maxRateCount = extraFilterData.maxRateCountPerSvt.radioValue;
+    if (maxRateCount != null && maxRateCount >= 0) {
+      Set<int> excludeSvtIds = {};
+      for (final (svtId, limitToCeIds) in allSvtMatchCeData.items) {
+        int svtMaxRateCount = Maths.max(
+          limitToCeIds.values.map((ceIds) => Maths.sum([for (final ceId in ceIds) allCeData[ceId]!.rateCount])),
+        );
+        if (svtMaxRateCount > maxRateCount) {
+          excludeSvtIds.add(svtId);
+        }
+      }
+      for (final group in resultData) {
+        group.svts.removeWhere((e) => excludeSvtIds.contains(e.svt.id));
+      }
+      resultData.removeWhere((e) => e.svts.isEmpty);
+    }
+
     return resultData;
   }
 
   @override
   Widget build(BuildContext context) {
+    final groups = getGroupData();
+
     return Column(
       children: [
-        Expanded(child: mainBody),
+        Expanded(child: _buildMainBody(groups)),
         kDefaultDivider,
-        buttonBar,
+        _buildButtonBar(),
       ],
     );
   }
 
-  Widget get mainBody {
-    final groups = getGroupData();
-
+  Widget _buildMainBody(List<_GroupItem> groups) {
     return ListView.separated(
       padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       itemCount: groups.length,
@@ -399,7 +439,7 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
               final conditional = limitCounts.length != allLimitCounts.length && limitCounts.isNotEmpty;
               Widget child = Container(
                 decoration: BoxDecoration(
-                  color: conditional ? Theme.of(context).colorScheme.errorContainer.withAlpha(191) : null,
+                  color: conditional ? Theme.of(context).colorScheme.error : null,
                   borderRadius: BorderRadius.circular(4),
                 ),
                 padding: const EdgeInsets.all(1),
@@ -441,7 +481,7 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
     );
   }
 
-  Widget get buttonBar {
+  Widget _buildButtonBar() {
     final ces = [
       null,
       ...(allCeData.values.toList()..sortByList((e) => [-e.rateCount, -e.ce.collectionNo])),
@@ -458,6 +498,24 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
               if (mounted) setState(() {});
             },
             planMode: false,
+            extraFilters: (context, update) {
+              List<int> validValues = <int>{
+                ?extraFilterData.maxRateCountPerSvt.radioValue,
+                for (int x = 0; x <= maxTotalRateCount; x += 200) x,
+              }.toList()..sort();
+              return [
+                FilterGroup<int>(
+                  title: Text('${S.current.filter_per_servant_bond_bonus_cap}≤'),
+                  options: validValues,
+                  values: extraFilterData.maxRateCountPerSvt,
+                  optionBuilder: (v) => Text(v.format(percent: true, base: 10)),
+                  onFilterChanged: (v, _) {
+                    if (mounted) setState(() {});
+                    update();
+                  },
+                ),
+              ];
+            },
           ),
         ),
       ),
@@ -615,8 +673,9 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
+          spacing: 4,
           children: [
-            Wrap(spacing: 2, runSpacing: 1, crossAxisAlignment: WrapCrossAlignment.center, children: extraBtns),
+            Wrap(spacing: 2, runSpacing: 0, crossAxisAlignment: WrapCrossAlignment.center, children: extraBtns),
             Wrap(spacing: 2, runSpacing: 1, crossAxisAlignment: WrapCrossAlignment.start, children: ceBtns),
           ],
         ),
@@ -631,13 +690,4 @@ class _EquipBondBonusTabState extends State<EquipBondBonusTab> {
   Set<int> _getSvtAllLimits(Servant svt) {
     return {...range(5), ...svt.costume.keys, ...svt.ascensionAdd.individuality2.all.keys};
   }
-}
-
-Set<T> _intersectionSetList<T>(List<Set<T>> array) {
-  if (array.isEmpty) return {};
-  Set<T> result = array.first.toSet();
-  for (final s in array.skip(1)) {
-    result = result.intersection(s);
-  }
-  return result;
 }

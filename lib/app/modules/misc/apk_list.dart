@@ -1,5 +1,4 @@
-import 'package:flutter/cupertino.dart';
-
+import 'package:cupertino_ui/cupertino_ui.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -15,6 +14,7 @@ import 'package:chaldea/packages/language.dart';
 import 'package:chaldea/packages/svg.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../../../models/userdata/version.dart';
 
 class _ApkData {

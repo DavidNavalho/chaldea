@@ -78,10 +78,7 @@ class AutoThreeTurnTeamSearch {
         final mcA = MysticCodeData()
           ..mysticCode = db.gameData.mysticCodes[330]
           ..level = 10;
-        optA.formation = BattleTeamSetup(
-          svts: onField,
-          mysticCodeData: mcA,
-        );
+        optA.formation = BattleTeamSetup(svts: onField, mysticCodeData: mcA);
         final solverA = AutoThreeTurnSolver(
           quest: quest,
           region: region,
@@ -92,14 +89,7 @@ class AutoThreeTurnTeamSearch {
         final t0 = DateTime.now();
         final resA = await solverA.search();
         final dt = DateTime.now().difference(t0);
-        _recordAttempt(
-          attacker: attacker,
-          ce: ce,
-          mcId: 330,
-          ocTurn: null,
-          solver: solverA,
-          elapsed: dt,
-        );
+        _recordAttempt(attacker: attacker, ce: ce, mcId: 330, ocTurn: null, solver: solverA, elapsed: dt);
         if (resA != null) return resA;
       }
 
@@ -122,10 +112,7 @@ class AutoThreeTurnTeamSearch {
             final mcB = MysticCodeData()
               ..mysticCode = db.gameData.mysticCodes[210]
               ..level = 10;
-            optB.formation = BattleTeamSetup(
-              svts: [...pairs.$1, ...pairs.$2],
-              mysticCodeData: mcB,
-            );
+            optB.formation = BattleTeamSetup(svts: [...pairs.$1, ...pairs.$2], mysticCodeData: mcB);
             final solverB = AutoThreeTurnSolver(
               quest: quest,
               region: region,
@@ -138,14 +125,7 @@ class AutoThreeTurnTeamSearch {
             final t0b = DateTime.now();
             final resB = await solverB.search();
             final dtb = DateTime.now().difference(t0b);
-            _recordAttempt(
-              attacker: attacker,
-              ce: ce,
-              mcId: 210,
-              ocTurn: ocTurn,
-              solver: solverB,
-              elapsed: dtb,
-            );
+            _recordAttempt(attacker: attacker, ce: ce, mcId: 210, ocTurn: ocTurn, solver: solverB, elapsed: dtb);
             if (resB != null) return resB;
           }
         }
@@ -221,7 +201,7 @@ class AutoThreeTurnTeamSearch {
     return list;
   }
 
-  bool _isAoeNpArts(final Servant svt) {
+  bool _isAoeNpArts(Servant svt) {
     // Determine AoE vs ST from NP functions for Arts NPs
     for (final td in svt.noblePhantasms) {
       if (!CardType.isArts(td.svt.card)) continue;
@@ -229,7 +209,9 @@ class AutoThreeTurnTeamSearch {
         if (!f.funcType.isDamageNp) continue;
         final tgt = f.funcTargetType;
         // AoE if NP can target multiple enemies
-        if (tgt == FuncTargetType.enemyAll || tgt == FuncTargetType.enemyRange || tgt == FuncTargetType.enemyFull ||
+        if (tgt == FuncTargetType.enemyAll ||
+            tgt == FuncTargetType.enemyRange ||
+            tgt == FuncTargetType.enemyFull ||
             tgt == FuncTargetType.enemyOtherFull) {
           return true;
         }
@@ -266,11 +248,7 @@ class AutoThreeTurnTeamSearch {
         int bucketSum = 0;
         for (final en in enemies) {
           final rel = db.gameData.constData.getClassIdRelation(cls, en.dispClassId);
-          final bucket = rel > 1000
-              ? 2
-              : (rel == 1000
-                  ? 1
-                  : 0);
+          final bucket = rel > 1000 ? 2 : (rel == 1000 ? 1 : 0);
           bucketSum += bucket;
         }
         final avgBucket = bucketSum / enemies.length;
@@ -468,15 +446,19 @@ class AutoThreeTurnTeamSearch {
       final topNames = _topClasses.map((id) => Transl.svtClassId(id).l).join(', ');
       _log.writeln('Top classes chosen: $topNames');
     }
-    _log.writeln(hasSuccess
-        ? 'Elapsed to success: ${elapsedSec.toStringAsFixed(2)}s'
-        : 'Elapsed: ${elapsedSec.toStringAsFixed(2)}s (timeout/no solution)');
     _log.writeln(
-        'Attackers enumerated: $_candidateAttackersCount; attempted (distinct): $attackersTriedCount; attempts until success: $attemptsCount');
+      hasSuccess
+          ? 'Elapsed to success: ${elapsedSec.toStringAsFixed(2)}s'
+          : 'Elapsed: ${elapsedSec.toStringAsFixed(2)}s (timeout/no solution)',
+    );
+    _log.writeln(
+      'Attackers enumerated: $_candidateAttackersCount; attempted (distinct): $attackersTriedCount; attempts until success: $attemptsCount',
+    );
     _log.writeln('Attempts by pass: Base=$passBase, Plugsuit+Oberon=$passPlug');
     _log.writeln('CE variants tried: $ceVariants');
     _log.writeln(
-        'Solver totals: branches=$totBranches; npCombos=$totNp; turnsVisited=$totTurnsVisited; alwaysDeploy=$totAlwaysDeploy; prunes=$totPrunes');
+      'Solver totals: branches=$totBranches; npCombos=$totNp; turnsVisited=$totTurnsVisited; alwaysDeploy=$totAlwaysDeploy; prunes=$totPrunes',
+    );
     _log.writeln('');
     if (_classScores.isNotEmpty) {
       _log.writeln('Class scores (weighted total; avgs by W1/W2/W3):');
@@ -486,8 +468,10 @@ class AutoThreeTurnTeamSearch {
         final w1 = s.avgs.getOrNull(0) ?? 0;
         final w2 = s.avgs.getOrNull(1) ?? 0;
         final w3 = s.avgs.getOrNull(2) ?? 0;
-        _log.writeln(' - $name: total=${s.total.toStringAsFixed(2)} | '
-            'W1=${w1.toStringAsFixed(1)}, W2=${w2.toStringAsFixed(1)}, W3=${w3.toStringAsFixed(1)}');
+        _log.writeln(
+          ' - $name: total=${s.total.toStringAsFixed(2)} | '
+          'W1=${w1.toStringAsFixed(1)}, W2=${w2.toStringAsFixed(1)}, W3=${w3.toStringAsFixed(1)}',
+        );
       }
       _log.writeln('');
     }

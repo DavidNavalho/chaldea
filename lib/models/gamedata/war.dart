@@ -1,6 +1,7 @@
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/utils/wiki.dart';
+
 import '../db.dart';
 import '_helper.dart';
 import 'gamedata.dart';
@@ -703,6 +704,7 @@ enum WarOverwriteType {
   materialFolderName,
   materialHeaderImgId,
   materialGalleryHeaderImgId,
+  standFigureVisible,
 }
 
 enum WarStartType { none, script, quest }

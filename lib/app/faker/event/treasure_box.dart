@@ -8,6 +8,7 @@ import 'package:chaldea/models/models.dart';
 import 'package:chaldea/packages/packages.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../runtime.dart';
 
 class TreasureBoxDrawPage extends StatefulWidget {
@@ -91,9 +92,9 @@ class _TreasureBoxDrawPageState extends State<TreasureBoxDrawPage> with FakerRun
                 context: context,
                 width: 32,
                 showOne: false,
-                text: [
-                  mstData.getItemOrSvtNum(gift.objectId),
-                  if (mstData.isCurPlanUser) (db.itemCenter.itemLeft[gift.objectId] ?? 0).format(),
+                text: <String>[
+                  mstData.getItemOrSvtNum(gift.objectId).format(),
+                  ?mstData.getItemLeft(gift.objectId)?.format(),
                 ].join('\n'),
               ),
         ],

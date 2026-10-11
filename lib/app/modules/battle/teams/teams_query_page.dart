@@ -17,6 +17,7 @@ import 'package:chaldea/packages/logger.dart';
 import 'package:chaldea/utils/catcher/server_feedback_handler.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../../common/filter_page_base.dart';
 import '../utils.dart';
 import 'filter.dart';
@@ -349,11 +350,7 @@ class _TeamsQueryPageState extends State<TeamsQueryPage> with SearchableListStat
           onTap: () {
             ReportTeamDialog(record: record, isMyTeam: record.userId == curUserId).showDialog(context);
           },
-          child: Icon(
-            Icons.report_outlined,
-            size: 18,
-            color: Theme.of(context).colorScheme.errorContainer.withAlpha(204),
-          ),
+          child: Icon(Icons.report_outlined, size: 18, color: Theme.of(context).colorScheme.error.withAlpha(204)),
         ),
         const SizedBox(width: 24),
       ],

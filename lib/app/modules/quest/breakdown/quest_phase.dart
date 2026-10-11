@@ -1,3 +1,7 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+
 import 'package:chaldea/app/api/atlas.dart';
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/modules/battle/simulation_preview.dart';
@@ -8,6 +12,7 @@ import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
+
 import '../../enemy/support_servant.dart';
 import 'stage.dart';
 
@@ -354,7 +359,7 @@ class _QuestPhaseWidgetState extends State<QuestPhaseWidget> {
             icon: const Icon(Icons.calculate, size: 18),
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
-            color: Theme.of(context).colorScheme.primaryContainer,
+            color: Theme.of(context).colorScheme.primary,
             tooltip: S.current.battle_simulation,
           ),
       ],
@@ -1013,6 +1018,29 @@ class _QuestPhaseWidgetState extends State<QuestPhaseWidget> {
         );
       }
     }
+    if (kDebugMode) {
+      children.add(
+        IconButton(
+          onPressed: () {
+            final saveDrops = drops
+                .where((e) => e.type == .item && db.gameData.items[e.objectId]?.category == .normal)
+                .toList();
+            saveDrops.sort((a, b) => Item.compare(a.objectId, b.objectId));
+            Map<String, Map<String, String>> targetJson = {};
+            for (final drop in saveDrops) {
+              double dropRate = drop.dropCount / drop.runs;
+              double apRate = curPhase.consume / dropRate;
+              targetJson[drop.objectId.toString()] = {"NA": "${quest.name}, ~${apRate.toStringAsPrecision(3)} AP"};
+            }
+            String text = const JsonEncoder.withIndent('  ').convert(targetJson).trim();
+            assert(text.startsWith('{') && text.endsWith('}'));
+            copyToClipboard(text.substring(1, text.length - 2), toast: true);
+          },
+          icon: Icon(Icons.copy),
+          tooltip: 'Copy Drops to json',
+        ),
+      );
+    }
     return Wrap(spacing: 3, runSpacing: 2, children: children);
   }
 
@@ -1068,7 +1096,7 @@ class _QuestPhaseWidgetState extends State<QuestPhaseWidget> {
                     SharedBuilder.textButtonSpan(
                       context: context,
                       text: '{${s.shortId()}}',
-                      style: TextStyle(color: Theme.of(context).colorScheme.primaryContainer),
+                      style: TextStyle(color: Theme.of(context).colorScheme.primary),
                       onTap: () {
                         s.routeTo(region: widget.region);
                       },
