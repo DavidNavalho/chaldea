@@ -794,15 +794,18 @@ FormationBondOption _$FormationBondOptionFromJson(Map json) => $checkedCreate('F
     frontlineBonus: $checkedConvert('frontlineBonus', (v) => v as bool? ?? true),
     teapotTimes: $checkedConvert('teapotTimes', (v) => (v as num?)?.toInt() ?? 1),
     maxCost: $checkedConvert('maxCost', (v) => (v as num?)?.toInt()),
-    favoriteOnly: $checkedConvert('favoriteOnly', (v) => v as bool? ?? true),
+    favoriteSvtOnly: $checkedConvert('favoriteSvtOnly', (v) => v as bool? ?? true),
+    favoriteSvtEquipOnly: $checkedConvert('favoriteSvtEquipOnly', (v) => v as bool? ?? true),
     releaseReference: $checkedConvert(
       'releaseReference',
       (v) => $enumDecodeNullable(_$BondReleaseReferenceEnumMap, v) ?? BondReleaseReference.jp,
     ),
     maxBond: $checkedConvert('maxBond', (v) => (v as num?)?.toInt() ?? 15),
+    bondNotFullOnly: $checkedConvert('bondNotFullOnly', (v) => v as bool? ?? false),
     excludedSvts: $checkedConvert('excludedSvts', (v) => (v as List<dynamic>?)?.map((e) => (e as num).toInt()).toSet()),
     excludedCes: $checkedConvert('excludedCes', (v) => (v as List<dynamic>?)?.map((e) => (e as num).toInt()).toSet()),
     maxCandidateTeams: $checkedConvert('maxCandidateTeams', (v) => (v as num?)?.toInt() ?? 100),
+    maxServants: $checkedConvert('maxServants', (v) => (v as num?)?.toInt() ?? 6),
     searchFixedAscensions: $checkedConvert('searchFixedAscensions', (v) => v as bool? ?? true),
   );
   return val;
@@ -818,12 +821,15 @@ Map<String, dynamic> _$FormationBondOptionToJson(FormationBondOption instance) =
   'frontlineBonus': instance.frontlineBonus,
   'teapotTimes': instance.teapotTimes,
   'maxCost': instance.maxCost,
-  'favoriteOnly': instance.favoriteOnly,
+  'favoriteSvtOnly': instance.favoriteSvtOnly,
+  'favoriteSvtEquipOnly': instance.favoriteSvtEquipOnly,
   'releaseReference': _$BondReleaseReferenceEnumMap[instance.releaseReference]!,
   'maxBond': instance.maxBond,
+  'bondNotFullOnly': instance.bondNotFullOnly,
   'excludedSvts': instance.excludedSvts.toList(),
   'excludedCes': instance.excludedCes.toList(),
   'maxCandidateTeams': instance.maxCandidateTeams,
+  'maxServants': instance.maxServants,
   'searchFixedAscensions': instance.searchFixedAscensions,
 };
 

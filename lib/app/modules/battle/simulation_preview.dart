@@ -393,7 +393,7 @@ class _SimulationPreviewState extends State<SimulationPreview> {
                       });
                     },
                   ),
-                  ElevatedButton(
+                  FilledButton.tonal(
                     onPressed: () async {
                       EasyLoading.show();
                       try {
@@ -1350,6 +1350,7 @@ class _SimulationPreviewState extends State<SimulationPreview> {
     final questInfo = questPhase == null ? null : BattleQuestInfo.quest(questPhase!);
     team.quest = questInfo;
     team.options = options.toShareData();
+    db.notifySettings();
 
     return team;
   }
@@ -1359,7 +1360,7 @@ class _SimulationPreviewState extends State<SimulationPreview> {
   /// Mutable maps/lists are deep-copied so the temp page never mutates persisted state.
   FormationBondOption _tempFormationBondOption() {
     final saved = db.userData.curUser.formationBondOption;
-    return FormationBondOption.fromJson(saved.toJson())
+    return saved.copy()
       ..teamFormation = options.formation.copy().toFormationData()
       ..quest = questPhase == null ? null : BattleQuestInfo.quest(questPhase!)
       ..svtBonus = List.generate(6, (_) => FormationBondSvtBonus());

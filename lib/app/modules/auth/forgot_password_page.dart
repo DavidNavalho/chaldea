@@ -1,9 +1,3 @@
-// ForgotPasswordPage: 3 method cards for password reset.
-// Method 1 (primary, left-accented) — email reset: send code → enter code + new password.
-// Method 2 — device verify: send code → enter code + new password (also binds email).
-// Method 3 — contact developer: navigates to the existing FeedbackPage.
-// An InfoBanner at the top prompts the user to pick a method.
-
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:material_ui/material_ui.dart';
 
@@ -371,6 +365,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           validator: (_) => null,
           onChanged: (_) => setState(() {}),
         ),
+        if (AppInfo.isRandomUuid) ...[
+          const SizedBox(height: 8),
+          InfoBanner(variant: InfoBannerVariant.warning, text: S.current.auth_device_id_random_hint),
+        ],
         const SizedBox(height: 8),
         FormInput(
           hint: S.current.auth_new_email,

@@ -2,6 +2,8 @@ import 'package:flutter_easyloading/flutter_easyloading.dart';
 
 import 'package:chaldea/app/app.dart';
 import 'package:chaldea/app/modules/common/filter_group.dart';
+import 'package:chaldea/app/modules/common/filter_page_base.dart';
+import 'package:chaldea/app/modules/craft_essence/filter.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/gamedata/mst_tables.dart';
 import 'package:chaldea/models/models.dart';
@@ -10,6 +12,7 @@ import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
 
 import '../../modules/battle/formation/formation_card.dart';
+import '../_shared/faker_ui.dart';
 import '../_shared/select_svt_equip.dart';
 import '../runtime.dart';
 import '../runtimes/combine.dart';
@@ -32,7 +35,7 @@ class _SvtEquipCombinePageState extends State<SvtEquipCombinePage> with FakerRun
   late final runtime = widget.runtime;
   late final user = agent.user;
   final options = _SvtEquipCombineData();
-  final batchLimitBreakRarity = FilterGroupData<int>(options: {4});
+  final ceFilterData = CraftFilterData()..rarity.options = {4};
   final Map<int, Set<int>> _limitBreakMaterialIds = {};
   int? _limitBreakInventoryHash;
 
@@ -66,9 +69,7 @@ class _SvtEquipCombinePageState extends State<SvtEquipCombinePage> with FakerRun
           runtime.buildMenuButton(context),
         ],
       ),
-      body: ListTileTheme.merge(
-        dense: true,
-        visualDensity: VisualDensity.compact,
+      body: FakerTileTheme(
         child: Column(
           children: [
             headerInfo,
@@ -342,12 +343,24 @@ class _SvtEquipCombinePageState extends State<SvtEquipCombinePage> with FakerRun
           ],
         ),
       ),
-      FilterGroup<int>(
-        options: const [2, 3, 4, 5],
-        values: batchLimitBreakRarity,
-        enabled: !runtime.runningTask.value,
-        optionBuilder: (rarity) => Text('$rarity★'),
-        onFilterChanged: (_, _) => setState(() {}),
+      Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.filter_alt),
+            tooltip: S.current.filter,
+            onPressed: runtime.runningTask.value ? null : _showFilterDialog,
+          ),
+          Expanded(
+            child: FilterGroup<int>(
+              options: const [2, 3, 4, 5],
+              values: ceFilterData.rarity,
+              enabled: !runtime.runningTask.value,
+              padding: const EdgeInsets.only(right: 12),
+              optionBuilder: (rarity) => Text('$rarity★'),
+              onFilterChanged: (_, _) => setState(() {}),
+            ),
+          ),
+        ],
       ),
       // const Padding(
       //   padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -359,12 +372,27 @@ class _SvtEquipCombinePageState extends State<SvtEquipCombinePage> with FakerRun
     return ListView(padding: EdgeInsets.only(bottom: 72), children: children);
   }
 
+  void _showFilterDialog() {
+    FilterPage.show(
+      context: context,
+      builder: (context) => CraftFilterPage(
+        filterData: ceFilterData,
+        onChanged: (_) {
+          ceFilterData.rarity.options.remove(1);
+          ceFilterData.region.reset();
+          if (mounted) setState(() {});
+        },
+      ),
+    );
+  }
+
   List<Widget> _limitBreakRows() {
     _syncLimitBreakSelection();
-    final groups = runtime.combine
-        .getSvtEquipLimitBreakGroups()
-        .where((group) => batchLimitBreakRarity.matchOne(group.target.dbCE?.rarity ?? 0))
-        .toList();
+    final groups = runtime.combine.getSvtEquipLimitBreakGroups().where((group) {
+      final ce = group.target.dbCE;
+      if (ce == null) return false;
+      return CraftFilterPage.filter(ceFilterData, ce, status: mstData.getSvtEquipStatus(group.target));
+    }).toList();
     if (groups.isEmpty) {
       return [
         const Padding(
@@ -410,7 +438,7 @@ class _SvtEquipCombinePageState extends State<SvtEquipCombinePage> with FakerRun
           _limitBreakCard(group.target, target: true),
           const Padding(
             padding: EdgeInsets.only(top: 24, left: 2, right: 2),
-            child: Icon(Icons.chevron_right, size: 16),
+            child: Icon(Icons.chevron_left, size: 16),
           ),
           Expanded(
             child: SingleChildScrollView(
@@ -552,25 +580,7 @@ class _SvtEquipCombinePageState extends State<SvtEquipCombinePage> with FakerRun
         ),
       ],
     ];
-    return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final btns in btnGroups)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              child: Wrap(
-                alignment: WrapAlignment.center,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 4,
-                runSpacing: 2,
-                children: btns,
-              ),
-            ),
-          const SizedBox(height: 8),
-        ],
-      ),
-    );
+    return FakerActionBar(groups: btnGroups);
   }
 
   bool checkSvtLvExceed(int userSvtId) {

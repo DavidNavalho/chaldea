@@ -47,8 +47,9 @@ class _ImportCSVPageState extends State<ImportCSVPage> {
   Widget get buttonBar {
     return OverflowBar(
       alignment: MainAxisAlignment.center,
+      spacing: 4,
       children: [
-        ElevatedButton(
+        FilledButton(
           onPressed: () async {
             final file = await FilePickerU.pickFile(clearCache: true);
             final bytes = await file?.readAsBytes();
@@ -64,7 +65,7 @@ class _ImportCSVPageState extends State<ImportCSVPage> {
           },
           child: Text(S.current.import_csv_load_csv),
         ),
-        ElevatedButton(
+        FilledButton(
           onPressed: () {
             showDialog(
               context: context,
@@ -107,7 +108,7 @@ class _ImportCSVPageState extends State<ImportCSVPage> {
           },
           child: Text(S.current.import_csv_export_template),
         ),
-        ElevatedButton(
+        FilledButton(
           onPressed: parsedRows.isEmpty
               ? null
               : () {
@@ -117,7 +118,7 @@ class _ImportCSVPageState extends State<ImportCSVPage> {
                     builder: (context) {
                       return SimpleConfirmDialog(
                         title: Text(S.current.confirm),
-                        onTapOk: () {
+                        onTapOk: () async {
                           for (final row in parsedRows) {
                             final svt = db.gameData.servantsWithDup[row.collectionNo];
                             if (svt == null) continue;
@@ -131,6 +132,7 @@ class _ImportCSVPageState extends State<ImportCSVPage> {
                             }
                           }
                           db.itemCenter.init();
+                          await db.saveUserData();
                           EasyLoading.showSuccess(S.current.import_data_success);
                         },
                       );

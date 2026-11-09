@@ -318,7 +318,7 @@ GameplaySettings _$GameplaySettingsFromJson(Map json) => $checkedCreate('Gamepla
       'priorityTags',
       (v) => (v as Map?)?.map((k, e) => MapEntry(int.parse(k as String), e as String)),
     ),
-    eventItemCalc: $checkedConvert(
+    legacyEventItemCalc: $checkedConvert(
       'eventItemCalc',
       (v) => (v as Map?)?.map(
         (k, e) => MapEntry(int.parse(k as String), EventItemCalcParams.fromJson(Map<String, dynamic>.from(e as Map))),
@@ -330,7 +330,7 @@ GameplaySettings _$GameplaySettingsFromJson(Map json) => $checkedCreate('Gamepla
     ),
   );
   return val;
-});
+}, fieldKeyMap: const {'legacyEventItemCalc': 'eventItemCalc'});
 
 Map<String, dynamic> _$GameplaySettingsToJson(GameplaySettings instance) => <String, dynamic>{
   'pinnedSvtIds': instance.pinnedSvtIds.toList(),
@@ -338,7 +338,6 @@ Map<String, dynamic> _$GameplaySettingsToJson(GameplaySettings instance) => <Str
   'preferApRate': instance.preferApRate,
   'preferredFavorite': _$FavoriteStateEnumMap[instance.preferredFavorite],
   'priorityTags': instance.priorityTags.map((k, e) => MapEntry(k.toString(), e)),
-  'eventItemCalc': instance.eventItemCalc.map((k, e) => MapEntry(k.toString(), e.toJson())),
   'masterMissionOptions': instance.masterMissionOptions.toJson(),
 };
 
@@ -416,6 +415,10 @@ DisplaySettings _$DisplaySettingsFromJson(Map json) => $checkedCreate('DisplaySe
     globalSelection: $checkedConvert('globalSelection', (v) => v as bool? ?? false),
     forceEdgeSwipePopGesture: $checkedConvert('forceEdgeSwipePopGesture', (v) => v as bool? ?? false),
     ad: $checkedConvert('ad', (v) => v == null ? null : AdSetting.fromJson(Map<String, dynamic>.from(v as Map))),
+    privacy: $checkedConvert(
+      'privacy',
+      (v) => v == null ? null : PrivacySetting.fromJson(Map<String, dynamic>.from(v as Map)),
+    ),
     showDebugFab: $checkedConvert('showDebugFab', (v) => v as bool? ?? false),
   );
   return val;
@@ -444,6 +447,7 @@ Map<String, dynamic> _$DisplaySettingsToJson(DisplaySettings instance) => <Strin
   'globalSelection': instance.globalSelection,
   'forceEdgeSwipePopGesture': instance.forceEdgeSwipePopGesture,
   'ad': instance.ad.toJson(),
+  'privacy': instance.privacy.toJson(),
   'showDebugFab': instance.showDebugFab,
 };
 
@@ -504,6 +508,75 @@ const _$GalleryIconSizeEnumMap = {
   GalleryIconSize.large: 'large',
 };
 
+PrivacySetting _$PrivacySettingFromJson(Map json) => $checkedCreate('PrivacySetting', json, ($checkedConvert) {
+  final val = PrivacySetting(
+    accepted: $checkedConvert('accepted', (v) => v as bool? ?? false),
+    acceptedVersion: $checkedConvert('acceptedVersion', (v) => (v as num?)?.toInt() ?? 0),
+    consentAsked: $checkedConvert('consentAsked', (v) => v as bool? ?? false),
+    crashReportEnabled: $checkedConvert('crashReportEnabled', (v) => v as bool? ?? true),
+    analyticsEnabled: $checkedConvert('analyticsEnabled', (v) => v as bool? ?? true),
+  );
+  return val;
+});
+
+Map<String, dynamic> _$PrivacySettingToJson(PrivacySetting instance) => <String, dynamic>{
+  'accepted': instance.accepted,
+  'acceptedVersion': instance.acceptedVersion,
+  'consentAsked': instance.consentAsked,
+  'crashReportEnabled': instance.crashReportEnabled,
+  'analyticsEnabled': instance.analyticsEnabled,
+};
+
+PrivacyPermissionDeclaration _$PrivacyPermissionDeclarationFromJson(Map json) =>
+    $checkedCreate('PrivacyPermissionDeclaration', json, ($checkedConvert) {
+      final val = PrivacyPermissionDeclaration(
+        kind: $checkedConvert('kind', (v) => v as String),
+        name: $checkedConvert('name', (v) => v as String),
+        attributes: $checkedConvert(
+          'attributes',
+          (v) => Map<String, dynamic>.from(v as Map),
+          readValue: PrivacyPermissionDeclaration._readAttributes,
+        ),
+      );
+      return val;
+    });
+
+PrivacyPermissionTarget _$PrivacyPermissionTargetFromJson(Map json) => $checkedCreate(
+  'PrivacyPermissionTarget',
+  json,
+  ($checkedConvert) {
+    final val = PrivacyPermissionTarget(
+      platform: $checkedConvert('platform', (v) => v as String),
+      flavor: $checkedConvert('flavor', (v) => v as String?),
+      status: $checkedConvert('status', (v) => v as String),
+      applicationId: $checkedConvert('application_id', (v) => v as String?),
+      versionName: $checkedConvert('version_name', (v) => v as String?),
+      buildNumber: $checkedConvert('build_number', (v) => v as String?),
+      declarations: $checkedConvert(
+        'declarations',
+        (v) => (v as List<dynamic>)
+            .map((e) => PrivacyPermissionDeclaration.fromJson(Map<String, dynamic>.from(e as Map)))
+            .toList(),
+      ),
+    );
+    return val;
+  },
+  fieldKeyMap: const {'applicationId': 'application_id', 'versionName': 'version_name', 'buildNumber': 'build_number'},
+);
+
+PrivacyPermissionCatalog _$PrivacyPermissionCatalogFromJson(Map json) =>
+    $checkedCreate('PrivacyPermissionCatalog', json, ($checkedConvert) {
+      final val = PrivacyPermissionCatalog(
+        targets: $checkedConvert(
+          'targets',
+          (v) => (v as List<dynamic>)
+              .map((e) => PrivacyPermissionTarget.fromJson(Map<String, dynamic>.from(e as Map)))
+              .toList(),
+        ),
+      );
+      return val;
+    });
+
 AdSetting _$AdSettingFromJson(Map json) => $checkedCreate('AdSetting', json, ($checkedConvert) {
   final val = AdSetting(
     enabled: $checkedConvert('enabled', (v) => $enumDecodeNullable(_$AdFeatureStateEnumMap, v) ?? .defaults),
@@ -511,10 +584,9 @@ AdSetting _$AdSettingFromJson(Map json) => $checkedCreate('AdSetting', json, ($c
     appOpen: $checkedConvert('appOpen', (v) => $enumDecodeNullable(_$AdFeatureStateEnumMap, v) ?? .defaults),
     interstitial: $checkedConvert('interstitial', (v) => $enumDecodeNullable(_$AdFeatureStateEnumMap, v) ?? .defaults),
     personalizedAds: $checkedConvert('personalizedAds', (v) => v as bool?),
-    lastAppOpen: $checkedConvert('lastAppOpen', (v) => (v as num?)?.toInt() ?? 0),
-    lastAttRequestTime: $checkedConvert('lastAttRequestTime', (v) => (v as num?)?.toInt() ?? 0),
     attAuthorized: $checkedConvert('attAuthorized', (v) => v as bool?),
-    privacyPolicyAccepted: $checkedConvert('privacyPolicyAccepted', (v) => v as bool? ?? false),
+    lastAttRequestTime: $checkedConvert('lastAttRequestTime', (v) => (v as num?)?.toInt() ?? 0),
+    lastAppOpen: $checkedConvert('lastAppOpen', (v) => (v as num?)?.toInt() ?? 0),
   );
   return val;
 });
@@ -525,10 +597,9 @@ Map<String, dynamic> _$AdSettingToJson(AdSetting instance) => <String, dynamic>{
   'appOpen': _$AdFeatureStateEnumMap[instance.appOpen]!,
   'interstitial': _$AdFeatureStateEnumMap[instance.interstitial]!,
   'personalizedAds': instance.personalizedAds,
-  'lastAppOpen': instance.lastAppOpen,
-  'lastAttRequestTime': instance.lastAttRequestTime,
   'attAuthorized': instance.attAuthorized,
-  'privacyPolicyAccepted': instance.privacyPolicyAccepted,
+  'lastAttRequestTime': instance.lastAttRequestTime,
+  'lastAppOpen': instance.lastAppOpen,
 };
 
 const _$AdFeatureStateEnumMap = {
@@ -653,49 +724,6 @@ Map<String, dynamic> _$TipsSettingToJson(TipsSetting instance) => <String, dynam
   'starter': instance.starter,
   'servantList': instance.servantList,
   'servantDetail': instance.servantDetail,
-};
-
-EventItemCalcParams _$EventItemCalcParamsFromJson(Map json) =>
-    $checkedCreate('EventItemCalcParams', json, ($checkedConvert) {
-      final val = EventItemCalcParams(
-        itemCounts: $checkedConvert(
-          'itemCounts',
-          (v) => (v as Map?)?.map((k, e) => MapEntry(int.parse(k as String), (e as num).toInt())),
-        ),
-        bonusPlans: $checkedConvert(
-          'bonusPlans',
-          (v) =>
-              (v as List<dynamic>?)?.map((e) => QuestBonusPlan.fromJson(Map<String, dynamic>.from(e as Map))).toList(),
-        ),
-      );
-      return val;
-    });
-
-Map<String, dynamic> _$EventItemCalcParamsToJson(EventItemCalcParams instance) => <String, dynamic>{
-  'itemCounts': instance.itemCounts.map((k, e) => MapEntry(k.toString(), e)),
-  'bonusPlans': instance.bonusPlans.map((e) => e.toJson()).toList(),
-};
-
-QuestBonusPlan _$QuestBonusPlanFromJson(Map json) => $checkedCreate('QuestBonusPlan', json, ($checkedConvert) {
-  final val = QuestBonusPlan(
-    enabled: $checkedConvert('enabled', (v) => v as bool? ?? true),
-    questId: $checkedConvert('questId', (v) => (v as num?)?.toInt() ?? 0),
-    index: $checkedConvert('index', (v) => (v as num?)?.toInt() ?? 0),
-    name: $checkedConvert('name', (v) => v as String? ?? ""),
-    bonus: $checkedConvert(
-      'bonus',
-      (v) => (v as Map?)?.map((k, e) => MapEntry(int.parse(k as String), (e as num).toInt())),
-    ),
-  );
-  return val;
-});
-
-Map<String, dynamic> _$QuestBonusPlanToJson(QuestBonusPlan instance) => <String, dynamic>{
-  'enabled': instance.enabled,
-  'questId': instance.questId,
-  'index': instance.index,
-  'name': instance.name,
-  'bonus': instance.bonus.map((k, e) => MapEntry(k.toString(), e)),
 };
 
 MasterMissionOptions _$MasterMissionOptionsFromJson(Map json) =>

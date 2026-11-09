@@ -4,22 +4,26 @@ import 'dart:math';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 
 import 'package:chaldea/app/app.dart';
-import 'package:chaldea/app/modules/quest/breakdown/quest_phase.dart' show QuestRestrictionPage;
+import 'package:chaldea/app/modules/quest/breakdown/restriction.dart';
 import 'package:chaldea/generated/l10n.dart';
 import 'package:chaldea/models/db.dart';
 import 'package:chaldea/models/gamedata/mst_data.dart';
 import 'package:chaldea/models/gamedata/quest.dart';
-import 'package:chaldea/models/models.dart' show GameCardMixin;
+import 'package:chaldea/models/models.dart' show GameCardMixin, Servant;
+import 'package:chaldea/models/userdata/battle.dart';
 import 'package:chaldea/packages/json_viewer/json_viewer.dart';
 import 'package:chaldea/packages/packages.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
 
 import '../../modules/battle/formation/formation_card.dart';
+import '../../modules/bond/bond_bonus.dart';
+import '../../modules/bond/formation_bond.dart';
+import '../_shared/faker_ui.dart';
 import '../_shared/select_svt.dart';
 import '../_shared/select_svt_equip.dart';
 import '../_shared/select_user_equip.dart';
-import '../combine/svt_combine.dart';
+import '../enhance/svt_combine.dart';
 import '../runtime.dart';
 import 'deck_list.dart';
 
@@ -116,201 +120,238 @@ class _UserDeckSetupPageState extends State<UserDeckSetupPage> with FakerRuntime
         ),
         actions: [runtime.buildMenuButton(context)],
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView(
-              children: [
-                if (_userDeckEntity != null)
-                  ListTile(
-                    dense: true,
-                    title: Text('Deck Name'),
-                    trailing: TextButton(
-                      onPressed: () {
-                        InputCancelOkDialog(
-                          title: 'Deck Name',
-                          initValue: _userDeckEntity?.name,
-                          maxLength: _kMaxDeckNameLength,
-                          validate: isDeckNameValid,
-                          onSubmit: (value) {
-                            runtime.runTask(() => doDeckEditName(value));
-                          },
-                        ).showDialog(context);
-                      },
-                      child: Text(_userDeckEntity!.name),
-                    ),
-                  ),
-                DividerWithTitle(title: 'Original'),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: FormationCard(
-                    formation: BattleTeamFormationX.fromUserDeck(
-                      deckInfo: _originalDeckInfo,
-                      mstData: mstData,
-                      questPhase: questPhase,
-                    ),
-                    userSvtCollections: mstData.userSvtCollection.lookup,
-                    showBond: true,
-                  ),
-                ),
-                DividerWithTitle(title: S.current.preview),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: FormationCard(
-                    formation: BattleTeamFormationX.fromUserDeck(
-                      deckInfo: deckInfo,
-                      mstData: mstData,
-                      questPhase: questPhase,
-                    ),
-                    userSvtCollections: mstData.userSvtCollection.lookup,
-                    showBond: true,
-                  ),
-                ),
-                DividerWithTitle(title: '${S.current.edit} (COST ${getTotalCost()}/${mstData.user?.costMax})'),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Row(
-                    spacing: 4,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      for (final svt in deckInfo.svts) Flexible(flex: 10, child: buildSvt(svt)),
-                      Flexible(flex: 8, child: buildMasterEquip()),
-                    ],
-                  ),
-                ),
-                kDefaultDivider,
-                Wrap(
-                  alignment: WrapAlignment.center,
-                  spacing: 8,
-                  children: [
-                    TextButton(
-                      onPressed: () {
-                        router.pushPage(JsonViewerPage(jsonDecode(jsonEncode(deckInfo))));
-                      },
-                      child: Text('JSON'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        initData();
-                        if (mounted) setState(() {});
-                      },
-                      child: Text(S.current.reset),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        for (final (index, svt) in deckInfo.svts.indexed) {
-                          svt.initPos = index + 1;
-                        }
-                        if (mounted) setState(() {});
-                      },
-                      child: Text('Reset initPos'),
-                    ),
-                    TextButton(
-                      onPressed: () {
-                        router.pushPage(
-                          UserDeckListPage(
-                            runtime: runtime,
-                            mstData: mstData,
-                            onSelected: (selectedDeck) {
-                              if (isEventDeck) {
-                                //
-                              } else {
-                                if (selectedDeck.id == _userDeckEntity?.id) {
-                                  EasyLoading.showToast('Do not select same deck');
-                                  return;
-                                }
-                              }
-                              final _deckInfo = makeUserDeckCopy(selectedDeck).deckInfo;
-                              if (_deckInfo != null) deckInfo = _deckInfo;
-                              if (mounted) setState(() {});
+      body: FakerTileTheme(
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                children: [
+                  if (_userDeckEntity != null)
+                    ListTile(
+                      dense: true,
+                      title: Text('Deck Name'),
+                      trailing: TextButton(
+                        onPressed: () {
+                          InputCancelOkDialog(
+                            title: 'Deck Name',
+                            initValue: _userDeckEntity?.name,
+                            maxLength: _kMaxDeckNameLength,
+                            validate: isDeckNameValid,
+                            onSubmit: (value) {
+                              runtime.runTask(() => doDeckEditName(value));
                             },
-                            enableEdit: false,
-                          ),
-                        );
-                      },
-                      child: Text('Copy from'),
-                    ),
-                  ],
-                ),
-                if (questPhase != null) ...[
-                  kDefaultDivider,
-                  ListTile(
-                    dense: true,
-                    title: Text(questPhase.lNameWithChapter),
-                    subtitle: Text('phase ${questPhase.phase}/${Maths.max(questPhase.phases)}'),
-                    trailing: Icon(DirectionalIcons.keyboard_arrow_forward(context)),
-                    onTap: questPhase.routeTo,
-                  ),
-                  if (questPhase.restrictions.isNotEmpty)
-                    ListTile(
-                      dense: true,
-                      title: Text('${questPhase.restrictions.length} ${S.current.quest_restriction}'),
-                      trailing: Icon(DirectionalIcons.keyboard_arrow_forward(context)),
-                      onTap: () {
-                        router.pushPage(QuestRestrictionPage(restrictions: questPhase.restrictions));
-                      },
-                    ),
-                  if (questPhase.flags.isNotEmpty)
-                    ListTile(
-                      dense: true,
-                      title: const Text('flags'),
-                      subtitle: Text.rich(
-                        TextSpan(
-                          children: divideList([
-                            for (final flag in questPhase.flags)
-                              TextSpan(
-                                text: flag.name,
-                                style: flag.name.toLowerCase().contains('support')
-                                    ? TextStyle(color: Colors.blue)
-                                    : null,
-                              ),
-                          ], const TextSpan(text: ' / ')),
-                        ),
+                          ).showDialog(context);
+                        },
+                        child: Text(_userDeckEntity!.name),
                       ),
                     ),
+                  DividerWithTitle(title: 'Original'),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: FormationCard(
+                      formation: BattleTeamFormationX.fromUserDeck(
+                        deckInfo: _originalDeckInfo,
+                        mstData: mstData,
+                        questPhase: questPhase,
+                      ),
+                      userSvtCollections: mstData.userSvtCollection.lookup,
+                      showBond: true,
+                    ),
+                  ),
+                  DividerWithTitle(title: S.current.preview),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: FormationCard(
+                      formation: BattleTeamFormationX.fromUserDeck(
+                        deckInfo: deckInfo,
+                        mstData: mstData,
+                        questPhase: questPhase,
+                      ),
+                      userSvtCollections: mstData.userSvtCollection.lookup,
+                      showBond: true,
+                    ),
+                  ),
+                  DividerWithTitle(title: '${S.current.edit} (COST ${getTotalCost()}/${mstData.user?.costMax})'),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      spacing: 4,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (final svt in deckInfo.svts) Flexible(flex: 10, child: buildSvt(svt)),
+                        Flexible(flex: 8, child: buildMasterEquip()),
+                      ],
+                    ),
+                  ),
+                  kDefaultDivider,
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          router.pushPage(JsonViewerPage(jsonDecode(jsonEncode(deckInfo))));
+                        },
+                        child: Text('JSON'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          initData();
+                          if (mounted) setState(() {});
+                        },
+                        child: Text(S.current.reset),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          for (final (index, svt) in deckInfo.svts.indexed) {
+                            svt.initPos = index + 1;
+                          }
+                          if (mounted) setState(() {});
+                        },
+                        child: Text('Reset initPos'),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          router.pushPage(
+                            UserDeckListPage(
+                              runtime: runtime,
+                              mstData: mstData,
+                              onSelected: (selectedDeck) {
+                                if (isEventDeck) {
+                                  //
+                                } else {
+                                  if (selectedDeck.id == _userDeckEntity?.id) {
+                                    EasyLoading.showToast('Do not select same deck');
+                                    return;
+                                  }
+                                }
+                                final _deckInfo = makeUserDeckCopy(selectedDeck).deckInfo;
+                                if (_deckInfo != null) deckInfo = _deckInfo;
+                                if (mounted) setState(() {});
+                              },
+                              enableEdit: false,
+                            ),
+                          );
+                        },
+                        child: Text('Copy from'),
+                      ),
+                    ],
+                  ),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 8,
+                    children: [
+                      TextButton(
+                        onPressed: () {
+                          final option = db.curUser.formationBondOption.copy()
+                            ..teamFormation = BattleTeamFormationX.fromUserDeck(
+                              deckInfo: deckInfo,
+                              mstData: mstData,
+                              questPhase: questPhase,
+                            )
+                            ..quest = questPhase == null ? null : BattleQuestInfo.quest(questPhase)
+                            ..svtBonus = List.generate(6, (_) => FormationBondSvtBonus());
+                          router.pushPage(FormationBondPage(option: option));
+                        },
+                        child: Text(S.current.team_bond),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          router.pushPage(BondBonusHomePage(svts: deckServants, initialIndex: 1));
+                        },
+                        child: Text('${S.current.bond} Table'),
+                      ),
+                    ],
+                  ),
+                  if (questPhase != null) ...[
+                    kDefaultDivider,
+                    ListTile(
+                      dense: true,
+                      title: Text(questPhase.lNameWithChapter),
+                      subtitle: Text('phase ${questPhase.phase}/${Maths.max(questPhase.phases)}'),
+                      trailing: Icon(DirectionalIcons.keyboard_arrow_forward(context)),
+                      onTap: questPhase.routeTo,
+                    ),
+                    if (questPhase.restrictions.isNotEmpty)
+                      ListTile(
+                        dense: true,
+                        title: Text('${questPhase.restrictions.length} ${S.current.quest_restriction}'),
+                        trailing: Icon(DirectionalIcons.keyboard_arrow_forward(context)),
+                        onTap: () {
+                          router.pushPage(
+                            QuestRestrictionPage(
+                              restrictions: questPhase.restrictions,
+                              questName: questPhase.lNameWithChapter,
+                            ),
+                          );
+                        },
+                      ),
+                    if (questPhase.flags.isNotEmpty)
+                      ListTile(
+                        dense: true,
+                        title: const Text('flags'),
+                        subtitle: Text.rich(
+                          TextSpan(
+                            children: divideList([
+                              for (final flag in questPhase.flags)
+                                TextSpan(
+                                  text: flag.name,
+                                  style: flag.name.toLowerCase().contains('support')
+                                      ? TextStyle(color: Colors.blue)
+                                      : null,
+                                ),
+                            ], const TextSpan(text: ' / ')),
+                          ),
+                        ),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+            kDefaultDivider,
+            FakerActionBar(
+              groups: [
+                [
+                  runtime.buildCircularProgress(context: context, padding: EdgeInsets.symmetric(horizontal: 8)),
+                  isEventDeck
+                      ? FilledButton.tonal(
+                          onPressed: () {
+                            SimpleConfirmDialog(
+                              title: Text(
+                                'Setup event deck ${widget.eventDeckParam?.eventId}-${widget.eventDeckParam?.deckNo}',
+                              ),
+                              onTapOk: () {
+                                runtime.runTask(doUserEventDeckSetup);
+                              },
+                            ).showDialog(context);
+                          },
+                          child: Text('Setup'),
+                        )
+                      : FilledButton.tonal(
+                          onPressed: () {
+                            SimpleConfirmDialog(
+                              title: Text('Setup deck ${_userDeckEntity?.deckNo ?? widget.activeDeckId}'),
+                              onTapOk: () {
+                                runtime.runTask(doUserDeckSetup);
+                              },
+                            ).showDialog(context);
+                          },
+                          child: Text('Setup'),
+                        ),
                 ],
               ],
             ),
-          ),
-          kDefaultDivider,
-          SafeArea(
-            child: OverflowBar(
-              alignment: MainAxisAlignment.center,
-              children: [
-                runtime.buildCircularProgress(context: context, padding: EdgeInsets.symmetric(horizontal: 8)),
-                isEventDeck
-                    ? FilledButton.tonal(
-                        onPressed: () {
-                          SimpleConfirmDialog(
-                            title: Text(
-                              'Setup event deck ${widget.eventDeckParam?.eventId}-${widget.eventDeckParam?.deckNo}',
-                            ),
-                            onTapOk: () {
-                              runtime.runTask(doUserEventDeckSetup);
-                            },
-                          ).showDialog(context);
-                        },
-                        child: Text('Setup'),
-                      )
-                    : FilledButton.tonal(
-                        onPressed: () {
-                          SimpleConfirmDialog(
-                            title: Text('Setup deck ${_userDeckEntity?.deckNo ?? widget.activeDeckId}'),
-                            onTapOk: () {
-                              runtime.runTask(doUserDeckSetup);
-                            },
-                          ).showDialog(context);
-                        },
-                        child: Text('Setup'),
-                      ),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+
+  /// Owned servants of this deck, empty slots and supports skipped.
+  List<Servant> get deckServants => [
+    for (final deckSvt in deckInfo.svts) ?db.gameData.servantsById[mstData.userSvt[deckSvt.userSvtId]?.svtId],
+  ];
 
   Widget buildSvt(DeckServantData deckSvt) {
     final questPhase = widget.eventDeckParam?.questPhase;

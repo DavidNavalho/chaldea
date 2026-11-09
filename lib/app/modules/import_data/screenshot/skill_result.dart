@@ -163,7 +163,7 @@ class _SkillResultTabState extends State<SkillResultTab> with ScrollControllerMi
     return OverflowBar(
       alignment: MainAxisAlignment.center,
       children: [
-        ElevatedButton(onPressed: result.details.isNotEmpty ? _doImportResult : null, child: Text(S.current.update)),
+        FilledButton(onPressed: result.details.isNotEmpty ? _doImportResult : null, child: Text(S.current.update)),
       ],
     );
   }
@@ -173,7 +173,7 @@ class _SkillResultTabState extends State<SkillResultTab> with ScrollControllerMi
       title: Text(S.current.import_screenshot_update_items),
       content: Text(S.current.import_screenshot_hint),
       confirmText: S.current.update,
-      onTapOk: () {
+      onTapOk: () async {
         for (final detail in result.details) {
           if (detail.valid && detail.checked) {
             final status = db.curUser.svtStatusOf(detail.svtId);
@@ -187,7 +187,7 @@ class _SkillResultTabState extends State<SkillResultTab> with ScrollControllerMi
           }
         }
         db.itemCenter.updateSvts(all: true);
-        db.saveUserData();
+        await db.saveUserData();
         EasyLoading.showSuccess(S.current.import_data_success);
       },
     ).showDialog(context);

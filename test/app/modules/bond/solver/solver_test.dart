@@ -10,14 +10,16 @@ import '../../../../test_init.dart';
 FormationBondOption _withFilters(
   FormationBondOption option, {
   int? maxCost,
-  bool? favoriteOnly,
+  bool? favoriteSvtOnly,
+  bool? favoriteSvtEquipOnly,
   BondReleaseReference? releaseReference,
   int? maxBond,
   Set<int>? excludedSvts,
   Set<int>? excludedCes,
 }) {
   if (maxCost != null) option.maxCost = maxCost;
-  if (favoriteOnly != null) option.favoriteOnly = favoriteOnly;
+  if (favoriteSvtOnly != null) option.favoriteSvtOnly = favoriteSvtOnly;
+  if (favoriteSvtEquipOnly != null) option.favoriteSvtEquipOnly = favoriteSvtEquipOnly;
   if (releaseReference != null) option.releaseReference = releaseReference;
   if (maxBond != null) option.maxBond = maxBond;
   if (excludedSvts != null) option.excludedSvts = excludedSvts;
@@ -27,6 +29,111 @@ FormationBondOption _withFilters(
 
 void main() {
   setUpAll(initiateForTest);
+
+  test('position limits include support and ignore all out-of-range sources', () {
+    final servants = db.gameData.servantsById.values
+        .where((svt) => svt.collectionNo > 0 && svt.isUserSvt)
+        .take(6)
+        .toList();
+    final quest = QuestPhase(bond: 1000);
+    final ces = db.gameData.craftEssencesById.values.where((ce) => ce.collectionNo > 0).take(6).toList();
+    final source = BattleTeamSetup();
+    for (var p = 0; p < 6; p++) {
+      source.svts[p] = PlayerSvtData.svt(servants[p])..equip1 = SvtEquipData(ce: ces[p]);
+    }
+    source.svts[2].supportType = SupportSvtType.friend;
+    for (var limit = 1; limit <= 6; limit++) {
+      final option = FormationBondOption(
+        maxServants: limit,
+        enableEvent: false,
+        searchFixedAscensions: false,
+        maxCost: 999,
+        maxCandidateTeams: 5,
+      );
+      option.svtBonus[5].isBond15 = true;
+      final fast = FormationBondSolver.solve(option: option, quest: quest, formation: source);
+      final general = FormationBondSolver.solve(option: option, quest: quest, formation: source, useCeFirst: false);
+      expect(fast.provenOptimal, isTrue);
+      expect(fast.best!.totalBond, general.best!.totalBond);
+      expect(fast.best!.totalCost, general.best!.totalCost);
+      expect(fast.best!.slots.map((slot) => slot.position), orderedEquals(List.generate(limit, (p) => p)));
+      final applied = fast.best!.applyTo(source, option);
+      for (final slot in applied.svts.skip(limit)) {
+        expect(slot.svt, isNull);
+        expect(slot.supportType.isSupport, isFalse);
+        expect(slot.equip1.ce, isNull);
+        expect(slot.equip3.ce, isNull);
+      }
+      expect(
+        fast.best!.totalBond,
+        option.calcResults(quest, applied).fold<int>(0, (sum, slot) => sum + slot.totalBond),
+      );
+    }
+    expect(source.svts[5].svt, isNotNull);
+  });
+
+  test('main-isolate progressive search matches sync result and prepares ascension details', () async {
+    final servants = db.gameData.servantsById.values
+        .where((svt) => svt.collectionNo > 0 && svt.isUserSvt)
+        .take(2)
+        .toList();
+    final quest = QuestPhase(bond: 1000);
+    final source = BattleTeamSetup()..svts[0] = PlayerSvtData.svt(servants.first);
+    final option = FormationBondOption(
+      maxServants: 2,
+      enableEvent: false,
+      maxCost: 999,
+      favoriteSvtOnly: false,
+      favoriteSvtEquipOnly: false,
+      maxBond: 0,
+      maxCandidateTeams: 5,
+      excludedSvts: db.gameData.servantsById.keys.toSet()..removeAll(servants.map((svt) => svt.id)),
+      excludedCes: db.gameData.craftEssencesById.keys.toSet(),
+    );
+    final expected = FormationBondSolver.solve(option: option, quest: quest, formation: source);
+    for (final useCeFirst in [true, false]) {
+      var started = false;
+      final results = await FormationBondSolver.solveProgressively(
+        option: option,
+        quest: quest,
+        formation: source,
+        onSearchStarted: () => started = true,
+        useWorkerIsolate: false,
+        useCeFirst: useCeFirst,
+      ).toList();
+      expect(started, isTrue);
+      expect(results.last.best!.totalBond, expected.best!.totalBond);
+      expect(results.last.provenOptimal, isTrue);
+      final team = results.last.best!;
+      for (final slot in team.slots.where((slot) => slot.servantId != null)) {
+        final cached = team.cachedAscensionRequirement(slot.position)!;
+        final direct = FormationBondSolver.ascensionRequirement(
+          team: team,
+          target: slot,
+          option: option,
+          quest: quest,
+          formation: source,
+        );
+        expect(cached.allowed, direct.allowed);
+      }
+    }
+  });
+
+  test('cancelling progressive preparation emits no later results', () async {
+    var received = 0;
+    var started = false;
+    final search = FormationBondSolver.solveProgressively(
+      option: FormationBondOption(enableEvent: false, favoriteSvtOnly: false, favoriteSvtEquipOnly: false, maxBond: 0),
+      quest: QuestPhase(bond: 1000),
+      formation: BattleTeamSetup(),
+      onSearchStarted: () => started = true,
+      useWorkerIsolate: false,
+    ).listen((_) => received++);
+    await search.cancel();
+    await Future<void>.delayed(const Duration(milliseconds: 40));
+    expect(received, 0);
+    expect(started, isFalse);
+  });
 
   test('quest individuality restrictions filter free servants and reject invalid fixed servants', () {
     final servants = db.gameData.servantsById.values.where((svt) => svt.collectionNo > 0 && svt.isUserSvt).toList();
@@ -55,7 +162,8 @@ void main() {
     final option = _withFilters(
       FormationBondOption(enableEvent: false),
       maxCost: 999,
-      favoriteOnly: false,
+      favoriteSvtOnly: false,
+      favoriteSvtEquipOnly: false,
       releaseReference: BondReleaseReference.jp,
       maxBond: 0,
       excludedSvts: servants.map((svt) => svt.id).toSet()..removeAll([sabers[5].id, others[5].id]),
@@ -115,7 +223,8 @@ void main() {
       option: _withFilters(
         option,
         maxCost: 999,
-        favoriteOnly: false,
+        favoriteSvtOnly: false,
+        favoriteSvtEquipOnly: false,
         releaseReference: BondReleaseReference.jp,
         maxBond: 0,
       ),
@@ -131,7 +240,8 @@ void main() {
       option: _withFilters(
         option,
         maxCost: 999,
-        favoriteOnly: false,
+        favoriteSvtOnly: false,
+        favoriteSvtEquipOnly: false,
         releaseReference: BondReleaseReference.jp,
         maxBond: 0,
       ),
@@ -325,7 +435,8 @@ void main() {
       option: _withFilters(
         option,
         maxCost: 999,
-        favoriteOnly: false,
+        favoriteSvtOnly: false,
+        favoriteSvtEquipOnly: false,
         releaseReference: BondReleaseReference.jp,
         maxBond: 0,
       ),
@@ -366,7 +477,14 @@ void main() {
     final option = FormationBondOption(enableEvent: false);
     final extra = QuestPhaseExtraDetail()..setValue('isUseGrandBoard', 1);
     final quest = QuestPhase(bond: 1000, extraDetail: extra);
-    _withFilters(option, maxCost: 999, favoriteOnly: false, releaseReference: BondReleaseReference.jp, maxBond: 0);
+    _withFilters(
+      option,
+      maxCost: 999,
+      favoriteSvtOnly: false,
+      favoriteSvtEquipOnly: false,
+      releaseReference: BondReleaseReference.jp,
+      maxBond: 0,
+    );
     final baseline = FormationBondSolver.solve(option: option, quest: quest, formation: formation, maxNodes: 100000);
     option.svtBonus[5]
       ..isBond15 = true
@@ -490,47 +608,6 @@ void main() {
     }
   }, timeout: const Timeout(Duration(minutes: 2)));
 
-  test('one free position returns a concrete team with manual-page score', () async {
-    final servants = db.gameData.servantsById.values.where((s) => s.collectionNo > 0 && s.isUserSvt).take(5).toList();
-    final ces = db.gameData.craftEssencesById.values
-        .where((c) => c.collectionNo > 0 && !c.isRegionSpecific)
-        .take(5)
-        .toList();
-    final formation = BattleTeamSetup();
-    for (var i = 0; i < 5; i++) {
-      formation.svts[i] = PlayerSvtData.svt(servants[i])..equip1 = SvtEquipData(ce: ces[i]);
-    }
-    final option = FormationBondOption(enableEvent: false);
-    final quest = QuestPhase(bond: 1000);
-    final clock = Stopwatch()..start();
-    final result = await FormationBondSolver.solveAsync(
-      option: _withFilters(
-        option,
-        maxCost: 999,
-        favoriteOnly: false,
-        releaseReference: BondReleaseReference.jp,
-        maxBond: 0,
-      ),
-      quest: quest,
-      formation: formation,
-      maxNodes: 100000,
-    );
-    print('one-free solver: ${clock.elapsedMilliseconds}ms, ${result.visitedNodes} search steps');
-    expect(result.best, isNotNull);
-    expect(result.provenOptimal, isTrue);
-    final chosen = result.best!.slots.last;
-    if (chosen.servantId != null) {
-      formation.svts[5] = PlayerSvtData.svt(db.gameData.servantsById[chosen.servantId]!)
-        ..limitCount = chosen.limitCount!
-        ..equip1 = SvtEquipData(
-          ce: chosen.equip1 == null ? null : db.gameData.craftEssencesById[chosen.equip1!.id],
-          limitBreak: chosen.equip1?.limitBreak ?? false,
-        );
-    }
-    final manual = option.calcResults(quest, formation);
-    expect(result.best!.totalBond, manual.fold<int>(0, (v, slot) => v + slot.totalBond));
-  }, timeout: const Timeout(Duration(minutes: 2)));
-
   test('CE dominance pruning preserves an exact one-free optimum', () {
     final servants = db.gameData.servantsById.values.where((s) => s.collectionNo > 0 && s.isUserSvt).take(5).toList();
     final ces = db.gameData.craftEssencesById.values
@@ -543,7 +620,14 @@ void main() {
     }
     final option = FormationBondOption(enableEvent: false);
     final quest = QuestPhase(bond: 1000);
-    _withFilters(option, maxCost: 999, favoriteOnly: false, releaseReference: BondReleaseReference.jp, maxBond: 0);
+    _withFilters(
+      option,
+      maxCost: 999,
+      favoriteSvtOnly: false,
+      favoriteSvtEquipOnly: false,
+      releaseReference: BondReleaseReference.jp,
+      maxBond: 0,
+    );
     final baseline = FormationBondSolver.solve(
       option: option,
       quest: quest,
@@ -573,7 +657,14 @@ void main() {
     final extra = QuestPhaseExtraDetail()..setValue('isUseGrandBoard', 1);
     final quest = QuestPhase(bond: 1000, extraDetail: extra);
     final option = FormationBondOption(enableEvent: false);
-    _withFilters(option, maxCost: 999, favoriteOnly: false, releaseReference: BondReleaseReference.jp, maxBond: 0);
+    _withFilters(
+      option,
+      maxCost: 999,
+      favoriteSvtOnly: false,
+      favoriteSvtEquipOnly: false,
+      releaseReference: BondReleaseReference.jp,
+      maxBond: 0,
+    );
     final baseline = FormationBondSolver.solve(
       option: option,
       quest: quest,
@@ -590,63 +681,19 @@ void main() {
     expect(pruned.best!.totalBond, manual.fold<int>(0, (sum, slot) => sum + slot.totalBond));
   }, timeout: const Timeout(Duration(minutes: 2)));
 
-  test('two free positions have a proven maximum and manual-valid team', () {
-    final servants = db.gameData.servantsById.values.where((s) => s.collectionNo > 0 && s.isUserSvt).take(4).toList();
-    final ces = db.gameData.craftEssencesById.values
-        .where((c) => c.collectionNo > 0 && !c.isRegionSpecific)
-        .take(4)
-        .toList();
-    final formation = BattleTeamSetup();
-    for (var i = 0; i < 4; i++) {
-      formation.svts[i] = PlayerSvtData.svt(servants[i])..equip1 = SvtEquipData(ce: ces[i]);
-    }
-    final option = FormationBondOption(enableEvent: false);
-    final quest = QuestPhase(bond: 1000);
-    final clock = Stopwatch()..start();
-    final result = FormationBondSolver.solve(
-      option: _withFilters(
-        option,
-        maxCost: 999,
-        favoriteOnly: false,
-        releaseReference: BondReleaseReference.jp,
-        maxBond: 0,
-      ),
-      quest: quest,
-      formation: formation,
-    );
-    print(
-      'two-free solver: ${clock.elapsedMilliseconds}ms, ${result.visitedNodes} search steps, '
-      'proven=${result.provenOptimal}, svt=${result.servantClassCount}, '
-      'ce=${result.ownedCeClassCount}, profiles=${result.receiverProfileCount}, items=${result.itemCount}',
-    );
-    final winner = result.best;
-    expect(winner, isNotNull);
-    expect(result.provenOptimal, isTrue);
-    final ids = [
-      for (final slot in winner!.slots)
-        if (slot.servantId != null) slot.servantId!,
-    ];
-    expect(ids.toSet().length, ids.length);
-    for (final chosen in winner.slots.skip(4)) {
-      if (chosen.servantId == null) continue;
-      formation.svts[chosen.position] = PlayerSvtData.svt(db.gameData.servantsById[chosen.servantId]!)
-        ..limitCount = chosen.limitCount!
-        ..equip1 = SvtEquipData(
-          ce: chosen.equip1 == null ? null : db.gameData.craftEssencesById[chosen.equip1!.id],
-          limitBreak: chosen.equip1?.limitBreak ?? false,
-        );
-    }
-    final manual = option.calcResults(quest, formation);
-    expect(winner.totalBond, manual.fold<int>(0, (v, slot) => v + slot.totalBond));
-  }, timeout: const Timeout(Duration(minutes: 2)));
-
   test('five free positions have a proven maximum and manual-valid team', () {
     final first = db.gameData.servantsById.values.firstWhere((s) => s.collectionNo > 0 && s.isUserSvt);
     final formation = BattleTeamSetup()..svts[0] = PlayerSvtData.svt(first);
     final option = FormationBondOption(enableEvent: false);
     final quest = QuestPhase(bond: 1000);
     final result = FormationBondSolver.solve(
-      option: _withFilters(option, favoriteOnly: false, releaseReference: BondReleaseReference.jp, maxBond: 0),
+      option: _withFilters(
+        option,
+        favoriteSvtOnly: false,
+        favoriteSvtEquipOnly: false,
+        releaseReference: BondReleaseReference.jp,
+        maxBond: 0,
+      ),
       quest: quest,
       formation: formation,
     );
@@ -764,7 +811,8 @@ void main() {
             : trial < 8
             ? 65
             : 45,
-        favoriteOnly: false,
+        favoriteSvtOnly: false,
+        favoriteSvtEquipOnly: false,
         releaseReference: BondReleaseReference.jp,
         maxBond: 0,
         excludedSvts: Set.of(excludedSvts),
@@ -816,11 +864,23 @@ void main() {
     final formation = BattleTeamSetup()..svts[0] = PlayerSvtData.svt(first);
     final option = FormationBondOption(enableEvent: false);
     final quest = QuestPhase(bond: 1000);
-    final updates = await FormationBondSolver.solveProgressively(
-      option: _withFilters(option, favoriteOnly: false, releaseReference: BondReleaseReference.jp, maxBond: 0),
-      quest: quest,
-      formation: formation,
-    ).toList();
+    var started = false;
+    final updates =
+        await FormationBondSolver.solveProgressively(
+          option: _withFilters(
+            option,
+            favoriteSvtOnly: false,
+            favoriteSvtEquipOnly: false,
+            releaseReference: BondReleaseReference.jp,
+            maxBond: 0,
+          ),
+          quest: quest,
+          formation: formation,
+          onSearchStarted: () => started = true,
+        ).map((result) {
+          expect(started, isTrue);
+          return result;
+        }).toList();
     expect(updates, isNotEmpty);
     final candidate = updates.firstWhere((update) => update.best != null);
     expect(candidate.provenOptimal, isFalse);
@@ -861,7 +921,8 @@ void main() {
       option: _withFilters(
         option,
         maxCost: 999,
-        favoriteOnly: false,
+        favoriteSvtOnly: false,
+        favoriteSvtEquipOnly: false,
         releaseReference: BondReleaseReference.jp,
         maxBond: 0,
       ),

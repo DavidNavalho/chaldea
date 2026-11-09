@@ -8,8 +8,10 @@ import 'package:chaldea/models/models.dart';
 import 'package:chaldea/utils/utils.dart';
 import 'package:chaldea/widgets/widgets.dart';
 
+import '../_shared/faker_ui.dart';
 import '../runtime.dart';
 import 'coin_room.dart';
+import 'ex_room_shop.dart';
 import 'shop.dart';
 
 class ShopEventListPage extends StatelessWidget {
@@ -48,6 +50,20 @@ class ShopEventListPage extends StatelessWidget {
 
     const _kShownShopTypes = <ShopType>[.mana, .rarePri, .revivalItem, .exRoomShop];
     children.addAll([for (final shopType in _kShownShopTypes) _buildShopType(context, shopType)]);
+
+    final mstData = runtime.mstData;
+    if (mstData.isLoggedIn && (mstData.mstShopDaily.isNotEmpty || mstData.userShopDaily.isNotEmpty)) {
+      children.add(
+        ListTile(
+          dense: true,
+          leading: db.getIconImage(AssetURL.i.items(Items.dropBoxGoldIconId), width: 24, height: 24),
+          title: Text('${Transl.enums(ShopType.exRoomShop, (e) => e.shopType).l} (Daily)'),
+          trailing: Icon(DirectionalIcons.keyboard_arrow_forward(context)),
+          onTap: () => router.pushPage(ExRoomShopPage(runtime: runtime)),
+        ),
+      );
+    }
+
     children.add(
       ListTile(
         dense: true,
@@ -66,10 +82,12 @@ class ShopEventListPage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(title: Text(S.current.shop)),
-      body: ListView.separated(
-        itemBuilder: (context, index) => children[index],
-        separatorBuilder: (context, _) => const Divider(),
-        itemCount: children.length,
+      body: FakerTileTheme(
+        child: ListView.separated(
+          itemBuilder: (context, index) => children[index],
+          separatorBuilder: (context, _) => const Divider(),
+          itemCount: children.length,
+        ),
       ),
     );
   }

@@ -28,11 +28,13 @@ class _FormationBondRuntime {
   _FormationBondRuntime({required this.userBacked});
 
   final bool userBacked;
+  final ValueNotifier<int> resultRevision = ValueNotifier(0);
   bool restored = false;
   BondSolverResult? solverResult;
   QuestPhase? resultQuest;
   String? solverError;
-  bool solving = false;
+  BondSolverRunState runState = BondSolverRunState.idle;
+  bool get solving => runState.isRunning;
   StreamSubscription<BondSolverResult>? search;
   int searchRevision = 0;
   int lastDebugSecond = -1;
@@ -40,13 +42,14 @@ class _FormationBondRuntime {
   void stopSearch() {
     searchRevision++;
     search?.cancel();
+    search = null;
   }
 
   void clearResults() {
     solverResult = null;
     resultQuest = null;
     solverError = null;
-    solving = false;
+    runState = BondSolverRunState.idle;
   }
 
   void logProgress(BondSolverResult solved) {
@@ -60,22 +63,6 @@ class _FormationBondRuntime {
       '${solved.possibleCombinations == null ? "" : "/${solved.possibleCombinations}"} '
       'best=${solved.best?.totalBond} proven=${solved.provenOptimal}',
     );
-  }
-
-  String get status {
-    final solved = solverResult;
-    if (solving) {
-      if (solved == null) return 'Preparing search candidates…';
-      if (solved.provenOptimal) return 'Maximum proven; collecting equal-score groups…';
-      if (solved.best == null) return 'Searching for a feasible team…';
-      return 'Best team found; still proving the maximum…';
-    }
-    if (solverError != null) return 'Search failed';
-    if (solved == null) return 'Ready to search';
-    if (solved.provenOptimal) {
-      return solved.allTiesCollected ? 'Maximum proven' : 'Maximum proven · equal-score groups may be incomplete';
-    }
-    return 'Stopped · Maximum not proven';
   }
 }
 
@@ -97,6 +84,13 @@ class _FormationBondPageState extends State<FormationBondPage> with SingleTicker
   final BattleTeamSetup formation = BattleTeamSetup();
   QuestPhase? questEntity;
 
+  // Both exclusion pickers keep a page-local filter: they must survive
+  // repeated picking inside this page, but mutating the shared
+  // db.runtimeData filters would leak into the servant list and team setup
+  // pages, which read the same instances.
+  final _excludeSvtFilter = SvtFilterData(useGrid: true);
+  final _excludeCeFilter = CraftFilterData(useGrid: true)..obtain.options = {CEObtain.davinciBondBonus};
+
   void updateSharedInput(VoidCallback change) {
     if (!mounted) return;
     final hadSearch = _runtime.solving || _runtime.solverResult != null;
@@ -105,6 +99,7 @@ class _FormationBondPageState extends State<FormationBondPage> with SingleTicker
       change();
       _runtime.clearResults();
     });
+    if (_runtime.userBacked) db.notifyUserdata();
     if (hadSearch) EasyLoading.showToast('Search results are outdated. Solve again.');
   }
 
@@ -114,18 +109,20 @@ class _FormationBondPageState extends State<FormationBondPage> with SingleTicker
     if (_runtime.userBacked && option.teamFormation.svts.every((svt) => svt == null)) {
       option.teamFormation.svts[2] = SvtSaveData(supportType: SupportSvtType.friend);
     }
+    if ((option.quest?.id ?? 0) == 0) {
+      option.quest = BattleQuestInfo(id: 94137202, phase: 1, enemyHash: null, region: option.quest?.region);
+    }
     restore();
   }
 
   /// Restore the two non-JSON runtime values (team setup, quest entity) from the option.
-  /// Quest resolution falls back to network; on failure the quest is cleared but other settings kept.
+  /// Quest resolution falls back to network; a failed reference remains available for retry.
   Future<void> restore() async {
     final questInfo = option.quest;
-    if (questInfo != null) {
+    if (questInfo != null && questInfo.id > 0) {
       questEntity =
           db.gameData.getQuestPhase(questInfo.id, questInfo.phase) ??
           await AtlasApi.questPhase(questInfo.id, questInfo.phase);
-      if (questEntity == null) option.quest = null;
     }
 
     final saved = option.teamFormation;
@@ -144,15 +141,42 @@ class _FormationBondPageState extends State<FormationBondPage> with SingleTicker
   @override
   void dispose() {
     _runtime.stopSearch();
+    _runtime.resultRevision.dispose();
     _tabController.dispose();
     if (_runtime.restored) saveData();
+    if (_runtime.userBacked) unawaited(db.saveUserData());
     super.dispose();
   }
 
   /// Persist runtime formation/quest into the option supplied to this page.
   void saveData() {
     option.teamFormation = formation.toFormationData();
-    option.quest = questEntity == null ? null : BattleQuestInfo.quest(questEntity!);
+    if (questEntity != null) option.quest = BattleQuestInfo.quest(questEntity!);
+  }
+
+  Future<void> clearSvtInfo() async {
+    final confirmed = await SimpleConfirmDialog(title: Text('${S.current.clear} ${S.current.servant}'))
+        .showDialog(context);
+    if (!mounted || confirmed != true) return;
+    updateSharedInput(() {
+      for (var index = 0; index < formation.svts.length; index++) {
+        final slot = formation.svts[index];
+        if (slot.supportType.isSupport) continue;
+        slot.resetSvtInfo();
+        if (index < option.svtBonus.length) option.svtBonus[index] = FormationBondSvtBonus();
+      }
+    });
+  }
+
+  Future<void> clearCeInfo() async {
+    final confirmed = await SimpleConfirmDialog(title: Text('${S.current.clear} ${S.current.craft_essence_short}'))
+        .showDialog(context);
+    if (!mounted || confirmed != true) return;
+    updateSharedInput(() {
+      for (final slot in formation.svts) {
+        slot.resetCeInfo();
+      }
+    });
   }
 
   void validate() {
@@ -166,7 +190,7 @@ class _FormationBondPageState extends State<FormationBondPage> with SingleTicker
   String _strRate(int value) => value.format(percent: true, base: 10);
 
   FormationBondOption _buildSolverRequest(QuestPhase quest, BattleTeamSetup team) {
-    final solveOption = FormationBondOption.fromJson(option.toJson());
+    final solveOption = option.copy();
     solveOption.validate(quest);
     solveOption
       ..quest = BattleQuestInfo.quest(quest)
@@ -178,77 +202,134 @@ class _FormationBondPageState extends State<FormationBondPage> with SingleTicker
     if (!_runtime.restored) return;
     final selectedQuest = questEntity;
     if (selectedQuest == null) {
-      setState(() => _runtime.solverError = 'Select a quest first');
+      setState(() {
+        _runtime.runState = BondSolverRunState.failed;
+        _runtime.solverError = 'Select a quest first';
+      });
       return;
     }
     if (_runtime.userBacked && db.userData.curUser.id != _user.id) {
-      setState(() => _runtime.solverError = 'The active user changed. Reopen this page before solving.');
+      setState(() {
+        _runtime.runState = BondSolverRunState.failed;
+        _runtime.solverError = 'The active user changed. Reopen this page before solving.';
+      });
       return;
     }
+    final limit = option.maxServants.clamp(1, 6);
+    final extraBonus = option.svtBonus
+        .skip(limit)
+        .any((bonus) => bonus.addRate != 0 || bonus.addValue != 0 || bonus.isBond15 || bonus.isBondReachLimit);
+    final excess =
+        extraBonus ||
+        formation.svts
+            .skip(limit)
+            .any(
+              (deck) =>
+                  deck.svt != null ||
+                  deck.supportType.isSupport ||
+                  deck.grandSvt ||
+                  [deck.equip1, deck.equip2, deck.equip3].any((equip) => equip.ce != null),
+            );
+    if (excess) {
+      final confirmed = await SimpleConfirmDialog(
+        title: Text('${S.current.clear} ${limit + 1}–6'),
+        content: Text(S.current.bond_clear_excess_positions),
+      ).showDialog(context);
+      if (!mounted || confirmed != true) return;
+    }
+    setState(() {
+      for (var p = limit; p < formation.svts.length; p++) {
+        formation.svts[p] = PlayerSvtData.base();
+        if (p < option.svtBonus.length) option.svtBonus[p] = FormationBondSvtBonus();
+      }
+    });
+    await WidgetsBinding.instance.endOfFrame;
+    if (!mounted) return;
     final revision = ++_runtime.searchRevision;
     await _runtime.search?.cancel();
     if (!mounted || revision != _runtime.searchRevision) return;
     setState(() {
       _runtime.clearResults();
-      _runtime.solving = true;
+      _runtime.runState = BondSolverRunState.preparing;
     });
-    _tabController.animateTo(1);
-    // Defer preparation until the tab transition has painted.
-    await Future<void>.delayed(_tabController.animationDuration);
-    if (!mounted || revision != _runtime.searchRevision) return;
-    await WidgetsBinding.instance.endOfFrame;
-    if (!mounted || revision != _runtime.searchRevision) return;
-    if (_runtime.userBacked && db.userData.curUser.id != _user.id) {
+    try {
+      _tabController.animateTo(1);
+      // Defer preparation until the tab transition has painted.
+      await Future<void>.delayed(_tabController.animationDuration);
+      if (!mounted || revision != _runtime.searchRevision) return;
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted || revision != _runtime.searchRevision) return;
+      if (_runtime.userBacked && db.userData.curUser.id != _user.id) {
+        setState(() {
+          _runtime.runState = BondSolverRunState.failed;
+          _runtime.solverError = 'The active user changed. Reopen this page before solving.';
+        });
+        return;
+      }
+      // Selection/restoration resolves missing phases before Solve is available.
+      // Bundled phases are authoritative, including Grand Board restrictions.
+      final solveQuest = db.gameData.getQuestPhase(selectedQuest.id, selectedQuest.phase) ?? selectedQuest;
+      _runtime.resultQuest = solveQuest;
+      final solveFormation = formation.copy();
+      final solveOption = _buildSolverRequest(solveQuest, solveFormation);
+      if (_runtime.userBacked) {
+        saveData();
+        await db.saveUserData();
+      }
+      if (!mounted || revision != _runtime.searchRevision) return;
+      _runtime.lastDebugSecond = -1;
+      if (kDebugMode) debugPrint('[BondSolver] search started: quest ${solveQuest.id}/${solveQuest.phase}');
+      _runtime.search =
+          FormationBondSolver.solveProgressively(
+            option: solveOption,
+            quest: solveQuest,
+            formation: solveFormation,
+            onSearchStarted: () {
+              if (!mounted || revision != _runtime.searchRevision) return;
+              _runtime.runState = BondSolverRunState.searching;
+              _runtime.resultRevision.value++;
+            },
+          ).listen(
+            (solved) {
+              if (!mounted || revision != _runtime.searchRevision) return;
+              _runtime.solverResult = solved;
+              _runtime.resultRevision.value++;
+              _runtime.logProgress(solved);
+            },
+            onError: (Object e) {
+              if (!mounted || revision != _runtime.searchRevision) return;
+              setState(() {
+                _runtime.solverError = e.toString();
+                _runtime.runState = BondSolverRunState.failed;
+              });
+              if (kDebugMode) debugPrint('[BondSolver] search failed: $e');
+            },
+            onDone: () {
+              if (!mounted || revision != _runtime.searchRevision) return;
+              // An error event is followed by done; preserve the failure reason.
+              if (_runtime.solving) _runtime.runState = BondSolverRunState.completed;
+              _runtime.search = null;
+              _runtime.resultRevision.value++;
+              if (kDebugMode) {
+                debugPrint('[BondSolver] search finished: proven=${_runtime.solverResult?.provenOptimal}');
+              }
+            },
+          );
+    } catch (e) {
+      if (!mounted || revision != _runtime.searchRevision) return;
       setState(() {
-        _runtime.solving = false;
-        _runtime.solverError = 'The active user changed. Reopen this page before solving.';
+        _runtime.solverError = e.toString();
+        _runtime.runState = BondSolverRunState.failed;
       });
-      return;
+      if (kDebugMode) debugPrint('[BondSolver] search failed during preparation: $e');
     }
-    // Selection/restoration resolves missing phases before Solve is available.
-    // Bundled phases are authoritative, including Grand Board restrictions.
-    final solveQuest = db.gameData.getQuestPhase(selectedQuest.id, selectedQuest.phase) ?? selectedQuest;
-    _runtime.resultQuest = solveQuest;
-    final solveFormation = formation.copy();
-    final solveOption = _buildSolverRequest(solveQuest, solveFormation);
-    if (_runtime.userBacked) {
-      saveData();
-      await db.saveUserData();
-    }
-    if (!mounted || revision != _runtime.searchRevision) return;
-    _runtime.lastDebugSecond = -1;
-    if (kDebugMode) debugPrint('[BondSolver] search started: quest ${solveQuest.id}/${solveQuest.phase}');
-    _runtime.search =
-        FormationBondSolver.solveProgressively(
-          option: solveOption,
-          quest: solveQuest,
-          formation: solveFormation,
-        ).listen(
-          (solved) {
-            if (!mounted || revision != _runtime.searchRevision) return;
-            setState(() => _runtime.solverResult = solved);
-            _runtime.logProgress(solved);
-          },
-          onError: (Object e) {
-            if (!mounted || revision != _runtime.searchRevision) return;
-            setState(() {
-              _runtime.solverError = e.toString();
-              _runtime.solving = false;
-            });
-            if (kDebugMode) debugPrint('[BondSolver] search failed: $e');
-          },
-          onDone: () {
-            if (!mounted || revision != _runtime.searchRevision) return;
-            setState(() => _runtime.solving = false);
-            if (kDebugMode) debugPrint('[BondSolver] search finished: proven=${_runtime.solverResult?.provenOptimal}');
-          },
-        );
   }
 
   void cancelSolve() {
+    if (!_runtime.solving) return;
     _runtime.stopSearch();
     if (kDebugMode) debugPrint('[BondSolver] search cancelled: proven=${_runtime.solverResult?.provenOptimal}');
-    setState(() => _runtime.solving = false);
+    setState(() => _runtime.runState = BondSolverRunState.cancelled);
   }
 
   void _editNumber({
@@ -304,7 +385,14 @@ class _FormationBondPageState extends State<FormationBondPage> with SingleTicker
         TileGroup(
           header: '${S.current.quest} / ${S.current.bond}',
           children: [
-            _BondQuestPicker(quest: quest, onChanged: (v) => updateSharedInput(() => questEntity = v)),
+            _BondQuestPicker(
+              info: option.quest,
+              quest: quest,
+              onChanged: (v) => updateSharedInput(() {
+                questEntity = v;
+                option.quest = v == null ? null : BattleQuestInfo.quest(v);
+              }),
+            ),
             ListTile(
               dense: true,
               title: Text(
@@ -349,7 +437,24 @@ class _FormationBondPageState extends State<FormationBondPage> with SingleTicker
               formation: formation,
               quest: quest,
               playerRegion: Region.jp,
+              playerSvtSource: option.favoriteSvtOnly
+                  ? PreferPlayerSvtDataSource.current
+                  : PreferPlayerSvtDataSource.none,
               onChanged: () => updateSharedInput(() {}),
+            ),
+            Center(
+              child: Wrap(
+                crossAxisAlignment: .center,
+                children: [
+                  Text('${S.current.clear}  '),
+                  TextButton(style: kTextButtonDenseStyle, onPressed: clearSvtInfo, child: Text(S.current.servant)),
+                  TextButton(
+                    style: kTextButtonDenseStyle,
+                    onPressed: clearCeInfo,
+                    child: Text(S.current.craft_essence_short),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -485,6 +590,7 @@ class _FormationBondPageState extends State<FormationBondPage> with SingleTicker
                   setState(() {
                     if (v != null) option.teapotTimes = v;
                   });
+                  if (_runtime.userBacked) db.notifyUserdata();
                 },
               ),
             ),
@@ -523,20 +629,25 @@ class _FormationBondPageState extends State<FormationBondPage> with SingleTicker
             builder: (context) => Column(
               children: [
                 Expanded(child: inputContent),
-                _buildSolveBar(),
+                ValueListenableBuilder<int>(
+                  valueListenable: _runtime.resultRevision,
+                  builder: (context, _, child) => _buildSolveBar(),
+                ),
               ],
             ),
           ),
           KeepAliveBuilder(
-            builder: (context) => BondSolverResultsTab(
-              solved: _runtime.solverResult,
-              formation: formation,
-              option: option,
-              quest: _runtime.resultQuest ?? questEntity,
-              solving: _runtime.solving,
-              status: _runtime.status,
-              error: _runtime.solverError,
-              onCancel: cancelSolve,
+            builder: (context) => ValueListenableBuilder<int>(
+              valueListenable: _runtime.resultRevision,
+              builder: (context, _, child) => BondSolverResultsTab(
+                solved: _runtime.solverResult,
+                formation: formation,
+                option: option,
+                quest: _runtime.resultQuest ?? questEntity,
+                runState: _runtime.runState,
+                error: _runtime.solverError,
+                onCancel: cancelSolve,
+              ),
             ),
           ),
         ],
@@ -553,14 +664,14 @@ class _FormationBondPageState extends State<FormationBondPage> with SingleTicker
           children: [
             Expanded(
               child: FilledButton.icon(
-                onPressed: _runtime.solving || !_runtime.restored ? null : solve,
+                onPressed: _runtime.solving || !_runtime.restored || questEntity == null ? null : solve,
                 icon: const Icon(Icons.auto_awesome),
                 label: const Text('Solve max bond'),
               ),
             ),
             if (_runtime.solving) ...[
               const SizedBox(width: 8),
-              TextButton(onPressed: cancelSolve, child: const Text('Cancel')),
+              FilledButton(onPressed: cancelSolve, child: Text(S.current.cancel)),
             ],
           ],
         ),
@@ -602,6 +713,17 @@ class _FormationBondPageState extends State<FormationBondPage> with SingleTicker
               ),
             ),
           ),
+          ListTile(
+            dense: true,
+            title: Text(S.current.bond_max_servants),
+            trailing: DropdownButton<int>(
+              value: option.maxServants.clamp(1, 6),
+              items: [for (var n = 1; n <= 6; n++) DropdownMenuItem(value: n, child: Text('$n'))],
+              onChanged: (n) {
+                if (n != null) updateSharedInput(() => option.maxServants = n);
+              },
+            ),
+          ),
           // ListTile(
           //   dense: true,
           //   title: const Text('Max teams kept'),
@@ -636,8 +758,9 @@ class _FormationBondPageState extends State<FormationBondPage> with SingleTicker
           SwitchListTile.adaptive(
             dense: true,
             title: Text(S.current.favorite),
-            value: option.favoriteOnly,
-            onChanged: (v) => updateSharedInput(() => option.favoriteOnly = v),
+            subtitle: Text(S.current.servant),
+            value: option.favoriteSvtOnly,
+            onChanged: (v) => updateSharedInput(() => option.favoriteSvtOnly = v),
           ),
           ListTile(
             dense: true,
@@ -652,6 +775,20 @@ class _FormationBondPageState extends State<FormationBondPage> with SingleTicker
               child: Text(option.maxBond <= 0 ? S.current.general_any : '≤${option.maxBond}'),
             ),
           ),
+          SwitchListTile.adaptive(
+            dense: true,
+            title: Text(S.current.bond_not_full_only),
+            value: option.bondNotFullOnly,
+            onChanged: (v) => updateSharedInput(() => option.bondNotFullOnly = v),
+          ),
+          const Divider(indent: 16, endIndent: 16),
+          SwitchListTile.adaptive(
+            dense: true,
+            title: Text(S.current.favorite),
+            subtitle: Text('${S.current.craft_essence} (${S.current.card_status_owned})'),
+            value: option.favoriteSvtEquipOnly,
+            onChanged: (v) => updateSharedInput(() => option.favoriteSvtEquipOnly = v),
+          ),
         ],
       ),
       BondExcludedCards(
@@ -661,7 +798,7 @@ class _FormationBondPageState extends State<FormationBondPage> with SingleTicker
         onAdd: () {
           router.pushPage(
             ServantListPage(
-              filterData: SvtFilterData(useGrid: true),
+              filterData: _excludeSvtFilter,
               onSelected: (svt) {
                 if (mounted) updateSharedInput(() => option.excludedSvts.add(svt.id));
               },
@@ -677,7 +814,7 @@ class _FormationBondPageState extends State<FormationBondPage> with SingleTicker
         onAdd: () {
           router.pushPage(
             CraftListPage(
-              filterData: CraftFilterData(useGrid: true)..obtain.options = {CEObtain.davinciBondBonus},
+              filterData: _excludeCeFilter,
               onSelected: (ce) {
                 if (mounted) updateSharedInput(() => option.excludedCes.add(ce.id));
               },
@@ -812,24 +949,27 @@ class _FormationBondPageState extends State<FormationBondPage> with SingleTicker
 /// Resolves the chosen quest phase from local game data first and falls back to
 /// the network; reports the resolved phase through [onChanged] (null on failure).
 class _BondQuestPicker extends StatelessWidget {
+  final BattleQuestInfo? info;
   final QuestPhase? quest;
   final ValueChanged<QuestPhase?> onChanged;
 
-  const _BondQuestPicker({required this.quest, required this.onChanged});
+  const _BondQuestPicker({required this.info, required this.quest, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
-    final quest = this.quest;
+    final quest = this.quest ?? db.gameData.getQuestPhase(info?.id ?? 0, info?.phase);
+    final metadata = quest ?? db.gameData.quests[info?.id];
+    final bond = quest?.bond ?? db.gameData.questPhaseDetails[(info?.id ?? 0) * 100 + (info?.phase ?? 1)]?.bond;
     return ListTile(
       dense: true,
       title: Text('${S.current.quest} ID'),
-      subtitle: quest == null ? null : Text('${quest.lNameWithChapter}\nBase ${S.current.bond}: ${quest.bond}'),
-      onTap: quest?.routeTo,
+      subtitle: Text('${metadata?.lNameWithChapter ?? '—'}\n${S.current.base_bond}: ${bond ?? '—'}'),
+      onTap: metadata?.routeTo,
       trailing: TextButton(
         onPressed: () {
           InputCancelOkDialog.number(
             title: 'Quest ID',
-            initValue: quest?.id,
+            initValue: info?.id ?? quest?.id,
             validate: (v) => v > 0,
             onSubmit: (v) async {
               final _quest = db.gameData.quests[v] ?? await showEasyLoading(() => AtlasApi.quest(v));
@@ -871,7 +1011,15 @@ class _BondQuestPicker extends StatelessWidget {
             },
           ).showDialog(context);
         },
-        child: Text(quest == null ? '0' : '${quest.id}/${quest.phase}'),
+        child: Text(
+          quest == null
+              ? info == null
+                    ? '0'
+                    : '${info!.id}/${info!.phase}'
+              : quest.phases.length > 1
+              ? '${quest.id}/${quest.phase}'
+              : '${quest.id}',
+        ),
       ),
     );
   }

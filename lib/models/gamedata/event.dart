@@ -597,11 +597,11 @@ class MstMasterMission with RouteInfo {
     return Transl.missionNames(text).l;
   }
 
-  String getDispName([String sep = '\n']) {
+  String getDispName({String sep = '\n', bool withId = true}) {
     final title = lMissionIconDetailText;
-    String name = 'ID $id';
-    if (title != null) name = '$title$sep$name';
-    return name;
+    final hasTitle = title != null && title.isNotEmpty;
+    if (!withId) return hasTitle ? title : 'ID $id';
+    return hasTitle ? '$title${sep}ID $id' : 'ID $id';
   }
 
   MstMasterMission({
@@ -1310,7 +1310,7 @@ class EventLottery {
   PayType payType;
   ItemAmount cost;
   int priority;
-  bool limited;
+  bool limited; // LotteryFlag.limitReset
   List<EventLotteryBox> boxes;
   List<EventLotteryTalk> talks;
 
@@ -1353,6 +1353,8 @@ class EventLottery {
     return Maths.sum(boxes.map((e) => e.boxIndex == boxIndex ? e.maxNum : 0));
   }
 }
+
+enum LotteryFlag { none, limitReset } // BoxGachaFlag
 
 @JsonSerializable()
 class EventLotteryTalk {

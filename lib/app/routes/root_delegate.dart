@@ -102,6 +102,15 @@ class AppState extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  bool get consentPending => _consentPending;
+  bool _consentPending = false;
+
+  set consentPending(bool v) {
+    if (_consentPending == v) return;
+    _consentPending = v;
+    notifyListeners();
+  }
 }
 
 class RootAppRouterDelegate extends RouterDelegate<RouteConfiguration>
@@ -130,6 +139,11 @@ class RootAppRouterDelegate extends RouterDelegate<RouteConfiguration>
         ]),
         child: child,
       );
+    }
+    if (PlatformU.isAndroid) {
+      // Keep system back in Flutter even when the outer Navigator or an inactive
+      // child cannot pop. The active child router handles navigation and backgrounding.
+      child = PopScope(canPop: false, child: child);
     }
     return Navigator(
       key: navigatorKey,

@@ -21,6 +21,7 @@ import 'subpage/feedback_page.dart';
 import 'subpage/game_data_page.dart';
 import 'subpage/game_server_page.dart';
 import 'subpage/network_settings.dart';
+import 'subpage/privacy_center_page.dart';
 import 'subpage/share_app_dialog.dart';
 import 'subpage/theme_color.dart';
 import 'subpage/translation_setting.dart';
@@ -213,6 +214,13 @@ class _SettingsPageState extends State<SettingsPage> {
                   router.popDetailAndPush(child: DisplaySettingPage());
                 },
               ),
+              ListTile(
+                title: Text(S.current.privacy_center),
+                trailing: Icon(DirectionalIcons.keyboard_arrow_forward(context)),
+                onTap: () {
+                  router.popDetailAndPush(child: const PrivacyCenterPage());
+                },
+              ),
             ],
           ),
           TileGroup(
@@ -348,8 +356,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget get userTile {
     String? subtitle;
-    // Per design D5: migration reminder > email-not-bound reminder > none.
-    // When not logged in, no subtitle.
+    // Show the migration reminder before the missing-email reminder.
     final user = db.settings.secrets.user;
     final token = user.accessToken ?? '';
     final legacySecret = user.secret ?? '';

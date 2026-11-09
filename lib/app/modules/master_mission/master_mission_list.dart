@@ -83,7 +83,7 @@ class _MasterMissionListPageState extends State<MasterMissionListPage> {
     }).toList();
     missions.sort((a, b) {
       if (a.startedAt == b.startedAt) return a.id.compareTo(b.id);
-      return a.startedAt.compareTo(b.startedAt);
+      return b.startedAt.compareTo(a.startedAt);
     });
     return Scaffold(
       appBar: AppBar(
@@ -171,7 +171,7 @@ class _MasterMissionListPageState extends State<MasterMissionListPage> {
             setState(() {});
           },
         ),
-        ElevatedButton(
+        FilledButton(
           onPressed: () => solveMultiple(mms),
           child: Text(selected.isEmpty ? S.current.general_custom : S.current.drop_calc_solve),
         ),

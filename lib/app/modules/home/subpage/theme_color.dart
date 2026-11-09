@@ -24,6 +24,7 @@ class _ThemeColorPageState extends State<ThemeColorPage> {
               if (v != null && v != db.settings.themeMode) {
                 db.settings.appearance.themeMode = v;
                 db.notifySettings();
+                db.saveSettings();
                 db.notifyAppUpdate();
               }
               setState(() {});
@@ -36,24 +37,6 @@ class _ThemeColorPageState extends State<ThemeColorPage> {
               ],
             ),
           ),
-          // RadioGroup<bool>(
-          //   groupValue: db.settings.appearance.useMaterial3,
-          //   onChanged: (v) {
-          //     if (v != null && v != db.settings.appearance.useMaterial3) {
-          //       db.settings.appearance.useMaterial3 = v;
-          //       db.notifySettings();
-          //       db.notifyAppUpdate();
-          //     }
-          //     setState(() {});
-          //   },
-          //   child: TileGroup(
-          //     header: "Material Design",
-          //     children: [
-          //       for (final useM3 in [false, true])
-          //         RadioListTile<bool>(value: useM3, title: Text(useM3 ? 'Material 3' : 'Material 2')),
-          //     ],
-          //   ),
-          // ),
           if (1 > 2)
             TileGroup(
               header: 'Surface Mode',
@@ -121,6 +104,7 @@ class _ThemeColorPageState extends State<ThemeColorPage> {
                     });
                   },
                   onChangeEnd: (value) {
+                    db.saveSettings();
                     Future.delayed(Duration(milliseconds: 100), db.notifyAppUpdate);
                   },
                 ),
@@ -133,6 +117,7 @@ class _ThemeColorPageState extends State<ThemeColorPage> {
               if (v != db.settings.appearance.flexScheme) {
                 db.settings.appearance.flexScheme = v;
                 db.notifySettings();
+                db.saveSettings();
                 db.notifyAppUpdate();
               }
               setState(() {});
