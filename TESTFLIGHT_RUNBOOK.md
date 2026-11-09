@@ -308,8 +308,10 @@ The delivery workflow is `Main TestFlight Delivery`
 - Manual fallback: any branch
 - Action: archive `Runner` for iOS using Release
 - Post-action: distribute to `Chaldea Internal`
-- Xcode: Latest Beta or Release
-- macOS: Latest Release
+- Xcode/macOS: a currently supported pair in the workflow's Environment;
+  prefer Latest Release Xcode unless a beta is explicitly required. The initial
+  setup used Latest Beta or Release Xcode and Latest Release macOS; these
+  selectors do not guarantee that the resolved pair stays available.
 - Environment variables:
   - `XCODE_XCCONFIG_FILE=/Volumes/workspace/repository/ios/Flutter/ForkIdentity.xcconfig`
   - `CHALDEA_XCODE_CLOUD_MIN_BUILD_NUMBER=1`
@@ -785,6 +787,27 @@ historical environment evidence, not the current full-suite result.
 Do not alter application logic merely to hide a missing test-data condition.
 
 ## Troubleshooting Matrix
+
+### Cloud fails before an iOS build or archive action appears
+
+Inspect the failed run's Overview in App Store Connect. GitHub may show only a
+failed overall status, without a check-run, annotations, or build logs.
+
+If Apple reports that the selected Xcode/macOS versions are no longer supported:
+
+1. Open the affected workflow's **Environment** settings (or the banner's Update button).
+2. Select an available, compatible Xcode/macOS pair. Prefer Latest Release Xcode
+   unless the project explicitly requires a beta; even "Latest" selections can
+   resolve to a retired combination.
+3. Preserve the fork's environment variables, signing, triggers, and TestFlight
+   post-action. PR Validation and Main TestFlight Delivery are separate workflows;
+   repairing one does not repair the other.
+4. Save and rebuild the reviewed commit. No source-code change, version bump,
+   empty commit, local Xcode installation, or protection bypass is needed.
+5. Verify the delivery workflow and Apple processing, not just the PR build.
+
+For a different banner/error, investigate that diagnostic instead of assuming
+an environment retirement is always the cause.
 
 ### `No Accounts`
 

@@ -21,8 +21,9 @@ The delivery workflow is `Main TestFlight Delivery`
 - Manual fallback: any branch, so a reviewed branch can be validated before merging
 - Action: archive the shared `Runner` scheme for iOS using Release
 - Post-action: distribute to the internal TestFlight group `Chaldea Internal`
-- Xcode: Latest Beta or Release
-- macOS: Latest Release
+- Xcode/macOS: a currently available, compatible pair in Environment; prefer
+  Latest Release Xcode unless a beta is explicitly required. The initial setup
+  used Latest Beta or Release Xcode and Latest Release macOS.
 - Environment variables:
   - `XCODE_XCCONFIG_FILE=/Volumes/workspace/repository/ios/Flutter/ForkIdentity.xcconfig`
   - `CHALDEA_XCODE_CLOUD_MIN_BUILD_NUMBER=1`
@@ -35,6 +36,14 @@ The separate `PR Validation` workflow
 - No archive distribution preparation or TestFlight post-action
 - The same two environment variables as the delivery workflow
 - `CHALDEA_XCODE_CLOUD_VALIDATE_PR=1`
+
+Environment settings belong to each workflow separately. If a run fails before
+any iOS action and Apple reports that the selected Xcode/macOS combination is
+no longer supported, update that workflow's Environment and rebuild the reviewed
+commit. A "Latest" selector does not guarantee the resolved pair remains
+available. Keep identity variables, signing, triggers, and distribution unchanged;
+see the TestFlight runbook's Cloud troubleshooting section. No source commit or
+local Xcode upgrade is needed for this hosted configuration repair.
 
 The PR-only flag runs `ci_validate_pull_request.sh` during post-clone. That
 script performs Flutter static analysis, clones the public offline game-data
