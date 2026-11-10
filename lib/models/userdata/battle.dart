@@ -333,6 +333,8 @@ class BattleQuestInfo {
 
   Map<String, dynamic> toJson() => _$BattleQuestInfoToJson(this);
 
+  BattleQuestInfo copy() => BattleQuestInfo(id: id, phase: phase, enemyHash: enemyHash, region: region);
+
   static BattleQuestInfo? fromQuery(Map<String, String> query) {
     final id = int.tryParse(query['questId'] ?? "");
     final phase = int.tryParse(query['phase'] ?? "") ?? db.gameData.quests[id]?.phases.lastOrNull;
@@ -363,11 +365,10 @@ class BattleTeamFormation {
     @protected List<SvtSaveData?>? onFieldSvts,
     @protected List<SvtSaveData?>? backupSvts,
   }) : mysticCode = mysticCode ?? MysticCodeSaveData(),
+       // Never invent data for absent slots here: whether a position holds a
+       // support servant is the user's choice, set when a setup is created.
        svts = svts != null && svts.isNotEmpty
-           ? List.generate(
-               max(6, svts.length),
-               (index) => svts.getOrNull(index) ?? (index == 2 ? SvtSaveData(supportType: .friend) : null),
-             )
+           ? List.generate(max(6, svts.length), (index) => svts.getOrNull(index))
            : [
                ...List.generate(3, (index) => onFieldSvts?.getOrNull(index)),
                ...List.generate(3, (index) => backupSvts?.getOrNull(index)),
@@ -499,6 +500,43 @@ class SvtSaveData {
        customPassiveLvs = customPassiveLvs ?? [];
 
   factory SvtSaveData.fromJson(Map<String, dynamic> json) => _$SvtSaveDataFromJson(json);
+
+  /// Clears servant fields, keeping [supportType] and [equip1].
+  void resetSvtInfo() {
+    svtId = null;
+    limitCount = 4;
+    transformVal = 0;
+    skillIds = List.generate(kActiveSkillNums.length, (index) => null);
+    skillLvs = [10, 10, 10];
+    appendLvs = List.generate(kAppendSkillNums.length, (index) => 0);
+    tdId = 0;
+    tdLv = 5;
+    lv = 1;
+    atkFou = 1000;
+    hpFou = 1000;
+    fixedAtk = null;
+    fixedHp = null;
+    cardStrengthens = List.generate(5, (index) => 0);
+    commandCodeIds = List.generate(5, (index) => null);
+    disabledExtraSkills = {};
+    allowedExtraSkills = {};
+    customPassives = [];
+    customPassiveLvs = [];
+    grandSvt = false;
+    classBoardData = null;
+    equip2 = null;
+    equip3 = null;
+  }
+
+  /// Clears every CE slot, keeping [supportType].
+  void resetCeInfo() {
+    ceId = null;
+    ceLimitBreak = false;
+    ceLv = 0;
+    equip1 = SvtEquipSaveData();
+    equip2 = null;
+    equip3 = null;
+  }
 
   Map<String, dynamic> toJson() {
     if ((svtId == null || svtId == 0) && !supportType.isSupport && equip1.id == null) return {};
@@ -1366,7 +1404,7 @@ enum BondReleaseReference {
 @JsonSerializable()
 class FormationBondOption {
   BattleTeamFormation teamFormation;
-  // quest reference stored as id/phase; restore falls back to null if unresolvable
+  // Keep the id/phase reference when loading fails so it can be retried.
   BattleQuestInfo? quest;
   bool enableEvent;
   // <eventId, <campaign idx, enabled>>
@@ -1376,17 +1414,22 @@ class FormationBondOption {
   bool frontlineBonus;
   int teapotTimes;
   int? maxCost;
-  bool favoriteOnly;
+  bool favoriteSvtOnly;
+  bool favoriteSvtEquipOnly;
   BondReleaseReference releaseReference;
   int maxBond;
+  bool bondNotFullOnly;
   Set<int> excludedSvts;
   Set<int> excludedCes;
   int maxCandidateTeams;
+
+  /// Usable formation positions, including support.
+  int maxServants;
   bool searchFixedAscensions;
 
   FormationBondOption({
     BattleTeamFormation? teamFormation,
-    this.quest,
+    BattleQuestInfo? quest,
     this.enableEvent = true,
     Map<int, Map<int, bool>>? campaigns,
     this.fixedDate,
@@ -1394,22 +1437,62 @@ class FormationBondOption {
     this.frontlineBonus = true,
     this.teapotTimes = 1,
     this.maxCost,
-    this.favoriteOnly = true,
+    this.favoriteSvtOnly = true,
+    this.favoriteSvtEquipOnly = true,
     this.releaseReference = BondReleaseReference.jp,
     this.maxBond = 15,
+    this.bondNotFullOnly = false,
     Set<int>? excludedSvts,
     Set<int>? excludedCes,
     this.maxCandidateTeams = 100,
+    this.maxServants = 6,
     this.searchFixedAscensions = true,
-  }) : teamFormation = teamFormation ?? BattleTeamFormation(),
+  }) : quest = quest ?? BattleQuestInfo(id: 94137202, phase: 1, enemyHash: null),
+       teamFormation = teamFormation ?? BattleTeamFormation(),
        campaigns = campaigns ?? {},
        svtBonus = svtBonus ?? List.generate(6, (_) => FormationBondSvtBonus()),
        excludedSvts = excludedSvts ?? {},
        excludedCes = excludedCes ?? {};
 
-  factory FormationBondOption.fromJson(Map<String, dynamic> json) => _$FormationBondOptionFromJson(json);
+  factory FormationBondOption.fromJson(Map<String, dynamic> json) {
+    final option = _$FormationBondOptionFromJson(json);
+    // The new-construction default must not replace an existing empty selection.
+    if (json['quest'] == null) option.quest = null;
+    if (json['favoriteSvtOnly'] == null && json['favoriteOnly'] is bool) {
+      final legacy = json['favoriteOnly'] as bool;
+      option.favoriteSvtOnly = legacy;
+      option.favoriteSvtEquipOnly = legacy;
+    }
+    return option;
+  }
 
   Map<String, dynamic> toJson() => _$FormationBondOptionToJson(this);
+
+  FormationBondOption copy() {
+    final option = FormationBondOption(
+      teamFormation: teamFormation.copy(),
+      quest: quest,
+      enableEvent: enableEvent,
+      campaigns: {for (final entry in campaigns.entries) entry.key: Map.of(entry.value)},
+      fixedDate: fixedDate,
+      svtBonus: [for (final bonus in svtBonus) bonus.copy()],
+      frontlineBonus: frontlineBonus,
+      teapotTimes: teapotTimes,
+      maxCost: maxCost,
+      favoriteSvtOnly: favoriteSvtOnly,
+      favoriteSvtEquipOnly: favoriteSvtEquipOnly,
+      releaseReference: releaseReference,
+      maxBond: maxBond,
+      bondNotFullOnly: bondNotFullOnly,
+      excludedSvts: Set.of(excludedSvts),
+      excludedCes: Set.of(excludedCes),
+      maxCandidateTeams: maxCandidateTeams,
+      maxServants: maxServants,
+      searchFixedAscensions: searchFixedAscensions,
+    );
+    option.quest = quest?.copy();
+    return option;
+  }
 }
 
 @JsonSerializable()
@@ -1424,4 +1507,11 @@ class FormationBondSvtBonus {
   factory FormationBondSvtBonus.fromJson(Map<String, dynamic> json) => _$FormationBondSvtBonusFromJson(json);
 
   Map<String, dynamic> toJson() => _$FormationBondSvtBonusToJson(this);
+
+  FormationBondSvtBonus copy() => FormationBondSvtBonus(
+    addValue: addValue,
+    addRate: addRate,
+    isBond15: isBond15,
+    isBondReachLimit: isBondReachLimit,
+  );
 }

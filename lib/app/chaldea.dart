@@ -23,7 +23,7 @@ import 'package:chaldea/widgets/screenshot.dart';
 import 'package:chaldea/widgets/widgets.dart';
 
 import '../generated/l10n.dart';
-import '../models/db.dart';
+import '../models/models.dart';
 import '../packages/ads/ads.dart';
 import '../packages/language.dart';
 import '../packages/method_channel/method_channel_chaldea.dart';
@@ -31,6 +31,7 @@ import '../packages/network.dart';
 import '../packages/platform/platform.dart';
 import 'app.dart';
 import 'modules/auth/change_email_page.dart';
+import 'modules/home/subpage/privacy_center_page.dart';
 import 'routes/parser.dart';
 import 'tools/app_window.dart';
 
@@ -67,7 +68,7 @@ class _ChaldeaState extends State<Chaldea> with AfterLayoutMixin, WindowListener
   Widget build(BuildContext context) {
     final lightTheme = AppTheme.light();
     final darkTheme = AppTheme.dark();
-    Widget child = Screenshot(
+    return Screenshot(
       controller: db.runtimeData.screenshotController,
       child: MaterialApp.router(
         title: kAppName,
@@ -86,31 +87,28 @@ class _ChaldeaState extends State<Chaldea> with AfterLayoutMixin, WindowListener
         builder: (context, widget) {
           ErrorWidget.builder = _ErrorWidget.errorWidgetBuilder;
           isEasyLoadingAttached = true;
-          widget = FlutterEasyLoading(key: _easyLoadingKey, child: widget);
+          Widget child = FlutterEasyLoading(key: _easyLoadingKey, child: widget);
           // ignore: deprecated_member_use
-          return MaterialUiCompatibilityBridge(child: widget);
+          child = MaterialUiCompatibilityBridge(child: child);
+          if (PlatformU.isAndroid) {
+            final theme = Theme.of(context);
+            final isDark = theme.brightness == Brightness.dark;
+            final overlayStyle = isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark;
+            // Pages without an AppBar, including split-view placeholders, need a theme-aware fallback.
+            child = AnnotatedRegion<SystemUiOverlayStyle>(
+              value: overlayStyle.copyWith(
+                statusBarColor: Colors.transparent,
+                systemNavigationBarColor: theme.scaffoldBackgroundColor,
+                // Both presets use light navigation icons, so override them separately.
+                systemNavigationBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+              ),
+              child: child,
+            );
+          }
+          return child;
         },
       ),
     );
-    if (PlatformU.isAndroid) {
-      child = AnnotatedRegion<SystemUiOverlayStyle>(
-        value: db.settings.appearance.isResolvedDarkMode
-            ? SystemUiOverlayStyle.dark.copyWith(
-                // statusBarColor: Colors.transparent,
-                systemNavigationBarColor: darkTheme.scaffoldBackgroundColor,
-                // statusBarIconBrightness: Brightness.light,
-                systemNavigationBarIconBrightness: Brightness.light,
-              )
-            : SystemUiOverlayStyle.light.copyWith(
-                // statusBarColor: Colors.transparent,
-                systemNavigationBarColor: lightTheme.scaffoldBackgroundColor,
-                // statusBarIconBrightness: Brightness.dark,
-                systemNavigationBarIconBrightness: Brightness.dark,
-              ),
-        child: child,
-      );
-    }
-    return child;
   }
 
   void onAppUpdate() {
@@ -137,7 +135,7 @@ class _ChaldeaState extends State<Chaldea> with AfterLayoutMixin, WindowListener
       if (msg == AppLifecycleState.resumed.toString()) {
         // Actions when app is resumed
         network.check();
-      } else if (msg == AppLifecycleState.inactive.toString()) {
+      } else if (msg == AppLifecycleState.inactive.toString() || msg == AppLifecycleState.hidden.toString()) {
         db.saveAll();
         if (NetworkManagerBase.hasCalled) {
           try {
@@ -156,12 +154,35 @@ class _ChaldeaState extends State<Chaldea> with AfterLayoutMixin, WindowListener
     windowManager.addListener(this);
   }
 
+  Future<void> _ensurePrivacyConsent(BuildContext context) async {
+    final privacy = db.settings.display.privacy;
+    final agreedBefore = privacy.accepted;
+    final needAsk = privacy.needsConsent;
+    if (kDebugMode) {
+      debugPrint(
+        '[privacy] accepted=${privacy.accepted} version=${privacy.acceptedVersion}'
+        '/$kPrivacyPolicyVersion asked=${privacy.consentAsked} needAsk=$needAsk',
+      );
+    }
+    if (!needAsk) {
+      rootRouter.appState.consentPending = false;
+      if (privacy.consentSatisfied) await AppInfo.onConsentGranted(db.paths.appPath);
+      return;
+    }
+    final dialogContext = router.navigatorKey.currentContext ?? kAppKey.currentContext ?? context;
+    final agreed = await PrivacyConsentDialog.show(dialogContext, isUpdate: agreedBefore);
+    if (kDebugMode) debugPrint('[privacy] consent dialog result: $agreed');
+    await applyPrivacyConsent(agreed == true);
+    rootRouter.appState.consentPending = false;
+  }
+
   @override
   void afterFirstLayout(BuildContext context) async {
     AppWindowUtil.setAlwaysOnTop();
     if (PlatformU.isWindows) {
       MethodChannelChaldea.setWindowPos();
     }
+    await _ensurePrivacyConsent(context);
     AppAds.init();
 
     // Silent migration of legacy Worker tokens runs in the background after the

@@ -1,5 +1,6 @@
 import 'dart:convert';
-import 'dart:math';
+
+import 'package:flutter/foundation.dart';
 
 import 'package:flex_color_scheme/flex_color_scheme.dart';
 import 'package:intl/intl.dart';
@@ -19,6 +20,7 @@ import 'autologin.dart';
 import 'battle.dart';
 import 'filter_data.dart';
 import 'remote_config.dart';
+import 'userdata.dart';
 import 'version.dart';
 
 export 'battle.dart';
@@ -174,7 +176,7 @@ class LocalSettings {
     final proxy = json['network']?['proxy'];
     if (proxy is Map) json['proxy'] = proxy;
     mirror('locale', ['preferredRegions', 'preferredQuestRegion']);
-    mirror('gameplay', ['preferApRate', 'preferredFavorite', 'priorityTags', 'eventItemCalc', 'masterMissionOptions']);
+    mirror('gameplay', ['preferApRate', 'preferredFavorite', 'priorityTags', 'masterMissionOptions']);
     mirror('display', ['enableMouseDrag', 'globalSelection', 'forceEdgeSwipePopGesture', 'galleries', 'showDebugFab']);
     mirror('filters', [
       'spoilerRegion',
@@ -396,7 +398,10 @@ class GameplaySettings {
   bool preferApRate;
   FavoriteState? preferredFavorite;
   Map<int, String> priorityTags;
-  Map<int, EventItemCalcParams> eventItemCalc;
+
+  @JsonKey(name: 'eventItemCalc', includeToJson: false)
+  Map<int, EventItemCalcParams>? legacyEventItemCalc;
+
   MasterMissionOptions masterMissionOptions;
 
   GameplaySettings({
@@ -405,12 +410,11 @@ class GameplaySettings {
     this.preferApRate = true,
     this.preferredFavorite,
     Map<int, String>? priorityTags,
-    Map<int, EventItemCalcParams>? eventItemCalc,
+    this.legacyEventItemCalc,
     MasterMissionOptions? masterMissionOptions,
   }) : pinnedSvtIds = pinnedSvtIds ?? {503900, 504500, 604200, 2800100, 901400},
        pinnedSvtEquipIds = pinnedSvtEquipIds ?? {9400180, 9400280, 9400340, 9400480, 9403990},
        priorityTags = priorityTags ?? {},
-       eventItemCalc = eventItemCalc ?? {},
        masterMissionOptions = masterMissionOptions ?? MasterMissionOptions();
 
   factory GameplaySettings.fromJson(Map<String, dynamic> json) => _$GameplaySettingsFromJson(json);
@@ -523,6 +527,7 @@ class DisplaySettings {
   bool forceEdgeSwipePopGesture;
 
   AdSetting ad;
+  PrivacySetting privacy;
 
   bool showDebugFab;
 
@@ -549,10 +554,12 @@ class DisplaySettings {
     this.globalSelection = false,
     this.forceEdgeSwipePopGesture = false,
     AdSetting? ad,
+    PrivacySetting? privacy,
     this.showDebugFab = false,
   }) : sortedSvtTabs = sortedSvtTabs?.whereType<SvtTab>().toList() ?? List.of(SvtTab.values),
        hideSvtPlanDetails = hideSvtPlanDetails?.whereType<SvtPlanDetail>().toList() ?? [],
        ad = ad ?? AdSetting(),
+       privacy = privacy ?? PrivacySetting(),
        galleries = galleries ?? {} {
     validateSvtTabs();
   }
@@ -573,49 +580,202 @@ class DisplaySettings {
   Map<String, dynamic> toJson() => _$DisplaySettingsToJson(this);
 }
 
+const int kPrivacyPolicyVersion = 1;
+
+/// Always on: the dialog appears whenever consent is missing or the accepted version is stale.
+const bool kPrivacyConsentEnabled = kDebugMode || true;
+
+@JsonSerializable()
+class PrivacySetting {
+  bool accepted;
+  int acceptedVersion;
+  bool consentAsked;
+  bool crashReportEnabled;
+  bool analyticsEnabled;
+
+  PrivacySetting({
+    this.accepted = false,
+    this.acceptedVersion = 0,
+    this.consentAsked = false,
+    this.crashReportEnabled = true,
+    this.analyticsEnabled = true,
+  });
+
+  bool get needsConsent =>
+      kPrivacyConsentEnabled && (accepted ? acceptedVersion != kPrivacyPolicyVersion : !consentAsked);
+
+  bool get consentSatisfied => !kPrivacyConsentEnabled || (accepted && acceptedVersion == kPrivacyPolicyVersion);
+
+  factory PrivacySetting.fromJson(Map<String, dynamic> data) => _$PrivacySettingFromJson(data);
+
+  Map<String, dynamic> toJson() => _$PrivacySettingToJson(this);
+}
+
+enum PrivacyPermissionGroup { network, files, photos, phone, notifications, install, advertising, other }
+
+@JsonSerializable(createToJson: false)
+class PrivacyPermissionDeclaration {
+  final String kind;
+  final String name;
+  @JsonKey(readValue: _readAttributes)
+  final Map<String, dynamic> attributes;
+
+  PrivacyPermissionDeclaration({required this.kind, required this.name, required Map<String, dynamic> attributes})
+    : attributes = Map.unmodifiable(attributes);
+
+  factory PrivacyPermissionDeclaration.fromJson(Map<String, dynamic> json) =>
+      _$PrivacyPermissionDeclarationFromJson(json);
+
+  // Preserve platform-specific and future declaration fields from the flat artifact schema.
+  static Object _readAttributes(Map json, String key) => Map<String, dynamic>.from(json)
+    ..remove('kind')
+    ..remove('name');
+
+  PrivacyPermissionGroup get group {
+    // Definitions and unfamiliar names remain visible without inventing a purpose.
+    if (kind == 'permission') return PrivacyPermissionGroup.other;
+    if (kind == 'background-mode') {
+      return name == 'remote-notification' ? PrivacyPermissionGroup.notifications : PrivacyPermissionGroup.other;
+    }
+    if (kind == 'usage-description') {
+      return switch (name) {
+        'NSPhotoLibraryAddUsageDescription' => PrivacyPermissionGroup.photos,
+        'NSUserTrackingUsageDescription' => PrivacyPermissionGroup.advertising,
+        _ => PrivacyPermissionGroup.other,
+      };
+    }
+    if (kind == 'entitlement') {
+      if (name == 'com.apple.security.network.client') return PrivacyPermissionGroup.network;
+      if (name.startsWith('com.apple.security.files.')) return PrivacyPermissionGroup.files;
+      return PrivacyPermissionGroup.other;
+    }
+    if (kind != 'uses-permission' && kind != 'uses-permission-sdk-23') return PrivacyPermissionGroup.other;
+    return switch (name) {
+      'android.permission.INTERNET' ||
+      'android.permission.ACCESS_NETWORK_STATE' ||
+      'android.permission.ACCESS_WIFI_STATE' => PrivacyPermissionGroup.network,
+      'android.permission.READ_EXTERNAL_STORAGE' ||
+      'android.permission.WRITE_EXTERNAL_STORAGE' => PrivacyPermissionGroup.files,
+      'android.permission.READ_PHONE_STATE' => PrivacyPermissionGroup.phone,
+      'android.permission.POST_NOTIFICATIONS' ||
+      'android.permission.RECEIVE_BOOT_COMPLETED' ||
+      'android.permission.SCHEDULE_EXACT_ALARM' ||
+      'android.permission.USE_EXACT_ALARM' ||
+      'android.permission.USE_FULL_SCREEN_INTENT' ||
+      'android.permission.ACCESS_NOTIFICATION_POLICY' => PrivacyPermissionGroup.notifications,
+      'android.permission.REQUEST_INSTALL_PACKAGES' => PrivacyPermissionGroup.install,
+      'com.google.android.gms.permission.AD_ID' ||
+      'com.asus.msa.SupplementaryDID.ACCESS' => PrivacyPermissionGroup.advertising,
+      _ => PrivacyPermissionGroup.other,
+    };
+  }
+
+  String get details => [
+    kind,
+    for (final entry in attributes.entries)
+      '${entry.key}: ${entry.value is String ? entry.value : jsonEncode(entry.value)}',
+  ].join('\n');
+}
+
+@JsonSerializable(createToJson: false)
+class PrivacyPermissionTarget {
+  final String platform;
+  final String? flavor;
+  final String status;
+  @JsonKey(name: 'application_id')
+  final String? applicationId;
+  @JsonKey(name: 'version_name')
+  final String? versionName;
+  @JsonKey(name: 'build_number')
+  final String? buildNumber;
+  final List<PrivacyPermissionDeclaration> declarations;
+
+  PrivacyPermissionTarget({
+    required this.platform,
+    this.flavor,
+    required this.status,
+    this.applicationId,
+    this.versionName,
+    this.buildNumber,
+    required List<PrivacyPermissionDeclaration> declarations,
+  }) : declarations = List.unmodifiable(declarations);
+
+  factory PrivacyPermissionTarget.fromJson(Map<String, dynamic> json) => _$PrivacyPermissionTargetFromJson(json);
+
+  bool get isPartial => status == 'partial';
+
+  Map<PrivacyPermissionGroup, List<PrivacyPermissionDeclaration>> get groups {
+    final result = <PrivacyPermissionGroup, List<PrivacyPermissionDeclaration>>{};
+    for (final declaration in declarations) {
+      (result[declaration.group] ??= []).add(declaration);
+    }
+    return result;
+  }
+}
+
+@JsonSerializable(createToJson: false)
+class PrivacyPermissionCatalog {
+  static const assetPath = 'res/assets/privacy_permissions.json';
+
+  final List<PrivacyPermissionTarget> targets;
+
+  PrivacyPermissionCatalog({required List<PrivacyPermissionTarget> targets}) : targets = List.unmodifiable(targets);
+
+  factory PrivacyPermissionCatalog.fromJson(Map<String, dynamic> json) => _$PrivacyPermissionCatalogFromJson(json);
+
+  factory PrivacyPermissionCatalog.decode(String source) {
+    final json = jsonDecode(source) as Map<String, dynamic>;
+    if (json['schema_version'] != 1 ||
+        json['scope'] != 'package_declarations' ||
+        json['runtime_authorization_verified'] != false) {
+      throw const FormatException('Unsupported permission catalog');
+    }
+    return PrivacyPermissionCatalog.fromJson(json);
+  }
+
+  PrivacyPermissionTarget? select({
+    required String platform,
+    required String? flavor,
+    required String applicationId,
+    required String versionName,
+    required String buildNumber,
+  }) {
+    // A missing Android flavor must not silently become the GitHub or Play inventory.
+    if (platform == 'android' && (flavor == null || flavor.isEmpty)) return null;
+    final matches = targets.where((target) => target.platform == platform && target.flavor == flavor).toList();
+    if (matches.length != 1) return null;
+    final target = matches.single;
+    if ((target.status != 'inspected' && target.status != 'partial') ||
+        target.applicationId != applicationId ||
+        target.versionName != versionName ||
+        target.buildNumber != buildNumber) {
+      return null;
+    }
+    return target;
+  }
+}
+
 @JsonSerializable()
 class AdSetting {
-  /// 广告总开关状态（使用AdFeatureState序列化）
-  /// defaults=未设置（跟随远程配置），on=开启，off=关闭
-  /// 注意：本地设置不支持forcedOn，forcedOn仅远程配置可用
+  /// Local settings never use [AdFeatureState.forcedOn]; that value is server-only.
   AdFeatureState enabled;
-
-  /// Banner广告开关状态
   AdFeatureState banner;
-
-  /// 开屏广告开关状态
   AdFeatureState appOpen;
-
-  /// 插屏广告开关状态
   AdFeatureState interstitial;
 
-  /// 个性化广告开关（null=未设置，默认关闭以合规优先）
-  /// true: 允许基于用户兴趣的个性化广告
-  /// false: 仅展示非个性化（上下文）广告
   bool? personalizedAds;
-
-  /// 上次开屏广告展示时间戳
-  int lastAppOpen;
-
-  /// 上次ATT权限请求时间戳（用于防重复弹窗）
+  bool? attAuthorized;
   int lastAttRequestTime;
 
-  /// ATT权限请求结果（null=未请求，true=已授权，false=已拒绝）
-  bool? attAuthorized;
+  int lastAppOpen;
 
-  /// 用户是否已同意隐私政策（广告相关）
-  bool privacyPolicyAccepted;
+  bool get shouldPersonalizeAds => personalizedAds ?? true;
 
-  /// 是否允许个性化广告
-  /// null或false均视为不允许（合规优先原则）
-  bool get shouldPersonalizeAds => personalizedAds == true;
-
-  /// 是否可以请求ATT权限（距上次请求超过7天冷却期，或从未请求）
   bool get canRequestAtt {
-    if (attAuthorized != null) return false; // 已有明确结果，不再请求
-    if (lastAttRequestTime == 0) return true; // 从未请求
+    if (attAuthorized != null) return false;
+    if (lastAttRequestTime == 0) return true;
     final elapsed = DateTime.now().timestamp - lastAttRequestTime;
-    return elapsed > 30 * 24 * 3600; // 30天冷却期
+    return elapsed > 30 * 24 * 3600;
   }
 
   AdSetting({
@@ -624,10 +784,9 @@ class AdSetting {
     this.appOpen = .defaults,
     this.interstitial = .defaults,
     this.personalizedAds,
-    this.lastAppOpen = 0,
-    this.lastAttRequestTime = 0,
     this.attAuthorized,
-    this.privacyPolicyAccepted = false,
+    this.lastAttRequestTime = 0,
+    this.lastAppOpen = 0,
   });
 
   factory AdSetting.fromJson(Map<String, dynamic> data) => _$AdSettingFromJson(data);
@@ -828,64 +987,6 @@ class TipsSetting {
   factory TipsSetting.fromJson(Map<String, dynamic> json) => _$TipsSettingFromJson(json);
 
   Map<String, dynamic> toJson() => _$TipsSettingToJson(this);
-}
-
-// key: warId
-@JsonSerializable()
-class EventItemCalcParams {
-  Map<int, int> itemCounts;
-  List<QuestBonusPlan> bonusPlans;
-
-  EventItemCalcParams({Map<int, int>? itemCounts, List<QuestBonusPlan>? bonusPlans})
-    : itemCounts = itemCounts ?? {},
-      bonusPlans = bonusPlans ?? [];
-
-  int getItemDemand(int itemId) {
-    return max(0, (itemCounts[itemId] ?? 0) - (db.curUser.items[itemId] ?? 0));
-  }
-
-  factory EventItemCalcParams.fromJson(Map<String, dynamic> json) => _$EventItemCalcParamsFromJson(json);
-
-  Map<String, dynamic> toJson() => _$EventItemCalcParamsToJson(this);
-}
-
-@JsonSerializable()
-class QuestBonusPlan {
-  bool enabled = true;
-  int questId;
-  int index;
-  String name;
-  Map<int, int> bonus = {};
-
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  int ap = 999999;
-  @JsonKey(includeFromJson: false, includeToJson: false)
-  QuestDropData drops = QuestDropData();
-
-  QuestBonusPlan({this.enabled = true, this.questId = 0, this.index = 0, this.name = "", Map<int, int>? bonus})
-    : bonus = bonus ?? {};
-
-  int getBonus(int itemId) => bonus[itemId] ?? 0;
-
-  factory QuestBonusPlan.fromJson(Map<String, dynamic> json) => _$QuestBonusPlanFromJson(json);
-
-  Map<String, dynamic> toJson() => _$QuestBonusPlanToJson(this);
-
-  String getName({bool withName = true, bool withLv = false}) {
-    String s = Quest.getName(questId);
-    final quest = db.gameData.quests[questId];
-    if (withLv && quest != null) s = 'Lv.${quest.recommendLv} $s';
-    if (index == 0) return s;
-    s += ' @$index';
-    if (withName && name.isNotEmpty) s += ' ($name)';
-    return s;
-  }
-
-  QuestBonusPlan copy(int index) {
-    return QuestBonusPlan(enabled: enabled, questId: questId, index: index, bonus: Map.of(bonus))
-      ..ap = ap
-      ..drops = drops;
-  }
 }
 
 @JsonSerializable()

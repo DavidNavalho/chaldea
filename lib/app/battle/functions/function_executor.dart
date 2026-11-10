@@ -36,6 +36,7 @@ import 'buff_turn_count.dart';
 import 'call_servant.dart';
 import 'move_to_last_sub_member.dart';
 import 'shift_servant.dart';
+import 'sub_field_buff.dart';
 
 class FunctionExecutor {
   FunctionExecutor._();
@@ -174,7 +175,7 @@ class FunctionExecutor {
             type: skillInfoType ?? SkillInfoType.skillAdditional,
             skillLv: askillLv,
           );
-          await aSkillInfo.activate(battleData, activator: activator);
+          await aSkillInfo.activate(battleData, activator: activator, preferredEnemy: targetedEnemy);
         }
       }
     });
@@ -364,6 +365,7 @@ class FunctionExecutor {
           );
           break;
         case FuncType.subFieldBuff:
+          await SubFieldBuff.subFieldBuff(battleData, function.vals, dataVals, activator, targets);
           break;
         case FuncType.gainNp:
         case FuncType.lossNp:

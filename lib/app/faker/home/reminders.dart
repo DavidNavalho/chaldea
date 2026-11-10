@@ -18,6 +18,12 @@ import '../shop/coin_room.dart';
 import '../shop/ex_room_shop.dart';
 import '../shop/shop.dart';
 
+/// Presents listed per reminder block; anything beyond this is summarised.
+const int _kMaxPresentRows = 10;
+
+/// Days before expiry at which a present starts being listed.
+const int _kPresentWarningDays = 30;
+
 class FakerReminders extends StatelessWidget {
   final FakerRuntime runtime;
   final MasterDataManager mstData;
@@ -294,8 +300,9 @@ class FakerReminders extends StatelessWidget {
         ].join(', ');
 
         yield ListTile(
+          dense: true,
           leading: const FaIcon(FontAwesomeIcons.listCheck, size: 18),
-          title: Text('[${Transl.enums(mm.type, (e) => e.missionType).l}] ${mm.getDispName()}'),
+          title: Text('[${Transl.enums(mm.type, (e) => e.missionType).l}] ${mm.getDispName(withId: false)}'),
           subtitle: Text(
             subtitle,
             style: closestEndedAt - now < kSecsPerDay ? TextStyle(color: Theme.of(context).colorScheme.error) : null,
@@ -309,27 +316,50 @@ class FakerReminders extends StatelessWidget {
     }
   }
 
+  /// Presents expiring within [_kPresentWarningDays] days, capped at
+  /// [_kMaxPresentRows] rows.
+  ///
+  /// A present box can hold hundreds of entries, and the row only has to tell
+  /// the player to go clear it, so the earliest ones are listed and the rest are
+  /// summarised in one trailing row.
   Iterable<Widget> getPresents(BuildContext context, int now) sync* {
+    final expiring = <({UserPresentBoxEntity present, int expireAt})>[];
     for (final present in mstData.userPresentBox) {
       final expireAt = present.getExpireAt(runtime.gameData.timerData.items[present.objectId]);
-      if (expireAt < now + 30 * kSecsPerDay) {
-        final gift = present.toGift();
-
-        yield ListTile(
-          leading: Icon(Icons.card_giftcard),
-          title: Text.rich(
-            TextSpan(
-              children: [
-                CenterWidgetSpan(child: gift.iconBuilder(context: context, width: 24)),
-                TextSpan(text: ' ${gift.shownName} ×${gift.num}'),
-              ],
-            ),
-          ),
-          subtitle: Text(expireAt.sec2date().toCustomString()),
-          trailing: Icon(DirectionalIcons.keyboard_arrow_forward(context)),
-          onTap: () => router.pushPage(UserPresentBoxManagePage(runtime: runtime)),
-        );
+      if (expireAt < now + _kPresentWarningDays * kSecsPerDay) {
+        expiring.add((present: present, expireAt: expireAt));
       }
+    }
+    expiring.sort((a, b) => a.expireAt.compareTo(b.expireAt));
+
+    for (final (:present, :expireAt) in expiring.take(_kMaxPresentRows)) {
+      final gift = present.toGift();
+      yield ListTile(
+        dense: true,
+        leading: Icon(Icons.card_giftcard),
+        title: Text.rich(
+          TextSpan(
+            children: [
+              CenterWidgetSpan(child: gift.iconBuilder(context: context, width: 24)),
+              TextSpan(text: ' ${gift.shownName} ×${gift.num}'),
+            ],
+          ),
+        ),
+        subtitle: Text(expireAt.sec2date().toCustomString()),
+        trailing: Icon(DirectionalIcons.keyboard_arrow_forward(context)),
+        onTap: () => router.pushPage(UserPresentBoxManagePage(runtime: runtime)),
+      );
+    }
+
+    if (expiring.length > _kMaxPresentRows) {
+      yield ListTile(
+        dense: true,
+        leading: Icon(Icons.more_horiz),
+        title: Text('${expiring.length - _kMaxPresentRows} more presents expiring'),
+        subtitle: Text('${expiring.length} presents expire within $_kPresentWarningDays days'),
+        trailing: Icon(DirectionalIcons.keyboard_arrow_forward(context)),
+        onTap: () => router.pushPage(UserPresentBoxManagePage(runtime: runtime)),
+      );
     }
   }
 
@@ -476,7 +506,7 @@ class FakerReminders extends StatelessWidget {
           icon: Icon(DirectionalIcons.keyboard_arrow_forward(context)),
         ),
         onTap: () {
-          router.pushPage(QuestListPage.ids(ids: questIds.toList(), mstData: mstData));
+          router.pushPage(QuestListPage.ids(ids: questIds.toList(), mstData: mstData, onSelected: _onSelectQuest));
         },
       );
     }
@@ -531,7 +561,7 @@ class FakerReminders extends StatelessWidget {
             icon: Icon(DirectionalIcons.keyboard_arrow_forward(context)),
           ),
           onTap: () {
-            router.pushPage(QuestListPage.ids(ids: uncleared, mstData: mstData));
+            router.pushPage(QuestListPage.ids(ids: uncleared, mstData: mstData, onSelected: _onSelectQuest));
           },
         );
       }
@@ -548,7 +578,8 @@ class FakerReminders extends StatelessWidget {
               !quest.isRepeatRaid &&
               !_shownQuestIds.contains(quest.id) &&
               quest.type != QuestType.friendship &&
-              quest.warId != WarId.rankup,
+              quest.warId != WarId.rankup &&
+              _isQuestNeedClear(quest.id),
         )
         .toList();
     if (timerQuests.isNotEmpty) {
@@ -560,7 +591,7 @@ class FakerReminders extends StatelessWidget {
           '${timerQuests.length} uncleared, ${Maths.min(timerQuests.map((e) => e.closedAt)).sec2date().toCustomString(year: false, second: false)}',
         ),
         onTap: () {
-          router.pushPage(QuestListPage(quests: timerQuests, mstData: mstData));
+          router.pushPage(QuestListPage(quests: timerQuests, mstData: mstData, onSelected: _onSelectQuest));
         },
       );
     }
@@ -575,6 +606,7 @@ class FakerReminders extends StatelessWidget {
     if (userCoinRoom != null && userCoinRoom.num < maxCoinRoomNum) {
       children.add(
         ListTile(
+          dense: true,
           leading: Item.iconBuilder(context: context, item: Items.grail, width: 32),
           title: Text(S.current.holy_grail_casting),
           onTap: () => router.pushPage(CoinRoomPage(runtime: runtime)),
@@ -607,5 +639,11 @@ class FakerReminders extends StatelessWidget {
     }
 
     return children;
+  }
+
+  void _onSelectQuest(int questId, Quest? quest) {
+    runtime.lockTask(() async {
+      await runtime.battle.selectQuest(questId, quest: quest);
+    });
   }
 }

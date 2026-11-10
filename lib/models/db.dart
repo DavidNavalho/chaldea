@@ -23,6 +23,7 @@ import '../packages/language.dart';
 import '../packages/method_channel/method_channel_chaldea.dart';
 import '../packages/packages.dart';
 import '../packages/split_route/split_route.dart';
+import '../utils/task_observer.dart';
 import 'gamedata/gamedata.dart';
 import 'paths.dart';
 import 'userdata/local_settings.dart';
@@ -88,7 +89,14 @@ class _Database {
 
   // late final ValueNotifier<GameData> _gameNotifier;
 
+  // Set by notifyUserdata/notifySettings at mutation entry points; cleared
+  // when the corresponding object is saved. The saving loop persists only
+  // dirty data, plus a low-frequency full-hash fallback for unmarked changes.
+  bool _userdataDirty = false;
+  bool _settingsDirty = false;
+
   void notifyUserdata() {
+    _userdataDirty = true;
     _userNotifier.sink.add(userData);
     EasyDebounce.debounce('save_userdata', const Duration(seconds: 10), () {
       saveUserData();
@@ -97,6 +105,7 @@ class _Database {
   }
 
   void notifySettings() {
+    _settingsDirty = true;
     _settingNotifier.sink.add(settings);
   }
 
@@ -133,6 +142,7 @@ class _Database {
     await loadSettings(null, loadedUserData?.users.firstOrNull?.battleSim);
     if (loadedUserData != null) {
       userData = loadedUserData;
+      _migrateLegacyEventItemCalc();
       // Persist collection numbers before removing their legacy persistence source.
       await saveSettings();
       await saveUserData();
@@ -150,10 +160,21 @@ class _Database {
     _startSavingLoop();
   }
 
+  void _migrateLegacyEventItemCalc() {
+    final legacy = settings.gameplay.legacyEventItemCalc;
+    if (legacy == null || legacy.isEmpty) return;
+    final user = userData.users.first;
+    for (final entry in legacy.entries) {
+      user.eventItemCalc.putIfAbsent(entry.key, () => entry.value);
+    }
+    settings.gameplay.legacyEventItemCalc = null;
+  }
+
   /// return the [UserData] instance, don't assign to [userData]
   Future<UserData?> loadUserData([String? fp]) {
     return _loadWithBak<UserData?>(
       fp: fp ?? paths.userDataPath,
+      task: 'db.userdata',
       fromJson: (data) => UserData.fromJson(data),
       onError: () => null,
     );
@@ -162,6 +183,7 @@ class _Database {
   Future<LocalSettings> loadSettings([String? fp, BattleSimUserData? legacyPins]) async {
     return settings = await _loadWithBak<LocalSettings>(
       fp: fp ?? paths.settingsPath,
+      task: 'db.settings',
       fromJson: (data) => LocalSettings.fromJson(data, legacyPins: legacyPins),
       onError: () => legacyPins == null ? LocalSettings() : LocalSettings.fromJson({}, legacyPins: legacyPins),
     );
@@ -169,14 +191,27 @@ class _Database {
 
   static const _backSuffix = '.bak';
 
-  Future<T> _loadWithBak<T>({required String fp, required T Function(dynamic) fromJson, T Function()? onError}) async {
+  Future<T> _loadWithBak<T>({
+    required String fp,
+    required String task,
+    required T Function(dynamic) fromJson,
+    T Function()? onError,
+  }) async {
     Future<T> load(String _fp) async {
-      final f = FilePlus(_fp);
-      if (!f.existsSync()) {
-        throw OSError('File not found: $fp');
-      }
-      final data = jsonDecode(await f.readAsString());
-      return fromJson(data);
+      return TaskObserver.wall(
+        '$task.load',
+        () async {
+          final f = FilePlus(_fp);
+          if (!f.existsSync()) {
+            throw OSError('File not found: $fp');
+          }
+          final text = await TaskObserver.wall('$task.read', f.readAsString);
+          final data = TaskObserver.sync('$task.decode', () => jsonDecode(text));
+          return TaskObserver.sync('$task.objectify', () => fromJson(data));
+        },
+        phase: true,
+        detail: 'backup=${_fp != fp}',
+      );
     }
 
     final bakFp = fp + _backSuffix;
@@ -215,47 +250,76 @@ class _Database {
     await saveSettings();
   }
 
-  Future<void> saveUserData() => _saveWithBak(paths.userDataPath, userData);
+  Future<void> saveUserData() {
+    _userdataDirty = false;
+    return _saveWithBak(paths.userDataPath, userData, 'db.userdata');
+  }
 
-  Future<void> saveSettings() => _saveWithBak(paths.settingsPath, settings);
+  Future<void> saveSettings() {
+    _settingsDirty = false;
+    return _saveWithBak(paths.settingsPath, settings, 'db.settings');
+  }
 
-  Future<void> _saveWithBak(String fp, Object obj) async {
+  Future<void> _saveWithBak(String fp, Object obj, String task) async {
+    final span = TaskObserver.start('$task.save');
+    var failed = true;
     try {
-      String content = jsonEncode(obj);
-      await FilePlus(fp).writeAsString(content, flush: true);
-      await FilePlus(fp + _backSuffix).writeAsString(content, flush: true);
+      String content = TaskObserver.sync('$task.encode', () => jsonEncode(obj));
+      await TaskObserver.wall('$task.write', () async {
+        await FilePlus(fp).writeAsString(content, flush: true);
+        await FilePlus(fp + _backSuffix).writeAsString(content, flush: true);
+      });
+      failed = false;
     } catch (e, s) {
       if (kAppKey.currentContext != null) {
         EasyLoading.showError(e.toString());
       }
       logger.e('saving file failed', e, s);
+    } finally {
+      span.finish(failed: failed);
     }
   }
 
   void _startSavingLoop() {
+    const tickInterval = Duration(seconds: 10);
+    // Dirty-flag ticks save promptly; every [hashFallbackTicks] ticks run a
+    // full hash compare as the safety net for changes that missed the notify
+    // calls. Normal exits are covered by saveAll() on background/close.
+    const hashFallbackTicks = 60; // 10 minutes
+    var tick = 0;
     String? _lastUserHash;
     String? _lastSettingHash;
     String _getHash(Object obj) {
-      return md5.convert(utf8.encode(jsonEncode(obj))).toString();
+      return TaskObserver.sync('db.fallback.hash', () => md5.convert(utf8.encode(jsonEncode(obj))).toString());
     }
 
-    Timer.periodic(const Duration(seconds: 10), (timer) {
-      try {
-        final _userHash = _getHash(userData);
-        final _settingHash = _getHash(settings);
-        if (_lastUserHash != null && _lastSettingHash != null) {
-          if (_userHash != _lastUserHash) {
+    Timer.periodic(tickInterval, (timer) {
+      TaskObserver.sync('db.heartbeat', () {
+        try {
+          if (_userdataDirty) {
             saveUserData();
           }
-          if (_settingHash != _lastSettingHash) {
+          if (_settingsDirty) {
             saveSettings();
           }
+          tick += 1;
+          if (_lastUserHash == null || tick % hashFallbackTicks == 0) {
+            final _userHash = _getHash(userData);
+            final _settingHash = _getHash(settings);
+            if (_lastUserHash != null && _userHash != _lastUserHash) {
+              saveUserData();
+            }
+            if (_lastSettingHash != null && _settingHash != _lastSettingHash) {
+              saveSettings();
+            }
+            _lastUserHash = _userHash;
+            _lastSettingHash = _settingHash;
+          }
+        } catch (e, s) {
+          logger.e('save loop failed', e, s);
         }
-        _lastUserHash = _userHash;
-        _lastSettingHash = _settingHash;
-      } catch (e, s) {
-        logger.e('save loop failed', e, s);
-      }
+      });
+      TaskObserver.summaryIfDue();
     });
   }
 

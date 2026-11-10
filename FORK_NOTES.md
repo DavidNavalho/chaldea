@@ -140,6 +140,12 @@ not use your personal account data. `scripts/fork/validate_upstream_sync.sh`
 can also wrap it via `VALIDATION_CMD`; that helper's default tests target Linux,
 so use the override on macOS.
 
+If a local parallel run stalls, capture its log and compare a direct
+`fvm flutter test --no-pub --concurrency=1 --dart-define=APP_PATH=<data-backed-path>`
+run using the same source and game data. This is a diagnostic, not permission to
+count an interrupted suite as passing. Repeat the normal data-aware helper after
+upstream updates before changing test orchestration or application behavior.
+
 On GitHub:
 
 ```bash

@@ -131,6 +131,14 @@ class _UserDataPageState extends State<UserDataPage> {
                 onTap: importUserData,
               ),
               ListTile(
+                title: Text(S.current.clear_backup),
+                onTap: () => showDialog(
+                  context: context,
+                  useRootNavigator: false,
+                  builder: (context) => const _ClearBackupDialog(),
+                ),
+              ),
+              ListTile(
                 title: Text(S.current.import_userdata_more),
                 subtitle: Text('${S.current.gallery_tab_name}-${S.current.general_import}'),
                 trailing: const Icon(Icons.keyboard_arrow_right),
@@ -154,7 +162,7 @@ class _UserDataPageState extends State<UserDataPage> {
       final userdata = UserData.fromJson(jsonDecode(utf8.decode(bytes)));
       await db.backupUserdata();
       db.userData = userdata;
-      db.saveUserData();
+      await db.saveUserData();
       EasyLoading.showToast(S.current.import_data_success);
       db.notifyAppUpdate();
     } catch (e, s) {
@@ -388,8 +396,8 @@ class __BackupHistoryPageState extends State<_BackupHistoryPage> {
                           final userdata = UserData.fromJson(jsonData);
                           await db.backupUserdata();
                           db.userData = userdata;
+                          await db.saveUserData();
                           EasyLoading.showToast(S.current.import_data_success);
-                          db.saveUserData();
                           db.notifyAppUpdate();
                         } catch (e) {
                           EasyLoading.showError(S.current.import_data_error(e));
@@ -417,6 +425,74 @@ class __BackupHistoryPageState extends State<_BackupHistoryPage> {
         separatorBuilder: (_, _) => kDefaultDivider,
         itemCount: validFiles.length + 1,
       ),
+    );
+  }
+}
+
+class _ClearBackupDialog extends StatefulWidget {
+  const _ClearBackupDialog();
+
+  @override
+  State<_ClearBackupDialog> createState() => _ClearBackupDialogState();
+}
+
+class _ClearBackupDialogState extends State<_ClearBackupDialog> {
+  final Set<String> selectedFolders = {};
+
+  @override
+  Widget build(BuildContext context) {
+    return SimpleConfirmDialog(
+      title: Text(S.current.clear_backup),
+      confirmText: S.current.clear,
+      showOk: selectedFolders.isNotEmpty,
+      scrollable: true,
+      content: Column(
+        children: [
+          for (final folder in [db.paths.backupDirSettings, db.paths.backupDirUser])
+            CheckboxListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              value: selectedFolders.contains(folder),
+              controlAffinity: ListTileControlAffinity.leading,
+              title: Text(folder == db.paths.backupDirSettings ? 'Settings Backup' : 'UserData Backup'),
+              subtitle: Text(db.paths.convertIosPath(folder)),
+              onChanged: (v) {
+                setState(() {
+                  if (v == true) {
+                    selectedFolders.add(folder);
+                  } else {
+                    selectedFolders.remove(folder);
+                  }
+                });
+              },
+            ),
+        ],
+      ),
+      onTapOk: () async {
+        try {
+          await showEasyLoading(() async {
+            for (final folder in selectedFolders) {
+              if (kIsWeb) {
+                final prefix = '${FilePlusWeb.normalizePath(folder)}/';
+                final files = FilePlusWeb.list().where((fp) => fp.startsWith(prefix)).toList();
+                for (final fp in files) {
+                  await FilePlus(fp).delete();
+                }
+              } else {
+                final dir = Directory(folder);
+                if (await dir.exists()) {
+                  await dir.delete(recursive: true);
+                  await dir.create(recursive: true);
+                }
+              }
+            }
+          }, mask: true);
+          EasyLoading.showToast(S.current.done);
+        } catch (e, s) {
+          EasyLoading.showError(e.toString());
+          logger.e('clear backups failed', e, s);
+        }
+      },
     );
   }
 }

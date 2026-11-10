@@ -228,16 +228,12 @@ class ChaldeaServerApi {
     return cacheManager.postModel(
       '$apiV1/auth/recover-by-device',
       fromJson: (_) => true,
-      data: {'username': username, 'device_id': deviceId, 'new_email': newEmail},
+      data: {'username': username, 'device_id': AppInfo.normalizeDeviceId(deviceId), 'new_email': newEmail},
       expireAfter: Duration.zero,
     );
   }
 
-  // Step 1 of email binding: send verification code to new email.
-  //
-  // Requires `currentPassword` to re-confirm identity before initiating the
-  // change — email is the root-trust anchor of the account. See the
-  // `secure-email-change` OpenSpec change for the threat model.
+  // Reconfirm the current password before sending a code to the new email.
   static Future<bool?> changeEmail({required String currentPassword, required String newEmail}) {
     return cacheManager.postModel(
       '$apiV1/users/me/change-email',
